@@ -737,7 +737,7 @@
           </div>
 
           <!-- Columnas -->
-          <div>
+          <div id="lista-prod-opciones-avanzadas">
             <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Columnas</label>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:var(--surface2);padding:7px 12px;border-radius:7px;border:1px solid var(--border);">
@@ -786,10 +786,10 @@
 
         <!-- Acciones -->
         <div id="lista-prod-acciones" style="display:none;margin-top:16px;gap:8px;flex-wrap:wrap;">
-          <button onclick="imprimirListaProd()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">🖨️ Imprimir / PDF</button>
-          <button onclick="exportarListaProdExcel()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">📊 Excel</button>
-          <button onclick="compartirListaProdWA()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">📱 WhatsApp</button>
-          <button onclick="compartirListaProdEmail()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">✉️ Email</button>
+          <button onclick="imprimirListaProd()" id="btn-lista-imprimir" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">🖨️ Imprimir / PDF</button>
+          <button onclick="exportarListaProdExcel()" id="btn-lista-excel" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">📊 Excel</button>
+          <button onclick="compartirListaProdWA()" id="btn-lista-wa" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">📱 WhatsApp</button>
+          <button onclick="compartirListaProdEmail()" id="btn-lista-email" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--text);cursor:pointer;">✉️ Email</button>
         </div>
       </div>
 
@@ -3819,6 +3819,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <label class="pdv-check-item ${perms.listaPrecios?'checked':''}" id="perm-lbl-${u.username}-listaPrecios">
               <input type="checkbox" ${perms.listaPrecios?'checked':''} onchange="togglePerm('${u.username}','listaPrecios',this.checked)" />💰 Lista de precios
             </label>
+            <label class="pdv-check-item ${perms.listaProd?'checked':''}" id="perm-lbl-${u.username}-listaProd">
+              <input type="checkbox" ${perms.listaProd?'checked':''} onchange="togglePerm('${u.username}','listaProd',this.checked)" />📋 Lista de productos
+            </label>
             <label class="pdv-check-item ${perms.detalleCliente?'checked':''}" id="perm-lbl-${u.username}-detalleCliente">
               <input type="checkbox" ${perms.detalleCliente?'checked':''} onchange="togglePerm('${u.username}','detalleCliente',this.checked)" />👥 Detalle cliente
             </label>
@@ -4971,9 +4974,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function renderListaProd() {
-    const showPrecio = document.getElementById('lista-opt-precio').checked;
-    const showLista2 = document.getElementById('lista-opt-lista2').checked;
-    const showLista3 = document.getElementById('lista-opt-lista3').checked;
+    const showPrecio = modoOp ? true : document.getElementById('lista-opt-precio').checked;
+    const showLista2 = modoOp ? false : document.getElementById('lista-opt-lista2').checked;
+    const showLista3 = modoOp ? false : document.getElementById('lista-opt-lista3').checked;
     const showLista4 = document.getElementById('lista-opt-lista4')?.checked || false;
     const showDesc = document.getElementById('lista-opt-desc').checked;
     const pct2 = parseFloat(document.getElementById('lista-pct2').value)||0;
@@ -6224,30 +6227,30 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function getVentasTexto() {
-    const empresaNombre = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    if (!_ventasItems || !_ventasItems.length) return '';
+    const empresaNombre = (document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '').trim();
     const fecha = document.getElementById('ventas-fecha')?.value || '';
     const lista = document.getElementById('ventas-lista-sel')?.options[document.getElementById('ventas-lista-sel')?.selectedIndex]?.text || '';
     const clienteNombre = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
-    const rows = document.querySelectorAll('#ventas-tabla tbody tr');
-    if (!rows.length) return '';
-    let txt = empresaNombre ? empresaNombre + '\n' : '';
-    if (clienteNombre) txt += 'Cliente: ' + clienteNombre + '\n';
-    txt += 'Fecha: ' + fecha + '\n';
+    const clienteTel = document.getElementById('ventas-cliente-tel')?.value?.trim() || '';
+    const tipo = window._ventasTipo || 'Venta';
+    let txt = '';
+    if (empresaNombre) txt += '🏢 ' + empresaNombre + '\n';
+    txt += '🛒 ' + tipo + ' — ' + lista + '\n';
+    txt += '📅 ' + fecha + '\n';
+    if (clienteNombre) txt += '👤 ' + clienteNombre + '\n';
+    if (clienteTel) txt += '📱 ' + clienteTel + '\n';
     txt += '─'.repeat(28) + '\n';
     let total = 0;
-    rows.forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      if (tds.length < 3) return;
-      const prod = tds[0]?.textContent?.trim() || '';
-      const cant = tds[1]?.textContent?.trim() || '';
-      const precio = tds[2]?.textContent?.trim() || '';
-      txt += `• ${prod}  x${cant}  ${precio}\n`;
-      const v = parseFloat(precio.replace(/[^0-9,]/g,'').replace(',','.'));
-      if (!isNaN(v)) total += v;
+    _ventasItems.forEach(item => {
+      const subtotal = parsePrecioAR(item.precio) * item.cant;
+      total += subtotal;
+      txt += '• ' + item.prod + ' — ' + item.gusto;
+      txt += '  ' + (item.cantDisplay || item.cant + ' u');
+      txt += '  $' + subtotal.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '\n';
     });
     txt += '─'.repeat(28) + '\n';
-    txt += `TOTAL: $${total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}\n`;
-    txt += lista ? '(' + lista + ')' : '';
+    txt += 'TOTAL: $' + total.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
     return txt.trim();
   }
 
@@ -7977,6 +7980,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.desperdicios)  show('neg-btn-desperdicios'); else hide('neg-btn-desperdicios');
       if (perms.recuento)      show('neg-btn-recuento');     else hide('neg-btn-recuento');
       if (perms.listaPrecios) show('neg-btn-lista-precios-op'); else hide('neg-btn-lista-precios-op');
+      if (perms.listaProd) show('neg-btn-lista-prod'); else hide('neg-btn-lista-prod');
       hide('neg-btn-ventas');
       if (perms.ventas)       show('neg-btn-ventas-op');       else hide('neg-btn-ventas-op');
       if (perms.detalleCliente) show('neg-btn-clientes-op'); else hide('neg-btn-clientes-op');
