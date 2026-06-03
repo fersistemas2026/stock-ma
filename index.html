@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/Ferna/Downloads/index_22.html -->
+<!-- saved from url=(0046)file:///C:/Users/Ferna/Downloads/index_18.html -->
 <html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stock MA</title>
-  <link href="file:///C:/Users/Ferna/Downloads/Stock%20MA_files/css2" rel="stylesheet">
-  <script src="file:///C:/Users/Ferna/Downloads/Stock%20MA_files/xlsx.full.min.js.descarga"></script>
+  <link href="./Stock MA_files/css2" rel="stylesheet">
+  <script src="./Stock MA_files/xlsx.full.min.js.descarga"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -247,7 +247,7 @@
       .login-card { padding: 28px 20px; }
     }
   </style>
-  <script src="file:///C:/Users/Ferna/Downloads/Stock%20MA_files/xlsx.full.min.js.descarga"></script>
+  <script src="./Stock MA_files/xlsx.full.min.js.descarga"></script>
 </head>
 <body>
 <div id="trama-bg" style="position:fixed;inset:0;z-index:-1;pointer-events:none;"></div>
@@ -270,7 +270,7 @@
   <header>
     <div class="logo" style="display:flex;align-items:center;gap:10px;">
       <div id="header-logo-wrap" style="display:none;">
-        <img id="header-logo" src="./index_files/index_18.html" alt="Logo" style="height:36px;width:auto;border-radius:6px;object-fit:contain;">
+        <img id="header-logo" src="file:///C:/Users/Ferna/Downloads/index_18.html" alt="Logo" style="height:36px;width:auto;border-radius:6px;object-fit:contain;">
       </div>
       <div id="header-empresa-name" style="display:none;font-size:14px;font-weight:700;color:var(--text);"></div>
       <div id="header-pdv-name" style="display:none;font-size:12px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:var(--mono);"></div>
@@ -576,12 +576,13 @@
               <option value="3">Lista 3</option>
               <option value="4">Lista 4</option>
             </select>
+            <select id="ventas-pdv-sel-top" onchange="document.getElementById('ventas-pdv-sel').value=this.value;document.getElementById('ventas-pdv-sel-top').value=this.value;" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;">
+              <option value="">— PDV —</option>
+            </select>
+            <input type="date" id="ventas-fecha" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;">
+  
           </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button onclick="imprimirVentas()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;">🖨️ Imprimir</button>
-            <button onclick="compartirVentasEmail()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;">✉️ Email</button>
-            <button onclick="ventasLimpiar()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;color:#ff5a5a;cursor:pointer;">🗑️ Limpiar</button>
-          </div>
+
         </div>
 
         <!-- Última venta y método de pago -->
@@ -593,46 +594,54 @@
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;justify-content:center;">
             <span style="font-size:10px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Método de pago</span>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button id="ventas-btn-efectivo" onclick="ventasSetPago(&#39;efectivo&#39;)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💵 Efectivo</button>
               <button id="ventas-btn-tarjeta" onclick="ventasSetPago(&#39;tarjeta&#39;)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💳 Tarjeta</button>
+              <button id="ventas-btn-venta-doc" onclick="selDocTipo('venta')" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🛒 Venta</button>
+              <button id="ventas-btn-presupuesto" onclick="selDocTipo('presupuesto')" style="background:none;border:1px solid #ffb432;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#ffb432;cursor:pointer;">📋 Presupuesto</button>
+              <button id="ventas-btn-recibo" onclick="selDocTipo('recibo')" style="background:none;border:1px solid #6ee7b7;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#6ee7b7;cursor:pointer;">🧾 Recibo</button>
             </div>
           </div>
         </div>
 
         <!-- Datos del cliente -->
-        <div id="ventas-cliente-section" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:flex-end;">
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:140px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Nombre cliente</label>
-            <input type="text" id="ventas-cliente-nombre" placeholder="Nombre..." autocomplete="off" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:140px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Teléfono / WhatsApp</label>
-            <input type="tel" id="ventas-cliente-tel" placeholder="+54 9..." autocomplete="off" oninput="verificarClienteExistente()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;width:100%;box-sizing:border-box;">
-            <div id="ventas-cliente-msg-tel" style="font-size:11px;color:var(--accent);margin-top:2px;display:none;"></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:140px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Email</label>
-            <input type="email" id="ventas-cliente-email" placeholder="cliente@..." autocomplete="off" oninput="verificarClienteExistente()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;">
-            <div id="ventas-cliente-msg-email" style="font-size:11px;color:var(--accent);margin-top:2px;display:none;"></div>
+        <div id="ventas-cliente-section" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">👤 Datos del cliente</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+              <label style="font-size:11px;font-weight:600;color:var(--text);letter-spacing:.03em;">✏️ Nombre</label>
+              <input type="text" id="ventas-cliente-nombre" placeholder="Nombre del cliente..." autocomplete="off"
+                style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
+                onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+              <label style="font-size:11px;font-weight:600;color:#25D366;letter-spacing:.03em;">📱 Teléfono / WhatsApp</label>
+              <input type="tel" id="ventas-cliente-tel" placeholder="+54 9..." autocomplete="off" oninput="verificarClienteExistente()"
+                style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
+                onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='var(--border)'">
+              <div id="ventas-cliente-msg-tel" style="font-size:11px;color:var(--accent);margin-top:2px;display:none;"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+              <label style="font-size:11px;font-weight:600;color:#8ab4f8;letter-spacing:.03em;">✉️ Email</label>
+              <input type="email" id="ventas-cliente-email" placeholder="cliente@..." autocomplete="off" oninput="verificarClienteExistente()"
+                style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
+                onfocus="this.style.borderColor='#8ab4f8'" onblur="this.style.borderColor='var(--border)'">
+              <div id="ventas-cliente-msg-email" style="font-size:11px;color:var(--accent);margin-top:2px;display:none;"></div>
+            </div>
           </div>
         </div>
 
-        <!-- PDV y fecha -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:flex-end;">
-          <div style="display:flex;flex-direction:column;gap:3px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">PDV</label>
-            <select id="ventas-pdv-sel" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;">
-              <option value="">— PDV —</option>
-            </select>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:3px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Fecha</label>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input type="date" id="ventas-fecha" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;">
-              <span id="ventas-hora-actual" style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;white-space:nowrap;"></span>
-            </div>
-          </div>
+        <!-- PDV + fecha + acciones -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center;">
+          <select id="ventas-pdv-sel" style="display:none;">
+            <option value="">— PDV —</option>
+          </select>
+
+          <span id="ventas-hora-actual" style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;white-space:nowrap;"></span>
+          <button onclick="imprimirVentas()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);cursor:pointer;">🖨️ Imprimir</button>
+          <button onclick="compartirVentasEmail()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);cursor:pointer;">✉️ Email</button>
+          <button onclick="abrirEnvioWAVentas()" style="background:none;border:1px solid #25D366;border-radius:7px;padding:7px 12px;font-size:12px;color:#25D366;cursor:pointer;">📱 WhatsApp</button>
+          <button onclick="ventasLimpiar()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:#ff5a5a;cursor:pointer;">🗑️ Limpiar</button>
         </div>
 
         <!-- Fila agregar -->
@@ -648,8 +657,12 @@
             <datalist id="ventas-gusto-list"></datalist>
           </div>
           <div style="display:flex;flex-direction:column;gap:3px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Cant.</label>
-            <input type="number" id="ventas-cant" min="1" value="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;width:60px;text-align:center;">
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Cantidad</label>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input type="number" id="ventas-cant" min="0.001" step="any" value="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;width:70px;text-align:center;">
+              <span id="ventas-unidad-badge" style="font-size:12px;font-weight:700;color:var(--accent);font-family:var(--mono);min-width:28px;">u</span>
+              <input type="hidden" id="ventas-unidad" value="u">
+            </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:3px;">
             <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Precio $</label>
@@ -657,7 +670,7 @@
           </div>
           <button onclick="ventasAgregarItem()" class="btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;height:36px;">+ Agregar</button>
           <button onclick="guardarVenta()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;height:36px;">💾 Guardar</button>
-          <button onclick="compartirVentasWA()" style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;height:36px;">📱</button>
+
         </div>
 
         <!-- Layout 2 columnas: tabla izq, resumen der -->
@@ -820,7 +833,8 @@
         <div style="padding:16px 0;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
             <h3 style="font-size:16px;font-weight:800;margin:0;">👥 Clientes</h3>
-            <input type="text" id="clientes-op-search" placeholder="🔍 Buscar por nombre o teléfono..." oninput="renderClientesOpTabla()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:240px;">
+            <input type="text" id="clientes-op-search" placeholder="🔍 Buscar por nombre o teléfono..." oninput="renderClientesOpTabla()"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:240px;" />
           </div>
           <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;" id="clientes-op-tabla">
@@ -948,7 +962,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">🖼️ Logo de la empresa activa</div>
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
             <div id="logo-preview-wrap" style="width:80px;height:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-              <img id="logo-preview" src="./index_files/index_18.html" style="max-width:100%;max-height:100%;object-fit:contain;display:none;">
+              <img id="logo-preview" src="file:///C:/Users/Ferna/Downloads/index_18.html" style="max-width:100%;max-height:100%;object-fit:contain;display:none;">
               <span id="logo-placeholder" style="font-size:24px;">🏢</span>
             </div>
             <div>
@@ -5114,7 +5128,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!selectedIds.length || !_listaProdData) return '';
     const prods = _listaProdData.filter(p => selectedIds.includes(String(p.id)));
     const fecha = new Date().toLocaleDateString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'});
-    let txt = cfg.titulo ? cfg.titulo + "\n" : '';
+    const empresaNombreTxt = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    let txt = empresaNombreTxt ? '🏢 ' + empresaNombreTxt + "\n" : '';
+    txt += cfg.titulo ? cfg.titulo + "\n" : '';
     txt += "Fecha: " + fecha + "\n" + "=".repeat(35) + "\n";
     prods.forEach(prod => {
       const prodNombre = prod.nombre || prod.name;
@@ -5147,6 +5163,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!selectedIds.length || !_listaProdData) return;
     const prods = _listaProdData.filter(p => selectedIds.includes(String(p.id)));
     const fecha = new Date().toLocaleDateString('es-AR', {timeZone:'America/Argentina/Buenos_Aires', day:'2-digit', month:'long', year:'numeric'});
+    const logoUrl = getLogo();
+    const empresaNombreImpL = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    const logoHtmlL = logoUrl ? '<img src="'+logoUrl+'" style="height:56px;width:auto;object-fit:contain;margin-bottom:6px;display:block;" />' : '';
 
     const tablas = prods.map(prod => {
       const prodNombre = prod.nombre || prod.name;
@@ -5471,6 +5490,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function imprimirListaPreciosOp() {
     const body = document.getElementById('lista-precios-op-body');
     const { cfg, hasPct2, hasPct3, fecha } = getListaPreciosOpPrintData();
+    const logoUrlOp = getLogo();
+    const empresaNombreOp = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    const logoHtmlOp = logoUrlOp ? '<img src="'+logoUrlOp+'" style="height:56px;width:auto;object-fit:contain;margin-bottom:6px;display:block;" />' : '';
     const tablas = [...body.querySelectorAll('div[style*="border-radius:12px"]')].map(el => {
       const nombre = el.querySelector('span[style*="font-weight:800"]')?.textContent || '';
       const rows = [...el.querySelectorAll('tbody tr')].map(tr => {
@@ -5484,7 +5506,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     w.document.write(`<!DOCTYPE html><html><head><title>${cfg.titulo||'Lista de precios'}</title>
       <style>body{font-family:sans-serif;padding:28px;color:#111;max-width:820px;margin:auto}.hdr{border-bottom:3px solid #1a2332;padding-bottom:12px;margin-bottom:20px}.hdr h1{margin:0 0 4px;font-size:22px;color:#1a2332}.hdr .f{font-size:12px;color:#666}h3{background:#1a2332;color:#fff;padding:8px 14px;border-radius:4px;margin:20px 0 6px;font-size:13px}table{width:100%;border-collapse:collapse;margin-bottom:14px}th{background:#f0f4f8;padding:7px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #ddd}td{padding:7px 12px;border-bottom:1px solid #eee;font-size:13px}tr:nth-child(even){background:#fafafa}@media print{body{padding:0}}</style>
       </head><body>
-      <div class="hdr"><h1>${cfg.titulo||'Lista de Precios'}</h1><div class="f">📅 ${fecha}</div></div>
+      <div class="hdr">${logoHtmlOp}<h1>${empresaNombreOp ? empresaNombreOp+' — ' : ''}${cfg.titulo||'Lista de Precios'}</h1><div class="f">📅 ${fecha}</div></div>
       ${tablas}
       <script>window.onload=()=>window.print()<\/script></body></html>`);
     w.document.close();
@@ -5494,7 +5516,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const body = document.getElementById('lista-precios-op-body');
     const cfg = _listaOpConfig;
     const fecha = new Date().toLocaleDateString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'});
-    let txt = (cfg.titulo ? cfg.titulo + "\n" : '') + "Fecha: " + fecha + "\n" + "=".repeat(35) + "\n";
+    const empresaNombreTxt2 = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    let txt = empresaNombreTxt2 ? '🏢 ' + empresaNombreTxt2 + "\n" : '';
+    txt += (cfg.titulo ? cfg.titulo + "\n" : '') + "Fecha: " + fecha + "\n" + "=".repeat(35) + "\n";
     body.querySelectorAll('div[style*="border-radius:12px"]').forEach(el => {
       const nombre = el.querySelector('span[style*="font-weight:800"]')?.textContent || '';
       txt += "\n📦 " + nombre + "\n" + "─".repeat(30) + "\n";
@@ -5570,19 +5594,27 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const pdvs = await getPdv();
     const isAdmin = currentUser?.role === 'admin';
     const pdvSel = document.getElementById('ventas-pdv-sel');
+    const pdvSelTop = document.getElementById('ventas-pdv-sel-top');
     if (isAdmin) {
-      pdvSel.innerHTML = '<option value="">— PDV —</option>' + pdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+      const opts = '<option value="">— PDV —</option>' + pdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+      pdvSel.innerHTML = opts;
+      if (pdvSelTop) pdvSelTop.innerHTML = opts;
     } else {
       const misPdvIds = (currentUser?.pdvs||[]).map(String);
       const misPdvs = pdvs.filter(p=>misPdvIds.includes(String(p.id)));
-      pdvSel.innerHTML = misPdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+      const opts = misPdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+      pdvSel.innerHTML = opts;
+      if (pdvSelTop) pdvSelTop.innerHTML = opts;
+      // Seleccionar primero automáticamente para operadores
+      if (misPdvs.length === 1) { pdvSel.value = misPdvs[0].id; if (pdvSelTop) pdvSelTop.value = misPdvs[0].id; }
     }
-    // Mostrar/ocultar sección cliente según PDV y permiso
+    // Sincronizar top → hidden
+    if (pdvSelTop) pdvSelTop.onchange = () => { pdvSel.value = pdvSelTop.value; };
+    // Mostrar sección cliente siempre que tenga acceso a ventas
     const section = document.getElementById('ventas-cliente-section');
-    if (section) {
-      const tienePermiso = currentUser?.role === 'admin' || !!(currentUser?.perms?.detalleCliente);
-      section.style.display = tienePermiso ? '' : 'none';
-    }
+    if (section) section.style.display = '';
+    // Seleccionar Venta por defecto
+    selDocTipo('venta');
 
     // Fecha default hoy
     const fechaInputEl = document.getElementById('ventas-fecha');
@@ -5630,6 +5662,126 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
   }
 
+  function abrirModalVuelto(total, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-vuelto';
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:360px;overflow:hidden;">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <div style="font-size:14px;font-weight:800;">💵 Pago en efectivo</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Total a cobrar: <span style="color:var(--accent);font-family:var(--mono);font-weight:700;">$${total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">¿Cuánto entrega el cliente?</label>
+          <input type="number" id="vuelto-monto-input" min="0" step="any" placeholder="0,00"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:22px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;box-sizing:border-box;"
+            oninput="calcularVuelto(${total})" />
+        </div>
+        <div id="vuelto-resultado" style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center;display:none;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Vuelto</div>
+          <div id="vuelto-monto" style="font-size:32px;font-weight:900;font-family:var(--mono);color:#6ee7b7;"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('modal-vuelto').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="document.getElementById('modal-vuelto').remove(); window._vueltoConfirmed=true; window._vueltoOnConfirm && window._vueltoOnConfirm();" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
+        </div>
+      </div>
+    </div>`;
+    window._vueltoOnConfirm = onConfirm;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('vuelto-monto-input')?.focus(), 100);
+  }
+
+  function calcularVuelto(total) {
+    const val = parseFloat(document.getElementById('vuelto-monto-input')?.value || 0);
+    const res = document.getElementById('vuelto-resultado');
+    const montoEl = document.getElementById('vuelto-monto');
+    if (!res || !montoEl) return;
+    if (val > 0) {
+      const vuelto = val - total;
+      res.style.display = '';
+      if (vuelto >= 0) {
+        montoEl.style.color = '#6ee7b7';
+        montoEl.textContent = '$' + vuelto.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      } else {
+        montoEl.style.color = '#ff5a5a';
+        montoEl.textContent = 'Falta $' + Math.abs(vuelto).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      }
+    } else {
+      res.style.display = 'none';
+    }
+  }
+
+  function abrirModalTarjeta(onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-tarjeta';
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:360px;overflow:hidden;">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <div style="font-size:14px;font-weight:800;">💳 Pago con tarjeta</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Seleccioná el tipo de pago</div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:10px;">
+        <button onclick="selTarjetaTipo('debito',this)" id="tarj-debito"
+          style="text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">💳</span><div><div>Débito</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;">Tarjeta de débito</div></div>
+        </button>
+        <button onclick="selTarjetaTipo('credito',this)" id="tarj-credito"
+          style="text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">💳</span><div><div>Crédito</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;">Tarjeta de crédito</div></div>
+        </button>
+        <button onclick="selTarjetaTipo('transferencia',this)" id="tarj-transferencia"
+          style="text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">📲</span><div><div>Transferencia</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;">Transferencia bancaria / QR</div></div>
+        </button>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button onclick="document.getElementById('modal-tarjeta').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button id="tarj-confirmar" onclick="confirmarTarjeta()" disabled
+            style="flex:2;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-weight:800;color:var(--text-muted);cursor:not-allowed;opacity:.5;">💾 Confirmar y guardar</button>
+        </div>
+      </div>
+    </div>`;
+    window._tarjetaTipo = null;
+    window._tarjetaOnConfirm = onConfirm;
+    document.body.appendChild(overlay);
+  }
+
+  function selTarjetaTipo(tipo, btn) {
+    window._tarjetaTipo = tipo;
+    ['debito','credito','transferencia'].forEach(t => {
+      const el = document.getElementById('tarj-'+t);
+      if (!el) return;
+      if (t === tipo) {
+        el.style.background = 'rgba(139,180,248,.15)';
+        el.style.borderColor = '#8ab4f8';
+        el.style.color = '#8ab4f8';
+      } else {
+        el.style.background = 'var(--surface2)';
+        el.style.borderColor = 'var(--border)';
+        el.style.color = 'var(--text)';
+      }
+    });
+    const conf = document.getElementById('tarj-confirmar');
+    if (conf) {
+      conf.disabled = false;
+      conf.style.background = 'var(--accent)';
+      conf.style.color = '#000';
+      conf.style.borderColor = 'transparent';
+      conf.style.cursor = 'pointer';
+      conf.style.opacity = '1';
+    }
+  }
+
+  function confirmarTarjeta() {
+    if (!window._tarjetaTipo) return;
+    window._tarjetaConfirmed = true;
+    document.getElementById('modal-tarjeta')?.remove();
+    window._tarjetaOnConfirm && window._tarjetaOnConfirm();
+  }
+
   async function guardarVenta() {
     if (!_ventasItems.length) { toast('No hay ítems para guardar','error'); return; }
     const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
@@ -5639,6 +5791,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const lista = document.getElementById('ventas-lista-sel')?.value || '1';
     if (!pdvId) { toast('Seleccioná un PDV','error'); return; }
     if (!fecha || fecha === 'undefined') { toast('Seleccioná una fecha','error'); return; }
+
+    // Modal según método de pago
+    const esEfectivo = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1';
+    const esTarjeta = document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1';
+    if (esEfectivo && !window._vueltoConfirmed) {
+      const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
+      abrirModalVuelto(total, () => guardarVenta());
+      return;
+    }
+    if (esTarjeta && !window._tarjetaConfirmed) {
+      abrirModalTarjeta(() => guardarVenta());
+      return;
+    }
+    window._vueltoConfirmed = false;
+    window._tarjetaConfirmed = false;
 
     const pdvs = await getPdv();
     const metodoPago = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1' ? 'efectivo' :
@@ -5656,7 +5823,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       cantidad: item.cant,
       precio: window._ventasDescuento > 0 ? parsePrecioAR(item.precio||0) * (1 - window._ventasDescuento/100) : parsePrecioAR(item.precio||0),
       lista: lista === '4' ? 'Lista 4' : 'Lista '+lista,
-      metodo_pago: metodoPago,
+      metodo_pago: metodoPago === 'tarjeta' && window._tarjetaTipo ? 'tarjeta_' + window._tarjetaTipo : metodoPago,
       username: currentUser?.username || '',
       cliente_tel: clienteTelVenta || null,
       cliente_nombre: clienteNombreVenta || null
@@ -5674,15 +5841,33 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const pdvNombreCliente = pdvs?.find?.(p=>String(p.id)===String(pdvId))?.nombre || pdvId;
       if (clienteNombre || clienteTel || clienteEmail) {
         try {
-          // Upsert por email si existe, sino insert
-          if (clienteEmail) {
-            await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&email=eq.${encodeURIComponent(clienteEmail)}`, { method: 'DELETE', headers: H });
+          const telNormCliente = clienteTel.replace(/[^0-9]/g,'');
+          // Buscar si ya existe por teléfono o email
+          let clienteExistente = null;
+          if (telNormCliente) {
+            const resB = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&telefono=eq.${telNormCliente}&select=id`, { headers: H });
+            const dataB = await resB.json();
+            if (dataB?.length) clienteExistente = dataB[0];
           }
-          await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
-            method: 'POST',
-            headers: { ...H, 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ empresa_id: String(empresaActual), nombre: clienteNombre, telefono: clienteTel, email: clienteEmail, pdv_id: String(pdvId), pdv_nombre: pdvNombreCliente })
-          });
+          if (!clienteExistente && clienteEmail) {
+            const resB2 = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&email=eq.${encodeURIComponent(clienteEmail)}&select=id`, { headers: H });
+            const dataB2 = await resB2.json();
+            if (dataB2?.length) clienteExistente = dataB2[0];
+          }
+          const clienteData = { empresa_id: String(empresaActual), nombre: clienteNombre||undefined, telefono: telNormCliente||undefined, email: clienteEmail||undefined, pdv_id: String(pdvId), pdv_nombre: pdvNombreCliente };
+          if (clienteExistente) {
+            // Actualizar existente
+            await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${clienteExistente.id}`, {
+              method: 'PATCH', headers: { ...H, 'Prefer': 'return=minimal' },
+              body: JSON.stringify(clienteData)
+            });
+          } else {
+            // Insertar nuevo
+            await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
+              method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' },
+              body: JSON.stringify(clienteData)
+            });
+          }
           document.getElementById('ventas-cliente-nombre').value = '';
           document.getElementById('ventas-cliente-tel').value = '';
           document.getElementById('ventas-cliente-email').value = '';
@@ -5782,6 +5967,24 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const gusto = ventasGetGustoByNombre(prod, gustoNombre);
     if (prod && gusto) {
       document.getElementById('ventas-precio').value = ventasGetPrecio(prod.id, gusto.id);
+      // Setear unidad del producto automáticamente
+      const unidadProd = prod.unidad || 'unidades';
+      const unidadInput = document.getElementById('ventas-unidad');
+      const unidadBadge = document.getElementById('ventas-unidad-badge');
+      const cantInput = document.getElementById('ventas-cant');
+      if (unidadProd === 'kg') {
+        if (unidadInput) unidadInput.value = 'kg';
+        if (unidadBadge) { unidadBadge.textContent = 'kg'; unidadBadge.style.color = '#8ab4f8'; }
+        if (cantInput) { cantInput.step = '0.001'; cantInput.min = '0.001'; cantInput.value = '1'; }
+      } else if (unidadProd === 'grs') {
+        if (unidadInput) unidadInput.value = 'gr';
+        if (unidadBadge) { unidadBadge.textContent = 'gr'; unidadBadge.style.color = '#ff9f43'; }
+        if (cantInput) { cantInput.step = '1'; cantInput.min = '1'; cantInput.value = '100'; }
+      } else {
+        if (unidadInput) unidadInput.value = 'u';
+        if (unidadBadge) { unidadBadge.textContent = 'u'; unidadBadge.style.color = 'var(--accent)'; }
+        if (cantInput) { cantInput.step = '1'; cantInput.min = '1'; cantInput.value = '1'; }
+      }
     }
   }
 
@@ -5798,8 +6001,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function ventasAgregarItem() {
     const prodNombre = document.getElementById('ventas-prod-input').value.trim();
     const gustoNombre = document.getElementById('ventas-gusto-input').value.trim();
-    const cant = parseInt(document.getElementById('ventas-cant').value)||1;
-    const precio = document.getElementById('ventas-precio').value.trim();
+    const cantRaw = parseFloat(document.getElementById('ventas-cant').value)||1;
+    const unidad = document.getElementById('ventas-unidad')?.value || 'u';
+    const cantDisplay = cantRaw + ' ' + unidad;
+    // Para kg/gr el "cant" que se guarda es 1 (el precio ya incluye el cálculo por peso)
+    const cant = 1;
+    const precioBase = parsePrecioAR(document.getElementById('ventas-precio').value.trim());
+    let precioFinal;
+    if (unidad === 'kg') {
+      precioFinal = (precioBase * cantRaw).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    } else if (unidad === 'gr') {
+      precioFinal = (precioBase * cantRaw / 1000).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    } else {
+      precioFinal = document.getElementById('ventas-precio').value.trim();
+    }
+    const precio = precioFinal;
 
     const prod = ventasGetProdByNombre(prodNombre);
     const gusto = ventasGetGustoByNombre(prod, gustoNombre);
@@ -5821,6 +6037,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     document.getElementById('ventas-gusto-input').value = '';
     document.getElementById('ventas-gusto-list').innerHTML = '';
     document.getElementById('ventas-cant').value = 1;
+    const unidadInputR = document.getElementById('ventas-unidad');
+    const unidadBadgeR = document.getElementById('ventas-unidad-badge');
+    if (unidadInputR) unidadInputR.value = 'u';
+    if (unidadBadgeR) { unidadBadgeR.textContent = 'u'; unidadBadgeR.style.color = 'var(--accent)'; }
+    const cantInputR = document.getElementById('ventas-cant');
+    if (cantInputR) { cantInputR.step = '1'; cantInputR.min = '1'; cantInputR.value = '1'; }
     document.getElementById('ventas-precio').value = '';
     // Foco en el campo producto para agilizar la carga
     document.getElementById('ventas-prod-input').focus();
@@ -5855,11 +6077,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.2;">${item.prod}</div>
           <div style="font-size:11px;color:var(--text-muted);">${item.gusto}</div>
         </td>
-        <td style="padding:7px 8px;text-align:center;">
-          <input type="number" min="1" value="${item.cant}" onchange="ventasUpdateCant(${i}, this.value)"
-            style="width:50px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-size:12px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;" />
+        <td style="padding:7px 8px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--text);">
+          ${item.cantDisplay||item.cant+' u'}
         </td>
-        <td style="padding:7px 8px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text-muted);">$ ${item.precio||'—'}</td>
+        <td style="padding:7px 8px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text-muted);">
+          ${item.unidad&&item.unidad!=='u' ? '<span style="font-size:10px;color:var(--text-dim);">$'+( item.precioUnitario||item.precio)+'/ kg</span><br>' : ''}$ ${item.precio||'—'}
+        </td>
         <td style="padding:7px 8px;text-align:right;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--accent);">$ ${subtotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
         <td style="padding:7px 6px;text-align:center;">
           <button onclick="ventasEliminarItem(${i})" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">✕</button>
@@ -5915,6 +6138,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function ventasLimpiar() {
+    // Resetear tipo de documento
+    window._ventasTipo = null;
+    window._docTipoSel = null;
+    selDocTipo('venta');
     _ventasItems = [];
     window._ventasDescuento = 0;
     window._ventasVoucherCodigo = '';
@@ -5926,10 +6153,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     document.getElementById('ventas-precio').value = '';
   }
 
-  function ventasGetTexto() {
+  function ventasGetTexto(tipo) {
+    tipo = tipo || 'Venta';
     const listaLabel = document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex]?.text || '';
     const fecha = new Date().toLocaleDateString('es-AR', {timeZone:'America/Argentina/Buenos_Aires'});
-    let txt = "🛒 Venta — " + listaLabel + "\nFecha: " + fecha + "\n" + "=".repeat(35) + "\n";
+    const clienteNombre = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    const clienteTel = document.getElementById('ventas-cliente-tel')?.value?.trim() || '';
+    const clienteEmail = document.getElementById('ventas-cliente-email')?.value?.trim() || '';
+    let txt = "🛒 " + tipo + " — " + listaLabel + "\nFecha: " + fecha + "\n";
+    if (clienteNombre) txt += "Cliente: " + clienteNombre + "\n";
+    if (clienteTel)    txt += "Tel: " + clienteTel + "\n";
+    if (clienteEmail)  txt += "Email: " + clienteEmail + "\n";
+    txt += "=".repeat(35) + "\n";
     const byProd = {};
     _ventasItems.forEach(item => {
       if (!byProd[item.prod]) byProd[item.prod] = [];
@@ -5942,13 +6177,180 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       items.forEach(item => {
         const sub = ventasParsePrecio(item.precio) * item.cant;
         subtotal += sub;
-        txt += "  • " + item.gusto + " x" + item.cant + "  $ " + sub.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + "\n";
+        txt += "  • " + item.gusto + " x" + (item.cantDisplay||item.cant) + "  $ " + sub.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + "\n";
       });
       txt += "  Subtotal: $ " + subtotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + "\n";
       grand += subtotal;
     });
     txt += "\n" + "=".repeat(35) + "\nTOTAL: $ " + grand.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
     return txt;
+  }
+
+  function abrirEnvioWAVentas() {
+    // Usar teléfono del cliente si ya fue ingresado
+    const telExistente = document.getElementById('ventas-cliente-tel')?.value?.trim() || '';
+
+    const overlay = document.createElement('div');
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:420px;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <span style="font-size:14px;font-weight:800;">📱 Enviar por WhatsApp</span>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Teléfono / WhatsApp</label>
+          <input type="tel" id="wa-ventas-tel" value="${telExistente}" placeholder="+54 9 11 1234 5678"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;color:var(--text);font-family:var(--mono);outline:none;box-sizing:border-box;" />
+          <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Dejá vacío para abrir WhatsApp sin número específico</div>
+        </div>
+        <button onclick="enviarVentaWA()" style="width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;">📱 Enviar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('wa-ventas-tel')?.focus(), 100);
+  }
+
+  function enviarVentaWA() {
+    const tel = (document.getElementById('wa-ventas-tel')?.value || '').replace(/[^0-9]/g,'');
+    const txt = getVentasTexto();
+    if (!txt) { toast('No hay items en la venta','error'); return; }
+    const url = tel
+      ? `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`
+      : `https://wa.me/?text=${encodeURIComponent(txt)}`;
+    window.open(url, '_blank');
+    document.querySelector('[style*="fixed"][style*="9999"]')?.remove();
+  }
+
+  function getVentasTexto() {
+    const empresaNombre = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    const fecha = document.getElementById('ventas-fecha')?.value || '';
+    const lista = document.getElementById('ventas-lista-sel')?.options[document.getElementById('ventas-lista-sel')?.selectedIndex]?.text || '';
+    const clienteNombre = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    const rows = document.querySelectorAll('#ventas-tabla tbody tr');
+    if (!rows.length) return '';
+    let txt = empresaNombre ? empresaNombre + '\n' : '';
+    if (clienteNombre) txt += 'Cliente: ' + clienteNombre + '\n';
+    txt += 'Fecha: ' + fecha + '\n';
+    txt += '─'.repeat(28) + '\n';
+    let total = 0;
+    rows.forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 3) return;
+      const prod = tds[0]?.textContent?.trim() || '';
+      const cant = tds[1]?.textContent?.trim() || '';
+      const precio = tds[2]?.textContent?.trim() || '';
+      txt += `• ${prod}  x${cant}  ${precio}\n`;
+      const v = parseFloat(precio.replace(/[^0-9,]/g,'').replace(',','.'));
+      if (!isNaN(v)) total += v;
+    });
+    txt += '─'.repeat(28) + '\n';
+    txt += `TOTAL: $${total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}\n`;
+    txt += lista ? '(' + lista + ')' : '';
+    return txt.trim();
+  }
+
+  window._docTipoSel = null;
+
+  function selDocTipo(tipo) {
+    window._docTipoSel = tipo;
+    window._ventasTipo = tipo === 'venta' ? null : (tipo === 'presupuesto' ? 'Presupuesto' : 'Recibo');
+    const btnV = document.getElementById('ventas-btn-venta-doc');
+    const btnP = document.getElementById('ventas-btn-presupuesto');
+    const btnR = document.getElementById('ventas-btn-recibo');
+    // Reset todos
+    if (btnV) { btnV.style.background = 'none'; btnV.style.color = 'var(--accent)'; btnV.style.border = '1px solid var(--accent)'; }
+    if (btnP) { btnP.style.background = 'none'; btnP.style.color = '#ffb432'; btnP.style.border = '1px solid #ffb432'; }
+    if (btnR) { btnR.style.background = 'none'; btnR.style.color = '#6ee7b7'; btnR.style.border = '1px solid #6ee7b7'; }
+    // Marcar seleccionado
+    if (tipo === 'venta') {
+      if (btnV) { btnV.style.background = 'var(--accent)'; btnV.style.color = '#000'; btnV.style.border = 'none'; }
+      window._ventasTipo = null;
+    } else if (tipo === 'presupuesto') {
+      if (btnP) { btnP.style.background = '#ffb432'; btnP.style.color = '#000'; btnP.style.border = 'none'; }
+      generarPresupuesto();
+    } else if (tipo === 'recibo') {
+      if (btnR) { btnR.style.background = '#6ee7b7'; btnR.style.color = '#000'; btnR.style.border = 'none'; }
+      generarRecibo();
+    }
+  }
+
+  async function generarPresupuesto() {
+    if (!_ventasItems.length) { toast('No hay ítems para presupuestar','error'); return; }
+    const clienteNombre = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    const clienteTel = (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
+    const clienteEmail = document.getElementById('ventas-cliente-email')?.value?.trim() || '';
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+    const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
+    const lista = document.getElementById('ventas-lista-sel')?.value || '1';
+    const pdvs = await getPdv();
+    const pdvNombre = pdvs?.find?.(p=>String(p.id)===String(pdvId))?.nombre || pdvId;
+    const total = _ventasItems.reduce((s,i)=>s+parsePrecioAR(i.precio)*i.cant,0);
+
+    // Guardar en clientes con nota de presupuesto si hay datos
+    if (clienteNombre || clienteTel || clienteEmail) {
+      try {
+        const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+        let clienteExistente = null;
+        if (clienteTel) {
+          const rb = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&telefono=eq.${clienteTel}&select=id,notas`, { headers: H });
+          const db = await rb.json();
+          if (db?.length) clienteExistente = db[0];
+        }
+        const itemsDesc = _ventasItems.map(i=>`${i.prod} - ${i.gusto} x${i.cant} $${i.precio}`).join(', ');
+        const notaPresup = `[PRESUPUESTO ${fecha}] PDV: ${pdvNombre} | Total: $${total.toLocaleString('es-AR',{minimumFractionDigits:2})} | ${itemsDesc}`;
+        const notasActuales = clienteExistente?.notas || '';
+        const notasNuevas = notasActuales ? notasActuales + '\n' + notaPresup : notaPresup;
+        const clienteData = { empresa_id: String(empresaActual), nombre: clienteNombre||undefined, telefono: clienteTel||undefined, email: clienteEmail||undefined, pdv_id: String(pdvId), pdv_nombre: pdvNombre, notas: notasNuevas };
+        if (clienteExistente) {
+          await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${clienteExistente.id}`, { method:'PATCH', headers:H, body:JSON.stringify({notas:notasNuevas}) });
+        } else {
+          await fetch(`${SUPABASE_URL}/rest/v1/clientes`, { method:'POST', headers:H, body:JSON.stringify(clienteData) });
+        }
+      } catch(e) { console.warn('Error guardando presupuesto en cliente:', e); }
+    }
+
+    // Imprimir presupuesto
+    window._ventasTipo = 'Presupuesto';
+    toast('📋 Presupuesto listo — presioná Imprimir cuando quieras','success');
+  }
+
+  async function generarRecibo() {
+    if (!_ventasItems.length) { toast('No hay ítems para el recibo','error'); return; }
+    const clienteNombre = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    const clienteTel = (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
+    const clienteEmail = document.getElementById('ventas-cliente-email')?.value?.trim() || '';
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+    const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
+    const pdvs = await getPdv();
+    const pdvNombre = pdvs?.find?.(p=>String(p.id)===String(pdvId))?.nombre || pdvId;
+    const total = _ventasItems.reduce((s,i)=>s+parsePrecioAR(i.precio)*i.cant,0);
+
+    if (clienteNombre || clienteTel || clienteEmail) {
+      try {
+        const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+        let clienteExistente = null;
+        if (clienteTel) {
+          const rb = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&telefono=eq.${clienteTel}&select=id,notas`, { headers: H });
+          const db = await rb.json();
+          if (db?.length) clienteExistente = db[0];
+        }
+        const itemsDesc = _ventasItems.map(i=>`${i.prod} - ${i.gusto} x${i.cantDisplay||i.cant} $${i.precio}`).join(', ');
+        const nota = `[RECIBO ${fecha}] PDV: ${pdvNombre} | Total: $${total.toLocaleString('es-AR',{minimumFractionDigits:2})} | ${itemsDesc}`;
+        const notasActuales = clienteExistente?.notas || '';
+        const notasNuevas = notasActuales ? notasActuales + '\n' + nota : nota;
+        const clienteData = { empresa_id: String(empresaActual), nombre: clienteNombre||undefined, telefono: clienteTel||undefined, email: clienteEmail||undefined, pdv_id: String(pdvId), pdv_nombre: pdvNombre, notas: notasNuevas };
+        if (clienteExistente) {
+          await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${clienteExistente.id}`, { method:'PATCH', headers:H, body:JSON.stringify({notas:notasNuevas}) });
+        } else {
+          await fetch(`${SUPABASE_URL}/rest/v1/clientes`, { method:'POST', headers:H, body:JSON.stringify(clienteData) });
+        }
+      } catch(e) { console.warn('Error guardando recibo en cliente:', e); }
+    }
+
+    window._ventasTipo = 'Recibo';
+    toast('🧾 Recibo listo — presioná Imprimir cuando quieras','success');
   }
 
   function imprimirVentas() {
@@ -5965,21 +6367,39 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const rows = items.map(item => {
         const s = ventasParsePrecio(item.precio)*item.cant;
         sub += s;
-        return `<tr><td>${item.gusto}</td><td style="text-align:center">${item.cant}</td><td style="text-align:right">$ ${item.precio}</td><td style="text-align:right;font-weight:700">$ ${s.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr>`;
+        return `<tr><td>${item.gusto}</td><td style="text-align:center">${item.cantDisplay||item.cant+' u'}</td><td style="text-align:right">$ ${item.precio}</td><td style="text-align:right;font-weight:700">$ ${s.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr>`;
       }).join('');
       grand += sub;
       return `<h3>📦 ${prod}</h3><table><thead><tr><th>Sabor</th><th>Cant.</th><th style="text-align:right">Precio</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><td colspan="3" style="text-align:right;font-weight:700;padding-top:6px;">Subtotal ${prod}</td><td style="text-align:right;font-weight:700;padding-top:6px">$ ${sub.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></tfoot></table>`;
     }).join('');
 
+    const clienteNombreImp = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    const clienteTelImp = document.getElementById('ventas-cliente-tel')?.value?.trim() || '';
+    const clienteEmailImp = document.getElementById('ventas-cliente-email')?.value?.trim() || '';
+    let clienteHtml = '';
+    if (clienteNombreImp || clienteTelImp || clienteEmailImp) {
+      clienteHtml = '<div style="background:#f0f4f8;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#333;">' +
+        '<strong>\u{1F464} Cliente</strong><br>' +
+        (clienteNombreImp ? clienteNombreImp + '<br>' : '') +
+        (clienteTelImp ? '\u{1F4F1} ' + clienteTelImp + '<br>' : '') +
+        (clienteEmailImp ? '\u{2709}\uFE0F ' + clienteEmailImp : '') +
+        '</div>';
+    }
+    const logoUrlVta = getLogo();
+    const empresaNombreVta = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    const logoHtmlVta = logoUrlVta ? '<img src="'+logoUrlVta+'" style="height:50px;width:auto;object-fit:contain;margin-bottom:6px;display:block;" />' : '';
+    const tipoImp = window._ventasTipo || 'Venta';
     const w = window.open('', '_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>Venta</title>
-      <style>body{font-family:sans-serif;padding:28px;color:#111;max-width:700px;margin:auto}.hdr{border-bottom:3px solid #1a2332;padding-bottom:12px;margin-bottom:20px}.hdr h1{margin:0 0 4px;font-size:20px;color:#1a2332}.hdr .f{font-size:12px;color:#666}h3{background:#1a2332;color:#fff;padding:7px 12px;border-radius:4px;margin:18px 0 6px;font-size:13px}table{width:100%;border-collapse:collapse;margin-bottom:10px}th{background:#f0f4f8;padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;border-bottom:2px solid #ddd}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:13px}tfoot td{background:#f9fafb}.total{background:#1a2332;color:#fff;padding:14px 18px;border-radius:8px;display:flex;justify-content:space-between;font-size:18px;font-weight:900;margin-top:16px}@media print{body{padding:0}}</style>
-      </head><body>
-      <div class="hdr"><h1>🛒 Venta — ${listaLabel}</h1><div class="f">📅 ${fecha}</div></div>
-      ${tablas}
-      <div class="total"><span>TOTAL GENERAL</span><span>$ ${grand.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-      <script>window.onload=()=>window.print()<\/script></body></html>`);
+    const htmlImp = '<!DOCTYPE html><html><head><title>' + tipoImp + '</title>' +
+      '<style>body{font-family:sans-serif;padding:28px;color:#111;max-width:700px;margin:auto}.hdr{border-bottom:3px solid #1a2332;padding-bottom:12px;margin-bottom:20px}.hdr h1{margin:0 0 4px;font-size:20px;color:#1a2332}.hdr .f{font-size:12px;color:#666}h3{background:#1a2332;color:#fff;padding:7px 12px;border-radius:4px;margin:18px 0 6px;font-size:13px}table{width:100%;border-collapse:collapse;margin-bottom:10px}th{background:#f0f4f8;padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;border-bottom:2px solid #ddd}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:13px}tfoot td{background:#f9fafb}.total{background:#1a2332;color:#fff;padding:14px 18px;border-radius:8px;display:flex;justify-content:space-between;font-size:18px;font-weight:900;margin-top:16px}@media print{body{padding:0}}</style>' +
+      '</head><body>' +
+      '<div class="hdr">' + logoHtmlVta + '<h1>\u{1F6D2} ' + (empresaNombreVta ? empresaNombreVta + ' — ' : '') + tipoImp + ' — ' + listaLabel + '</h1><div class="f">\u{1F4C5} ' + fecha + '</div></div>' +
+      clienteHtml +
+      tablas +
+      '<div class="total"><span>TOTAL GENERAL</span><span>$ ' + grand.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+      '<script>window.onload=function(){window.print();}<\/script></body></html>';
+    w.document.write(htmlImp);
     w.document.close();
   }
 
@@ -6523,9 +6943,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       // Construir tabla
       let html = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
         <span style="font-size:13px;color:var(--text-muted);">${clientes.length} cliente${clientes.length!==1?'s':''} registrados</span>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <input type="text" id="clientes-search" placeholder="🔍 Buscar..." oninput="filtrarClientes()"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:200px;" />
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:180px;" />
+          <select id="clientes-filtro-tipo" onchange="filtrarClientes()"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;cursor:pointer;">
+            <option value="todos">👥 Todos</option>
+            <option value="clientes">🛍️ Compradores</option>
+            <option value="presupuestos">📋 Con presupuesto</option>
+            <option value="recibos">🧾 Con recibo</option>
+          </select>
           <button onclick="exportarClientesExcel()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📊 Excel</button>
           <button onclick="exportarClientesWA()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📱 WhatsApp</button>
         </div>
@@ -6538,6 +6965,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Email</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">PDV</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Fecha</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Tipo</th>
             <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;"></th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:#ffb432;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">🎟️ Vouchers</th>
           </tr></thead>
@@ -6564,6 +6992,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <td style="padding:9px 12px;font-size:13px;">${emailLink}</td>
         <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.pdv_nombre||'—'}</td>
         <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">${fecha}</td>
+        <td style="padding:9px 12px;">
+          ${(() => {
+            const notas = (c.notas||'').toUpperCase();
+            const hasPres = notas.includes('[PRESUPUESTO');
+            const hasRec = notas.includes('[RECIBO');
+            const tags = [];
+            if (!hasPres && !hasRec) tags.push('<span style="background:rgba(200,240,74,.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">🛒 Venta</span>');
+            if (hasPres) tags.push('<span style="background:rgba(255,180,50,.15);color:#ffb432;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">📋 Presup.</span>');
+            if (hasRec) tags.push('<span style="background:rgba(110,231,183,.15);color:#6ee7b7;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">🧾 Recibo</span>');
+            return tags.join(' ') || '—';
+          })()}
+        </td>
         <td style="padding:9px 12px;text-align:center;">
           ${c.telefono ? `<button onclick="abrirVoucher(${i})" title="Enviar voucher de descuento"
             style="background:none;border:1px solid #25D366;border-radius:7px;padding:4px 10px;font-size:12px;color:#25D366;cursor:pointer;">🎟️ Voucher</button>` : ''}
@@ -6770,7 +7210,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   function previsualizarVoucher(idx) {
     const { c, tipo, pct, monto, regaloDesc, desc, venceFmt, codigo } = getVoucherData(idx);
-    const empresaNombre = document.getElementById('empresa-nombre-badge')?.textContent || 'Nuestra empresa';
+    const empresaNombre = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || 'Nuestra empresa';
+    const logoUrlV = getLogo();
     const preview = document.getElementById('voucher-preview');
 
     preview.style.display = 'block';
@@ -6781,7 +7222,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <div style="position:absolute;bottom:-30px;left:-10px;width:80px;height:80px;border-radius:50%;background:rgba(200,240,74,.05);"></div>
         <!-- Contenido -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-          <span style="font-size:28px;">🎟️</span>
+          ${logoUrlV ? `<img src="${logoUrlV}" style="height:44px;width:auto;object-fit:contain;border-radius:6px;" />` : '<span style="font-size:28px;">🎟️</span>'}
           <div>
             <div style="font-size:11px;color:rgba(200,240,74,.7);font-family:monospace;text-transform:uppercase;letter-spacing:.1em;">Voucher de descuento</div>
             <div style="font-size:18px;font-weight:900;color:#c8f04a;">${empresaNombre}</div>
@@ -6805,7 +7246,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function enviarVoucherWA(idx) {
     const { c, tipo, pct, monto, regaloDesc, desc, vence, venceFmt, codigo } = getVoucherData(idx);
-    const empresaNombre = document.getElementById('empresa-nombre-badge')?.textContent || 'Nuestra empresa';
+    const empresaNombre = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || 'Nuestra empresa';
     const tel = c.telefono?.replace(/[^0-9]/g,'');
     if (!tel) { toast('Este cliente no tiene teléfono registrado','error'); return; }
 
@@ -6966,9 +7407,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
 
+    const logoUrlSaludo = getLogo();
+    const empresaNombreSaludo2 = document.getElementById('header-empresa-name')?.textContent || '';
     overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;overflow:hidden;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
-        <span style="font-size:14px;font-weight:800;">👋 Saludo para ${c.nombre||c.telefono}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${logoUrlSaludo ? `<img src="${logoUrlSaludo}" style="height:36px;width:auto;object-fit:contain;border-radius:5px;" />` : ''}
+          <div>
+            <div style="font-size:14px;font-weight:800;">👋 Saludo para ${c.nombre||c.telefono}</div>
+            ${empresaNombreSaludo2 ? `<div style="font-size:11px;color:var(--text-muted);">${empresaNombreSaludo2}</div>` : ''}
+          </div>
+        </div>
         <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
       </div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:14px;">
@@ -7064,12 +7513,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const opcion = window._saludoOpcion || 1;
     let msg = '';
 
+    const empresaNombreSaludo = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || '';
+    const firmaEmpresa = empresaNombreSaludo ? '\n\n— ' + empresaNombreSaludo : '';
     if (opcion === 1) {
-      msg = `Hola ${c.nombre||''}! 👋\n\nGracias por visitarnos, cualquier consulta no dudes en contactarnos. 😊`;
+      msg = `Hola ${c.nombre||''}! 👋\n\nGracias por visitarnos, cualquier consulta no dudes en contactarnos. 😊${firmaEmpresa}`;
     } else if (opcion === 2) {
       const texto = document.getElementById('saludo-texto')?.value?.trim();
       if (!texto) { toast('Escribí un mensaje primero','error'); return; }
-      msg = `Hola ${c.nombre||''}! 👋\n\n${texto}`;
+      msg = `Hola ${c.nombre||''}! 👋\n\n${texto}${firmaEmpresa}`;
     } else if (opcion === 3) {
       const file = window._saludoArchivoFile;
       if (!file) { toast('Seleccioná un archivo primero','error'); return; }
