@@ -4858,12 +4858,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   let _listaSavedData = {}; // prodId → {datos, updated_at}
 
   async function initListaProd() {
-    if (!empresaActual) { toast('Esperá a que cargue la empresa...','error'); return; }
-    // Detectar si es operador con permiso listaProd (no admin)
-    window._listaProdModoOp = !!(currentUser && currentUser.role !== 'admin' && currentUser?.perms?.listaProd);
-    // Ocultar opciones avanzadas si es operador
-    const opAvanz = document.getElementById('lista-prod-opciones-avanzadas');
-    if (opAvanz) opAvanz.style.display = window._listaProdModoOp ? 'none' : '';
+    window._listaProdModoOp = false;
     const prods = await getProd();
     _listaProdData = prods;
     if (!prods || !prods.length) { 
@@ -4905,14 +4900,6 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     document.getElementById('lista-prod-preview').innerHTML = '';
     document.getElementById('lista-prod-acciones').style.display = 'none';
 
-    // En modo operador: seleccionar todos los productos automáticamente y mostrar
-    if (window._listaProdModoOp) {
-      document.querySelectorAll('.lista-prod-check').forEach(c => c.checked = true);
-      // Asegurar que lista-opt-precio esté activado
-      const cbPrecio = document.getElementById('lista-opt-precio');
-      if (cbPrecio) cbPrecio.checked = true;
-      renderListaProd();
-    }
   }
 
   async function guardarListaProd(prodId) {
@@ -4994,9 +4981,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function renderListaProd() {
-    const showPrecio = modoOp ? true : document.getElementById('lista-opt-precio').checked;
-    const showLista2 = modoOp ? false : document.getElementById('lista-opt-lista2').checked;
-    const showLista3 = modoOp ? false : document.getElementById('lista-opt-lista3').checked;
+    const showPrecio = document.getElementById('lista-opt-precio').checked;
+    const showLista2 = document.getElementById('lista-opt-lista2').checked;
+    const showLista3 = document.getElementById('lista-opt-lista3').checked;
     const showLista4 = document.getElementById('lista-opt-lista4')?.checked || false;
     const showDesc = document.getElementById('lista-opt-desc').checked;
     const pct2 = parseFloat(document.getElementById('lista-pct2').value)||0;
