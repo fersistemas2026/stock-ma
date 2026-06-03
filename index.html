@@ -4859,6 +4859,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function initListaProd() {
     if (!empresaActual) { toast('Esperá a que cargue la empresa...','error'); return; }
+    // Detectar si es operador con permiso listaProd (no admin)
+    window._listaProdModoOp = !!(currentUser && currentUser.role !== 'admin' && currentUser?.perms?.listaProd);
+    // Ocultar opciones avanzadas si es operador
+    const opAvanz = document.getElementById('lista-prod-opciones-avanzadas');
+    if (opAvanz) opAvanz.style.display = window._listaProdModoOp ? 'none' : '';
     const prods = await getProd();
     _listaProdData = prods;
     if (!prods || !prods.length) { 
