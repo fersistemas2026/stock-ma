@@ -666,7 +666,7 @@
           </div>
           <div style="display:flex;flex-direction:column;gap:3px;">
             <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Precio $</label>
-            <input type="text" id="ventas-precio" placeholder="0,00" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;width:80px;text-align:right;">
+            <input type="text" id="ventas-precio" placeholder="0,00" readonly style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;color:var(--text-muted);font-family:var(--mono);outline:none;width:80px;text-align:right;cursor:default;">
           </div>
           <button onclick="ventasAgregarItem()" class="btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;height:36px;">+ Agregar</button>
           <button onclick="guardarVenta()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;height:36px;">💾 Guardar</button>
@@ -902,11 +902,18 @@
 
       <!-- CONFIGURACIÓN -->
       <div id="neg-config" class="neg-panel" style="display:none">
-        <div class="form-title" style="margin-bottom:4px">⚙️ Configuración</div>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Configurá el envío automático de stock por email.</p>
-        <div style="max-width:520px;display:flex;flex-direction:column;gap:20px;">
+        <div class="form-title" style="margin-bottom:16px">⚙️ Configuración</div>
 
-          <!-- Destinatarios -->
+        <!-- Barra de tabs -->
+        <div style="display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:20px;max-width:480px;">
+          <button id="cfg-tab-btn-mensajes" onclick="switchCfgTab('mensajes')"
+            style="flex:1;background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">📧 Mensajes</button>
+          <button id="cfg-tab-btn-efectivo" onclick="switchCfgTab('efectivo')"
+            style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">💵 Efectivo</button>
+        </div>
+
+        <!-- Tab Mensajes -->
+        <div id="cfg-tab-mensajes" style="max-width:520px;display:flex;flex-direction:column;gap:20px;">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;">
             <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">📧 Destinatarios</div>
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">Un email por línea. Podés agregar todos los que quieras.</p>
@@ -915,15 +922,20 @@ email2@ejemplo.com
 email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;font-family:var(--mono);color:var(--text);outline:none;resize:vertical;box-sizing:border-box;"></textarea>
             <button class="btn-outline" style="margin-top:8px;" onclick="guardarCfgEmails()">💾 Guardar destinatarios</button>
           </div>
-
-          <!-- Enviar ahora -->
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;">
             <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">📨 Enviar stock</div>
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Abre tu cliente de correo (Gmail, Outlook, etc.) con el stock listo para enviar a todos los destinatarios.</p>
             <button class="btn-primary" style="width:100%;padding:12px;" onclick="enviarStockEmail()">✉️ Abrir correo con el stock</button>
             <div id="cfg-send-status" style="font-size:12px;margin-top:8px;"></div>
           </div>
+        </div>
 
+        <!-- Tab Efectivo -->
+        <div id="cfg-tab-efectivo" style="display:none;max-width:720px;">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Configurá el tope de efectivo y la cantidad de avisos antes de bloquear las ventas en cada punto de venta.</p>
+          <div id="control-efectivo-pdvs" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="color:var(--text-dim);font-size:13px;">Cargando PDVs...</div>
+          </div>
         </div>
       </div>
 
@@ -4541,6 +4553,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
     if (sub==='productos')   renderProd();
     if (sub==='empresa')     renderEmpresa();
+    if (sub==='config')      { renderControlEfectivo(); }
   }
 
   // ── DESPERDICIOS ─────────────────────────────────────────────────────
@@ -5625,6 +5638,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (section) section.style.display = '';
     // Seleccionar Venta por defecto
     selDocTipo('venta');
+    // Verificar bloqueo de efectivo
+    verificarBloqueoEfectivo();
 
     // Fecha default hoy
     const fechaInputEl = document.getElementById('ventas-fecha');
@@ -5670,6 +5685,66 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       btnTj.style.background = 'var(--accent)'; btnTj.style.color = '#000'; btnTj.dataset.activo = '1';
       btnEf.style.background = 'var(--surface2)'; btnEf.style.color = 'var(--text)'; btnEf.dataset.activo = '0';
     }
+  }
+
+  function verificarBloqueoEfectivo() {
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || document.getElementById('ventas-pdv-sel-top')?.value || '';
+    if (!pdvId) return;
+    const keyBloq = `ef_bloq_${empresaActual}_${pdvId}`;
+    if (localStorage.getItem(keyBloq) === '1') {
+      mostrarPantallaBloqueada();
+    }
+  }
+
+  function mostrarAlertaBuzon(acum, bloqueado, avisosDados, maxAvisos) {
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-buzon-alerta';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);';
+    overlay.innerHTML = `<div style="background:var(--surface);border:2px solid ${bloqueado?'#ff5a5a':'#ffb432'};border-radius:16px;width:100%;max-width:400px;padding:32px;text-align:center;">
+      <div style="font-size:56px;margin-bottom:16px;">${bloqueado?'🔒':'📬'}</div>
+      <div style="font-size:17px;font-weight:900;color:${bloqueado?'#ff5a5a':'#ffb432'};margin-bottom:10px;">
+        ${bloqueado ? 'VENTAS BLOQUEADAS' : '⚠️ ¡Tirá el dinero al buzón!'}
+      </div>
+      <div style="font-size:14px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;">
+        ${bloqueado
+          ? 'La caja está excedida.<br>Avisá al administrador para desbloquear.'
+          : 'La caja está excedida.<br>Depositá el efectivo en el buzón antes de continuar.'
+        }
+      </div>
+      ${!bloqueado ? `<div style="background:var(--surface2);border-radius:8px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:#ffb432;font-family:var(--mono);font-weight:700;">
+        Aviso ${avisosDados} de ${maxAvisos}
+      </div>` : ''}
+      ${bloqueado
+        ? '<div style="font-size:12px;color:var(--text-dim);">Contactá al administrador para desbloquear</div>'
+        : `<button onclick="document.getElementById('modal-buzon-alerta').remove()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px 32px;font-size:14px;font-weight:800;cursor:pointer;">📬 Entendido</button>`
+      }
+    </div>`;
+    document.body.appendChild(overlay);
+    if (bloqueado) mostrarPantallaBloqueada();
+  }
+
+  function mostrarPantallaBloqueada() {
+    // Bloquear el panel de ventas
+    const panelVentas = document.getElementById('neg-ventas');
+    if (!panelVentas) return;
+    // Remover bloqueo existente
+    document.getElementById('ventas-bloqueo-overlay')?.remove();
+    const bloqueo = document.createElement('div');
+    bloqueo.id = 'ventas-bloqueo-overlay';
+    bloqueo.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,.85);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;backdrop-filter:blur(4px);';
+    bloqueo.innerHTML = `<div style="text-align:center;padding:32px;">
+      <div style="font-size:56px;margin-bottom:16px;">🔒</div>
+      <div style="font-size:18px;font-weight:900;color:#ff5a5a;margin-bottom:8px;">VENTAS BLOQUEADAS</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Tope de efectivo alcanzado.<br>Esperá que el administrador desbloquee.</div>
+      ${isAdmin ? `<button onclick="desbloquearEfectivo()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:800;cursor:pointer;">🔓 Desbloquear</button>` : ''}
+    </div>`;
+    panelVentas.style.position = 'relative';
+    panelVentas.appendChild(bloqueo);
+  }
+
+  function desbloquearEfectivo() {
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || document.getElementById('ventas-pdv-sel-top')?.value || '';
+    desbloquearEfectivoPdv(pdvId);
   }
 
   function abrirModalVuelto(total, onConfirm) {
@@ -5907,6 +5982,33 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         })();
       }
       toast('✓ Venta guardada correctamente','success');
+
+      // ── Control de efectivo ──
+      if (metodoPago === 'efectivo') {
+        const emp = getEmpresas().find(e => String(e.id) === String(empresaActual));
+        const cfgPdv = emp?.controlEfectivo?.[String(pdvId)] || {};
+        const tope = cfgPdv.tope || 0;
+        const maxAvisos = cfgPdv.avisos || 3;
+        if (tope > 0) {
+          const keyEf   = `ef_acum_${empresaActual}_${pdvId}`;
+          const keyAv   = `ef_avisos_${empresaActual}_${pdvId}`;
+          const keyBloq = `ef_bloq_${empresaActual}_${pdvId}`;
+          const totalVenta = rows.reduce((s, r) => s + (r.precio || 0) * (r.cantidad || 1), 0);
+          const acum = (parseFloat(localStorage.getItem(keyEf)) || 0) + totalVenta;
+          localStorage.setItem(keyEf, acum);
+          if (acum >= tope) {
+            const avisosDados = (parseInt(localStorage.getItem(keyAv)) || 0) + 1;
+            localStorage.setItem(keyAv, avisosDados);
+            if (avisosDados >= maxAvisos) {
+              localStorage.setItem(keyBloq, '1');
+              mostrarAlertaBuzon(acum, true);
+            } else {
+              mostrarAlertaBuzon(acum, false, avisosDados, maxAvisos);
+            }
+          }
+        }
+      }
+
       ventasLimpiar();
     } catch(e) { toast('Error: '+e.message,'error'); }
   }
@@ -6013,19 +6115,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const gustoNombre = document.getElementById('ventas-gusto-input').value.trim();
     const cantRaw = parseFloat(document.getElementById('ventas-cant').value)||1;
     const unidad = document.getElementById('ventas-unidad')?.value || 'u';
-    const cantDisplay = cantRaw + ' ' + unidad;
-    // Para kg/gr el "cant" que se guarda es 1 (el precio ya incluye el cálculo por peso)
-    const cant = 1;
     const precioBase = parsePrecioAR(document.getElementById('ventas-precio').value.trim());
-    let precioFinal;
+    let cant, cantDisplay, precio;
     if (unidad === 'kg') {
-      precioFinal = (precioBase * cantRaw).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+      cant = 1;
+      cantDisplay = cantRaw + ' kg';
+      precio = (precioBase * cantRaw).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
     } else if (unidad === 'gr') {
-      precioFinal = (precioBase * cantRaw / 1000).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+      cant = 1;
+      cantDisplay = cantRaw + ' gr';
+      precio = (precioBase * cantRaw / 1000).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
     } else {
-      precioFinal = document.getElementById('ventas-precio').value.trim();
+      cant = cantRaw;
+      cantDisplay = cantRaw + ' u';
+      precio = document.getElementById('ventas-precio').value.trim();
     }
-    const precio = precioFinal;
 
     const prod = ventasGetProdByNombre(prodNombre);
     const gusto = ventasGetGustoByNombre(prod, gustoNombre);
@@ -6039,6 +6143,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       prodId: String(prod.id),
       gustoId: String(gusto.id),
       cant,
+      cantDisplay,
+      unidad,
+      precioUnitario: document.getElementById('ventas-precio').value.trim(),
       precio
     });
 
@@ -6087,8 +6194,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.2;">${item.prod}</div>
           <div style="font-size:11px;color:var(--text-muted);">${item.gusto}</div>
         </td>
-        <td style="padding:7px 8px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--text);">
-          ${item.cantDisplay||item.cant+' u'}
+        <td style="padding:7px 8px;text-align:center;">
+          ${item.unidad && item.unidad !== 'u'
+            ? `<span style="font-family:var(--mono);font-size:12px;color:var(--text);">${item.cantDisplay||item.cant+' '+item.unidad}</span>`
+            : `<input type="number" min="1" step="1" value="${item.cant}"
+                onchange="ventasUpdateCant(${i}, this.value)"
+                style="width:54px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;" />`
+          }
         </td>
         <td style="padding:7px 8px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text-muted);">
           ${item.unidad&&item.unidad!=='u' ? '<span style="font-size:10px;color:var(--text-dim);">$'+( item.precioUnitario||item.precio)+'/ kg</span><br>' : ''}$ ${item.precio||'—'}
@@ -8364,6 +8476,24 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (input) input.value='';
       toast('✓ Monto agregado al buzón','success');
       await loadBuzonOp(pdvId, turno);
+
+      // Descontar del acumulado de efectivo y verificar desbloqueo
+      const keyEf   = `ef_acum_${empresaActual}_${pdvId}`;
+      const keyAv   = `ef_avisos_${empresaActual}_${pdvId}`;
+      const keyBloq = `ef_bloq_${empresaActual}_${pdvId}`;
+      const acumAnterior = parseFloat(localStorage.getItem(keyEf)) || 0;
+      const nuevoAcum = Math.max(0, acumAnterior - monto);
+      localStorage.setItem(keyEf, nuevoAcum);
+      const emp = getEmpresas().find(e => String(e.id) === String(empresaActual));
+      const tope = emp?.topeEfectivo || 0;
+      if (tope > 0 && nuevoAcum < tope) {
+        // Resetear avisos y desbloquear
+        localStorage.removeItem(keyAv);
+        localStorage.removeItem(keyBloq);
+        document.getElementById('ventas-bloqueo-overlay')?.remove();
+        document.getElementById('modal-buzon-alerta')?.remove();
+        if (acumAnterior >= tope) toast('🔓 Ventas desbloqueadas — efectivo depositado en buzón', 'success');
+      }
     } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
@@ -8650,8 +8780,73 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;font-family:var(--font);color:var(--text);outline:none;width:100%;" />
           </div>
           <button class="btn-primary" style="padding:10px 18px;white-space:nowrap" onclick="saveEmpresa(${e.id})">Guardar</button>
-        </div>` : ''}
+        </div>
+` : ''}
       </div>`).join('');
+  }
+
+  function switchCfgTab(tab) {
+    ['mensajes','efectivo'].forEach(t => {
+      const btn = document.getElementById(`cfg-tab-btn-${t}`);
+      const panel = document.getElementById(`cfg-tab-${t}`);
+      const active = t === tab;
+      if (btn) { btn.style.background = active ? 'var(--accent)' : 'none'; btn.style.color = active ? '#000' : 'var(--text-muted)'; btn.style.fontWeight = active ? '700' : '600'; }
+      if (panel) panel.style.display = active ? '' : 'none';
+    });
+    if (tab === 'efectivo') renderControlEfectivo();
+  }
+
+  async function renderControlEfectivo() {
+    const cont = document.getElementById('control-efectivo-pdvs');
+    if (!cont) return;
+    const pdvs = await getPdv();
+    const emp = getEmpresas().find(e => String(e.id) === String(empresaActual));
+    const cfgEf = emp?.controlEfectivo || {};
+    cont.innerHTML = pdvs.map(p => {
+      const cfg = cfgEf[String(p.id)] || {};
+      const nombre = p.nombre || p.name || 'PDV';
+      const keyBloq = `ef_bloq_${empresaActual}_${p.id}`;
+      const bloqueado = localStorage.getItem(keyBloq) === '1';
+      return `<div style="background:var(--surface2);border:1px solid ${bloqueado?'#ff5a5a':'var(--border)'};border-radius:10px;padding:14px;display:grid;grid-template-columns:1fr 120px 120px auto auto;gap:10px;align-items:center;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);">🏪 ${nombre}
+          ${bloqueado ? '<span style="background:rgba(255,90,90,.15);color:#ff5a5a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:6px;">🔒 BLOQUEADO</span>' : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Tope ($)</label>
+          <input type="number" id="ef-tope-${p.id}" value="${cfg.tope||''}" placeholder="0" min="0"
+            style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;width:100%;" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Avisos</label>
+          <input type="number" id="ef-avisos-${p.id}" value="${cfg.avisos||3}" min="1" max="10"
+            style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;width:100%;" />
+        </div>
+        <button onclick="saveControlEfPdv('${p.id}')" style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 Guardar</button>
+        ${bloqueado ? `<button onclick="desbloquearEfectivoPdv('${p.id}')" style="background:none;border:1px solid #6ee7b7;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;color:#6ee7b7;cursor:pointer;white-space:nowrap;">🔓 Desbloquear</button>` : '<div></div>'}
+      </div>`;
+    }).join('');
+  }
+
+  function saveControlEfPdv(pdvId) {
+    const tope = parseFloat(document.getElementById(`ef-tope-${pdvId}`)?.value) || 0;
+    const avisos = parseInt(document.getElementById(`ef-avisos-${pdvId}`)?.value) || 3;
+    const empresas = getEmpresas();
+    const idx = empresas.findIndex(e => String(e.id) === String(empresaActual));
+    if (idx === -1) return;
+    if (!empresas[idx].controlEfectivo) empresas[idx].controlEfectivo = {};
+    empresas[idx].controlEfectivo[String(pdvId)] = { tope, avisos };
+    saveEmpresas(empresas);
+    toast('✓ Configuración guardada', 'success');
+  }
+
+  function desbloquearEfectivoPdv(pdvId) {
+    localStorage.removeItem(`ef_acum_${empresaActual}_${pdvId}`);
+    localStorage.removeItem(`ef_avisos_${empresaActual}_${pdvId}`);
+    localStorage.removeItem(`ef_bloq_${empresaActual}_${pdvId}`);
+    document.getElementById('ventas-bloqueo-overlay')?.remove();
+    document.getElementById('modal-buzon-alerta')?.remove();
+    toast('🔓 PDV desbloqueado', 'success');
+    renderControlEfectivo();
   }
 
   function toggleEmpresa(id) {
@@ -8663,6 +8858,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     toast(`Empresa ${id} ${empresas[idx].activa?'activada':'desactivada'}`, 'success');
     renderEmpresa();
     if (currentUser.role==='admin') initEmpresaSelector();
+  }
+
+  function saveEmpresaEfectivo(id) {
+    const tope = parseFloat(document.getElementById(`emp-tope-ef-${id}`)?.value) || 0;
+    const avisos = parseInt(document.getElementById(`emp-avisos-ef-${id}`)?.value) || 3;
+    const empresas = getEmpresas();
+    const idx = empresas.findIndex(e => e.id === id);
+    if (idx === -1) return;
+    empresas[idx].topeEfectivo = tope;
+    empresas[idx].avisosEfectivo = avisos;
+    saveEmpresas(empresas);
+    toast('Control de efectivo guardado', 'success');
   }
 
   function saveEmpresa(id) {
