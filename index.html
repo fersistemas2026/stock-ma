@@ -4858,8 +4858,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   let _listaSavedData = {}; // prodId → {datos, updated_at}
 
   async function initListaProd() {
+    if (!empresaActual) { toast('Esperá a que cargue la empresa...','error'); return; }
     const prods = await getProd();
     _listaProdData = prods;
+    if (!prods || !prods.length) { 
+      const checks = document.getElementById('lista-prod-checks');
+      if (checks) checks.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:8px;">No hay productos cargados.</div>';
+      return;
+    }
 
     // Cargar datos guardados de Supabase
     const saved = await sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos,updated_at`) || [];
@@ -4893,6 +4899,15 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }).join('');
     document.getElementById('lista-prod-preview').innerHTML = '';
     document.getElementById('lista-prod-acciones').style.display = 'none';
+
+    // En modo operador: seleccionar todos los productos automáticamente y mostrar
+    if (window._listaProdModoOp) {
+      document.querySelectorAll('.lista-prod-check').forEach(c => c.checked = true);
+      // Asegurar que lista-opt-precio esté activado
+      const cbPrecio = document.getElementById('lista-opt-precio');
+      if (cbPrecio) cbPrecio.checked = true;
+      renderListaProd();
+    }
   }
 
   async function guardarListaProd(prodId) {
