@@ -954,6 +954,8 @@
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📋 Pedido x operador</button>
           <button id="cfg-tab-btn-prodint" onclick="switchCfgTab('prodint')"
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📦 Pedido interno x op.</button>
+          <button id="cfg-tab-btn-desp" onclick="switchCfgTab('desp')"
+            style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">🗑️ Desperdicios</button>
         </div>
 
         <!-- Tab Mensajes -->
@@ -988,6 +990,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div id="cfg-prodint-lista" style="display:flex;flex-direction:column;gap:12px;">
             <div style="color:var(--text-dim);font-size:13px;">Cargando...</div>
           </div>
+        </div>
+
+        <!-- Tab Desperdicios -->
+        <div id="cfg-tab-desp" style="display:none;max-width:720px;">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Elegí qué productos se pueden registrar como desperdicio en cada punto de venta. Sin selección = ve todos los productos asignados al PDV.</p>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Punto de venta</label>
+            <select id="cfg-desp-pdv-sel" onchange="cargarProdsDespPdv()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;color:var(--text);outline:none;max-width:300px;">
+              <option value="">— Elegí un PDV —</option>
+            </select>
+          </div>
+          <div id="cfg-desp-prods" style="display:none;"></div>
         </div>
 
         <!-- Tab Efectivo -->
@@ -4856,29 +4870,44 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const fecha = document.getElementById('desp-fecha')?.value || fechaHoyAR();
       const [prods, pdvs, asigs] = await Promise.all([getProd(), getPdv(), getAsig()]);
       let myPdvs = isAdmin ? pdvs : pdvs.filter(p=>(currentUser.pdvs||[]).map(String).includes(String(p.id)));
+      // Debug: si el operador no tiene PDVs asignados, no mostrar nada
+      if (!isAdmin && !(currentUser.pdvs||[]).length) { body.innerHTML=`<div class="empty-state">🏪<p>No tenés PDVs asignados. Contactá al administrador.</p></div>`; return; }
       if (!myPdvs.length) { body.innerHTML=`<div class="empty-state">🏪<p>Sin PDV asignado.</p></div>`; return; }
       const existing = await sbApi(`desperdicios?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&select=*`) || [];
       const despMap = {};
       existing.forEach(d=>{ despMap[`${d.pdv_id}_${d.prod_id}_${d.gusto_id}`]=d.cantidad; });
+      // Precargar config de desperdicios para todos los PDVs
+      let despCfgMap = {};
+      try {
+        const Hd = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+        const resd = await fetch(`${SUPABASE_URL}/rest/v1/config_desperdicios?empresa_id=eq.${empresaActual}&select=pdv_id,prod_ids`, { headers:Hd });
+        const datad = await resd.json();
+        if (datad?.length) datad.forEach(d => { despCfgMap[String(d.pdv_id)] = d.prod_ids || []; });
+      } catch(e) {}
+
       let html = '';
       myPdvs.forEach((pdv, pi) => {
         const pdvId = String(pdv.id);
         const pdvNombre = pdv.nombre||pdv.name;
+        const despProdsHab = despCfgMap[pdvId] || [];
+        // Si hay config: usar esos productos. Si no: usar los asignados al PDV
         const prodIds = asigs.filter(a=>String(a.pdvId)===pdvId).map(a=>String(a.prodId));
-        const prodAsig = prods.filter(p=>prodIds.includes(String(p.id)));
-        if (!prodAsig.length) return;
+        const prodFiltDesp = despProdsHab.length > 0
+          ? prods.filter(p => despProdsHab.includes(String(p.id)))
+          : prods.filter(p=>prodIds.includes(String(p.id)));
+        if (!prodFiltDesp.length) return;
         html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;">
           <div style="background:var(--surface2);padding:14px 20px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:10px;">
             <span style="font-size:20px;">🏪</span>
             <div style="font-size:15px;font-weight:800;color:var(--text);">${pdvNombre}</div>
           </div>
           <div style="padding:14px;">
-            ${prodAsig.map((p,pi2)=>{
+            ${prodFiltDesp.map((p,pi2)=>{
               const pNombre=p.nombre||p.name;
               const gustos=p.gustos||[];
               const colId=`desp-${pi}-${pi2}`;
               return `<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px;">
-                <div onclick="toggleDespProd('${colId}')" style="padding:12px 16px;background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+                <div onclick="toggleDespAccordion('${colId}')" style="padding:12px 16px;background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
                   <span style="font-size:14px;font-weight:700;color:var(--text);">📦 ${pNombre}</span>
                   <div style="display:flex;align-items:center;gap:10px;">
                     <span id="${colId}-total" style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">—</span>
@@ -4913,13 +4942,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     } catch(e) { body.innerHTML=`<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`; }
   }
 
-  function toggleDespProd(colId) {
+  function toggleDespAccordion(colId) {
     const content=document.getElementById(`${colId}-content`);
     const arrow=document.getElementById(`${colId}-arrow`);
     if (!content) return;
     const open=content.style.display==='none';
     content.style.display=open?'block':'none';
     if (arrow) arrow.style.transform=open?'rotate(180deg)':'';
+  }
+  
+  function toggleDespProd(checkbox) {
+    const lbl = checkbox.closest('label');
+    if (lbl) lbl.style.borderColor = checkbox.checked ? 'var(--accent)' : 'var(--border)';
   }
 
   function updateDespTotal(colId) {
@@ -9245,8 +9279,85 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     toast('✓ Guardado', 'success');
   }
 
+  async function renderCfgDesp() {
+    const sel = document.getElementById('cfg-desp-pdv-sel');
+    if (!sel) return;
+    const pdvs = await getPdv();
+    sel.innerHTML = '<option value="">— Elegí un PDV —</option>' +
+      pdvs.map(p => '<option value="'+p.id+'">'+(p.nombre||p.name)+'</option>').join('');
+    document.getElementById('cfg-desp-prods').style.display = 'none';
+  }
+
+  async function cargarProdsDespPdv() {
+    const pdvId = document.getElementById('cfg-desp-pdv-sel')?.value;
+    const cont = document.getElementById('cfg-desp-prods');
+    if (!cont) return;
+    if (!pdvId) { cont.style.display = 'none'; return; }
+    cont.style.display = '';
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">Cargando productos...</div>';
+
+    const prods = await getProd();
+    const prodAsig = prods; // Mostrar todos los productos
+
+    if (!prodAsig.length) {
+      cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No hay productos cargados.</div>';
+      return;
+    }
+
+    // Cargar config actual de Supabase
+    let despProds = [];
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/config_desperdicios?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&select=prod_ids`, { headers:H });
+      const data = await res.json();
+      if (data?.length) despProds = data[0].prod_ids || [];
+    } catch(e) {}
+
+    const checks = prodAsig.map(p => {
+      const checked = despProds.length === 0 || despProds.includes(String(p.id));
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:var(--surface2);padding:8px 12px;border-radius:8px;border:1px solid '+(checked?'var(--accent)':'var(--border)')+';">' +
+        '<input type="checkbox" '+(checked?'checked':'')+' data-pdv="'+pdvId+'" data-pid="'+p.id+'" onchange="toggleDespProd(this)" />' +
+        (p.nombre||p.name) + '</label>';
+    }).join('');
+
+    cont.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Productos habilitados para desperdicios</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+checks+'</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">Sin selección = todos los productos del PDV.</div>' +
+      '<button id="btn-guardar-desp" onclick="guardarDespProds()" style="margin-top:12px;background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💾 Guardar</button>';
+  }
+
+  function toggleDespProd(checkbox) {
+    const lbl = checkbox.closest('label');
+    if (lbl) lbl.style.borderColor = checkbox.checked ? 'var(--accent)' : 'var(--border)';
+  }
+
+  async function guardarDespProds() {
+    const pdvId = document.getElementById('cfg-desp-pdv-sel')?.value;
+    if (!pdvId) return;
+    const checkboxes = document.querySelectorAll('#cfg-desp-prods input[type=checkbox]');
+    const checked = [...checkboxes].filter(c => c.checked).map(c => c.dataset.pid);
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' };
+      // Primero borrar el existente, luego insertar
+      await fetch(`${SUPABASE_URL}/rest/v1/config_desperdicios?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}`, {
+        method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/config_desperdicios`, {
+        method: 'POST',
+        headers: H,
+        body: JSON.stringify({ empresa_id: String(empresaActual), pdv_id: String(pdvId), prod_ids: checked, updated_at: new Date().toISOString() })
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        toast('Error: ' + err, 'error');
+        return;
+      }
+      toast('✓ Configuración guardada — ' + checked.length + ' productos', 'success');
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
   function switchCfgTab(tab) {
-    ['mensajes','efectivo','prodop','prodint'].forEach(t => {
+    ['mensajes','efectivo','prodop','prodint','desp'].forEach(t => {
       const btn = document.getElementById(`cfg-tab-btn-${t}`);
       const panel = document.getElementById(`cfg-tab-${t}`);
       const active = t === tab;
@@ -9256,6 +9367,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (tab === 'efectivo') renderControlEfectivo();
     if (tab === 'prodop') renderProdOpConfig();
     if (tab === 'prodint') renderProdIntConfig();
+    if (tab === 'desp')    renderCfgDesp();
   }
 
   async function renderControlEfectivo() {
