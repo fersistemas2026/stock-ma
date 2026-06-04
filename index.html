@@ -362,6 +362,8 @@
         <button class="neg-stab" onclick="switchNeg(&#39;ventas&#39;)" id="neg-btn-ventas-op" style="display:none">🛒 Ventas</button>
         <button class="neg-stab" onclick="switchNeg(&#39;clientes-op&#39;)" id="neg-btn-clientes-op" style="display:none">👥 Clientes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;lista-prod&#39;)" id="neg-btn-lista-prod" style="display:none">📋 Lista de productos</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;envio-pedido&#39;)" id="neg-btn-envio-pedido" style="display:none">📦 Envío pedido</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;recibo-pedido&#39;)" id="neg-btn-recibo-pedido" style="display:none">📥 Pedidos internos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;ventas&#39;)" id="neg-btn-ventas" style="display:none">🛒 Ventas</button>
         <button class="neg-stab" onclick="switchNeg(&#39;monitor&#39;)" id="neg-btn-monitor" style="display:none">📡 Monitor</button>
         <button class="neg-stab" onclick="switchNeg(&#39;pedido-recibido&#39;)" id="neg-btn-pedido-recibido" style="display:none">📬 Pedido recibido</button>
@@ -472,7 +474,8 @@
               <option value="caja">💰 Caja</option>
               <option value="buzon">📬 Buzón</option>
               <option value="gastos">💸 Gastos</option>
-              <option value="pedidos">📋 Pedido recibido</option>
+              <option value="pedidos">📋 Pedidos varios</option>
+              <option value="pedidosInt">📦 Pedidos internos</option>
               <option value="desperdicios">🗑️ Desperdicios</option>
               <option value="ventas">🛒 Ventas</option>
               <option value="clientes">👥 Clientes</option>
@@ -829,6 +832,43 @@
       </div>
 
       <!-- RECUENTO -->
+      <!-- ENVÍO PEDIDO -->
+      <div id="neg-envio-pedido" class="neg-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="form-title" style="margin-bottom:2px;">📦 Envío de pedido</div>
+            <p style="font-size:13px;color:var(--text-muted);margin:0;">Marcá las necesidades por producto y enviá el pedido.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="ep-pdv-sel" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+              <option value="">— PDV —</option>
+            </select>
+            <button onclick="enviarPedido()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:800;cursor:pointer;">📤 Enviar pedido</button>
+          </div>
+        </div>
+        <div id="ep-lista" style="display:flex;flex-direction:column;gap:6px;">
+          <div style="color:var(--text-dim);font-size:13px;padding:32px;text-align:center;">Cargando productos...</div>
+        </div>
+      </div>
+
+      <!-- RECIBO PEDIDO -->
+      <div id="neg-recibo-pedido" class="neg-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="form-title" style="margin-bottom:2px;">📥 Pedidos internos</div>
+            <p style="font-size:13px;color:var(--text-muted);margin:0;">Pedidos de reposición enviados por los operadores.</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <select id="rp-pdv-sel" onchange="cargarReciboPedido()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+              <option value="">— Todos los PDVs —</option>
+            </select>
+          </div>
+        </div>
+        <div id="rp-lista" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="color:var(--text-dim);font-size:13px;padding:32px;text-align:center;">Cargando pedidos...</div>
+        </div>
+      </div>
+
       <div id="neg-clientes-op" class="neg-panel" style="display:none">
         <div style="padding:16px 0;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
@@ -905,11 +945,15 @@
         <div class="form-title" style="margin-bottom:16px">⚙️ Configuración</div>
 
         <!-- Barra de tabs -->
-        <div style="display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:20px;max-width:480px;">
+        <div style="display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:20px;flex-wrap:wrap;max-width:720px;">
           <button id="cfg-tab-btn-mensajes" onclick="switchCfgTab('mensajes')"
             style="flex:1;background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">📧 Mensajes</button>
           <button id="cfg-tab-btn-efectivo" onclick="switchCfgTab('efectivo')"
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">💵 Efectivo</button>
+          <button id="cfg-tab-btn-prodop" onclick="switchCfgTab('prodop')"
+            style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📋 Pedido x operador</button>
+          <button id="cfg-tab-btn-prodint" onclick="switchCfgTab('prodint')"
+            style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📦 Pedido interno x op.</button>
         </div>
 
         <!-- Tab Mensajes -->
@@ -927,6 +971,22 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Abre tu cliente de correo (Gmail, Outlook, etc.) con el stock listo para enviar a todos los destinatarios.</p>
             <button class="btn-primary" style="width:100%;padding:12px;" onclick="enviarStockEmail()">✉️ Abrir correo con el stock</button>
             <div id="cfg-send-status" style="font-size:12px;margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <!-- Tab Pedido x operador -->
+        <div id="cfg-tab-prodop" style="display:none;max-width:720px;">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Elegí qué productos puede ver cada operador en la sección Orden de pedido. Si no seleccionás ninguno, ve todos.</p>
+          <div id="cfg-prodop-lista" style="display:flex;flex-direction:column;gap:12px;">
+            <div style="color:var(--text-dim);font-size:13px;">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Tab Pedido interno x operador -->
+        <div id="cfg-tab-prodint" style="display:none;max-width:720px;">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Elegí qué productos puede pedir cada operador en la sección Envío pedido interno. Sin selección = ve todos.</p>
+          <div id="cfg-prodint-lista" style="display:flex;flex-direction:column;gap:12px;">
+            <div style="color:var(--text-dim);font-size:13px;">Cargando...</div>
           </div>
         </div>
 
@@ -1801,9 +1861,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   // ── STOCK RESUMEN (admin) ─────────────────────────────────────────────
   let resumenData = [];
-  let stockOrdenMap = {}; // key: prodId_gustoId → orden calculado por Stock
+  let stockOrdenMap = {}; // key: prodId_gustoId → orden total acumulado de todos los PDVs
 
   async function loadStockResumen() {
+    stockOrdenMap = {}; // Reset acumulador
     const body=document.getElementById('resumen-body');
     const grandEl=document.getElementById('resumen-grand');
     body.innerHTML=`<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando stock de todos los PDV...</p></div>`;
@@ -1840,8 +1901,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       return {pdv,rows,total};
     });
 
+    // Total de órdenes (suma de todos los PDVs)
+    const grandOrden = Object.values(stockOrdenMap).reduce((s, v) => s + v, 0);
     grandEl.style.display='flex';
-    document.getElementById('resumen-grand-val').textContent=grandTotal;
+    const grandEl2 = document.getElementById('resumen-grand-val');
+    if (grandEl2) {
+      grandEl2.innerHTML = `<span style="font-size:13px;color:var(--text-muted);margin-right:8px;">Stock:</span>${grandTotal}&nbsp;&nbsp;<span style="font-size:13px;color:var(--text-muted);margin-right:8px;margin-left:16px;">Orden total:</span><span style="color:var(--accent)">+${grandOrden}</span>`;
+    }
     resumenData=sections;
 
     body.innerHTML=`
@@ -1924,18 +1990,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                             <td class="right" style="font-family:var(--mono);font-weight:700;color:${orden>0?'var(--accent)':'var(--text-dim)'};">${orden>0?'+'+orden:'—'}</td>`;
                   }).join('')}
                   ${(()=>{
-                    let totalStock=0, totalSobra=0, totalRef=0;
+                    let totalStock=0, totalSobra=0, totalOrden=0;
                     pdvsConProd.forEach(pdv=>{
                       const rec=allStock.find(r=>String(r.pdv_id)===String(pdv.id)&&String(r.prod_id)===String(p.id)&&String(r.gusto_id)===String(g.id));
                       const cant=rec?parseInt(rec.cantidad)||0:0;
                       const cfg=cfgMap[`${String(pdv.id)}_${String(p.id)}_${String(g.id)}_${todayKey}`]||null;
                       const isCrit = cfg && cant > 0 && cant < cfg.min;
                       if (!isCrit) totalStock+=cant;
-                      totalRef+=cfg?cfg.ref:0;
                       if (!isCrit) totalSobra+=cfg?Math.max(0,cant-cfg.ref):0;
+                      // Sumar orden individual de cada PDV (incluso si isCrit)
+                      if (cfg) totalOrden+=Math.max(0,cfg.ref-cant);
                     });
-                    const orden=Math.max(0,totalRef-totalStock);
-                    stockOrdenMap[String(p.id)+'_'+String(g.id)] = orden;
+                    const orden=totalOrden;
+                    const smKey = String(p.id)+'_'+String(g.id);
+                    // Guardar orden de este sabor (ya es la suma de todos los PDVs)
+                    stockOrdenMap[smKey] = orden;
                     return '<td class="right" style="font-family:var(--mono);font-weight:800;font-size:14px;border-left:2px solid var(--border);color:var(--text);">'+(totalStock||'—')+'</td>'
                          + '<td class="right" style="font-family:var(--mono);font-weight:700;font-size:14px;border-left:1px solid var(--border);color:'+(totalSobra>0?'#ffb432':'var(--text-dim)')+';">'+(totalSobra>0?'+'+totalSobra:'—')+'</td>'
                          + '<td class="right" style="font-family:var(--mono);font-weight:800;font-size:14px;border-left:1px solid var(--border);color:'+(orden>0?'var(--accent)':'var(--text-dim)')+';">'+(orden>0?'+'+orden:'—')+'</td>';
@@ -1943,6 +2012,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                 </tr>`;
               }).join('')}
             </tbody>
+            ${(()=>{
+              // Sumar ordenes de cada sabor desde stockOrdenMap
+              // Calcular directamente sumando orden de cada sabor = suma de todos los PDVs
+              const totalOrdenProducto = (p.gustos||[]).reduce((s,g) => {
+                let ordenGusto = 0;
+                pdvsConProd.forEach(pdv => {
+                  const recT = allStock.find(r=>String(r.pdv_id)===String(pdv.id)&&String(r.prod_id)===String(p.id)&&String(r.gusto_id)===String(g.id));
+                  const cantT = recT ? parseInt(recT.cantidad)||0 : 0;
+                  const cfgT = cfgMap[String(pdv.id)+'_'+String(p.id)+'_'+String(g.id)+'_'+todayKey]||null;
+                  if (cfgT) ordenGusto += Math.max(0, cfgT.ref - cantT);
+                });
+                return s + ordenGusto;
+              }, 0);
+              if (!totalOrdenProducto) return '';
+              const totalCols = 1 + pdvsConProd.length * 3 + 3;
+              return '<tfoot><tr style="background:rgba(200,240,74,.06);border-top:2px solid var(--accent);">' +
+                '<td colspan="'+(totalCols-1)+'" style="padding:8px 14px;font-size:12px;font-weight:800;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;text-align:right;">Total orden del producto:</td>' +
+                '<td class="right" style="font-family:var(--mono);font-weight:900;font-size:16px;color:var(--accent);border-left:2px solid var(--accent);padding:8px 14px;">+'+totalOrdenProducto+'</td>' +
+                '</tr></tfoot>';
+            })()}
           </table>
         <div style="font-size:11px;color:#ff5a5a;padding:8px 14px;background:rgba(255,90,90,.07);border-top:1px solid rgba(255,90,90,.2);display:flex;align-items:center;gap:6px;">
             ⚠ Los valores en <b>rojo</b> están por debajo del mínimo configurado y <b>no se contabilizan en el total GENERAL</b>, ya que ese stock no está disponible para distribución.
@@ -2293,6 +2382,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const asigs = await getAsig();
 
     if (!prods.length) { body.innerHTML = `<div class="empty-state">📦<p>No hay productos cargados.</p></div>`; return; }
+    // Filtrar por productos asignados si el operador tiene lista definida
+    const prodsPedidoOp = currentUser?.perms?.prodsPedido;
+    const esAdminOp = currentUser?.role === 'admin';
+    const prodsVis = (prodsPedidoOp && prodsPedidoOp.length > 0 && !esAdminOp)
+      ? prods.filter(p => prodsPedidoOp.map(String).includes(String(p.id)))
+      : prods;
 
     // Today key
     const hoy = new Date().getDay();
@@ -3756,6 +3851,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   // ── USUARIOS ──────────────────────────────────────────────────────────
   async function renderUsersPanel() {
+    // Cargar productos si no están en cache
+    if (!_listaProdData) { const p = await getProd(); _listaProdData = p; }
     // Reload from Supabase
     const dbUsers = await loadUsersFromSupabase();
     if (dbUsers && dbUsers.length) { saveUsers(dbUsers); _usersCache = dbUsers; }
@@ -3807,6 +3904,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <label class="pdv-check-item ${perms.pedido?'checked':''}" id="perm-lbl-${u.username}-pedido">
               <input type="checkbox" ${perms.pedido?'checked':''} onchange="togglePerm('${u.username}','pedido',this.checked)" />📋 Orden de pedido
             </label>
+
             <label class="pdv-check-item ${perms.pedidoSuc?'checked':''}" id="perm-lbl-${u.username}-pedidoSuc">
               <input type="checkbox" ${perms.pedidoSuc?'checked':''} onchange="togglePerm('${u.username}','pedidoSuc',this.checked)" />🏪 Pedido por sucursal
             </label>
@@ -3833,6 +3931,23 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             </label>
             <label class="pdv-check-item ${perms.listaProd?'checked':''}" id="perm-lbl-${u.username}-listaProd">
               <input type="checkbox" ${perms.listaProd?'checked':''} onchange="togglePerm('${u.username}','listaProd',this.checked)" />📋 Lista de productos
+            </label>
+
+
+            <label class="pdv-check-item ${perms.pedidoRecibido?'checked':''}" id="perm-lbl-${u.username}-pedidoRecibido">
+              <input type="checkbox" ${perms.pedidoRecibido?'checked':''} onchange="togglePerm('${u.username}','pedidoRecibido',this.checked)" />📬 Pedido recibido
+            </label>
+            <label class="pdv-check-item ${perms.mensajes!==false?'checked':''}" id="perm-lbl-${u.username}-mensajes">
+              <input type="checkbox" ${perms.mensajes!==false?'checked':''} onchange="togglePerm('${u.username}','mensajes',this.checked)" />💬 Mensajes
+            </label>
+            <label class="pdv-check-item ${perms.monitor!==false?'checked':''}" id="perm-lbl-${u.username}-monitor">
+              <input type="checkbox" ${perms.monitor!==false?'checked':''} onchange="togglePerm('${u.username}','monitor',this.checked)" />🖥️ Punto de venta (monitor)
+            </label>
+            <label class="pdv-check-item ${perms.envioPedidoInt?'checked':''}" id="perm-lbl-${u.username}-envioPedidoInt">
+              <input type="checkbox" ${perms.envioPedidoInt?'checked':''} onchange="togglePerm('${u.username}','envioPedidoInt',this.checked)" />📦 Envío pedido interno
+            </label>
+            <label class="pdv-check-item ${perms.reciboPedido?'checked':''}" id="perm-lbl-${u.username}-reciboPedido">
+              <input type="checkbox" ${perms.reciboPedido?'checked':''} onchange="togglePerm('${u.username}','reciboPedido',this.checked)" />📥 Pedidos internos (ver)
             </label>
             <label class="pdv-check-item ${perms.detalleCliente?'checked':''}" id="perm-lbl-${u.username}-detalleCliente">
               <input type="checkbox" ${perms.detalleCliente?'checked':''} onchange="togglePerm('${u.username}','detalleCliente',this.checked)" />👥 Detalle cliente
@@ -3916,6 +4031,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>${pdvSection}${permSection}${viewerSection}
       </div>`;
     }).join('');
+
+
   }
 
   function saveOperadorName(username) {
@@ -4390,6 +4507,170 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
   }
 
+  // ── ENVÍO / RECIBO DE PEDIDO ─────────────────────────────────────────────
+
+  async function initEnvioPedido() {
+    _prodCache = null;
+    const esAdmin = currentUser?.role === 'admin';
+    const cont = document.getElementById('ep-lista');
+    if (cont) cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:32px;text-align:center;"><span class="spin"></span></div>';
+    try {
+      // Poblar PDVs
+      const pdvs = await getPdv();
+      const sel = document.getElementById('ep-pdv-sel');
+      if (sel) {
+        const misPdvIds = esAdmin ? null : (currentUser?.pdvs||[]).map(String);
+        const lista = esAdmin ? pdvs : pdvs.filter(p => misPdvIds.includes(String(p.id)));
+        sel.innerHTML = lista.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+        if (lista.length === 1) sel.value = lista[0].id;
+      }
+      // Cargar productos
+      const prods = await getProd();
+      if (!cont) return;
+    if (!prods || !prods.length) { 
+      cont.innerHTML = '<div class="empty-state">📦<p>No hay productos cargados.</p></div>'; 
+      return; 
+    }
+    // Filtrar por productos habilitados si es operador con lista definida
+    const prodsPedidoPerm = currentUser?.perms?.prodsPedidoInterno;
+    const prodsFiltrados = (prodsPedidoPerm && prodsPedidoPerm.length > 0 && !esAdmin)
+      ? prods.filter(p => prodsPedidoPerm.map(String).includes(String(p.id)))
+      : prods;
+    if (!prodsFiltrados.length) {
+      cont.innerHTML = '<div class="empty-state">📦<p>No hay productos asignados para pedido.<br><span style="font-size:12px;color:var(--text-dim);">El administrador debe asignarte productos.</span></p></div>';
+      return;
+    }
+      cont.innerHTML = prodsFiltrados.map(prod => {
+      const gustos = prod.gustos || [];
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:4px;">
+        <div style="padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--text);">
+          📦 ${prod.nombre||prod.name}
+        </div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px;">
+          ${gustos.map(g => `
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:6px;min-width:180px;cursor:pointer;">
+                <input type="checkbox" class="ep-check" data-pid="${prod.id}" data-gid="${g.id}" data-prod="${prod.nombre||prod.name}" data-gusto="${g.nombre||g.name}" />
+                <span style="font-size:13px;color:var(--text);">${g.nombre||g.name}</span>
+              </label>
+              <input type="number" class="ep-cant" data-pid="${prod.id}" data-gid="${g.id}" placeholder="Cant." min="0" step="any"
+                style="width:70px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;" />
+              <input type="text" class="ep-obs" data-pid="${prod.id}" data-gid="${g.id}" placeholder="Observación..."
+                style="flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:13px;color:var(--text);outline:none;" />
+            </div>`).join('')}
+          <div style="margin-top:4px;">
+            <input type="text" class="ep-obs-prod" data-pid="${prod.id}" placeholder="Observación general del producto..."
+              style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text-muted);outline:none;box-sizing:border-box;" />
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    } catch(e) {
+      if (cont) cont.innerHTML = '<div class="empty-state">❌<p>Error: '+e.message+'</p></div>';
+    }
+  }
+
+  async function enviarPedido() {
+    const pdvId = document.getElementById('ep-pdv-sel')?.value;
+    if (!pdvId) { toast('Seleccioná un PDV','error'); return; }
+    const pdvs = await getPdv();
+    const pdvNombre = pdvs.find(p=>String(p.id)===String(pdvId))?.nombre || pdvId;
+    const fecha = fechaHoyAR();
+    const items = [];
+
+    document.querySelectorAll('.ep-check:checked').forEach(cb => {
+      const pid = cb.dataset.pid;
+      const gid = cb.dataset.gid;
+      const cant = document.querySelector(`.ep-cant[data-pid="${pid}"][data-gid="${gid}"]`)?.value?.trim() || '';
+      const obs = document.querySelector(`.ep-obs[data-pid="${pid}"][data-gid="${gid}"]`)?.value?.trim() || '';
+      const obsProd = document.querySelector(`.ep-obs-prod[data-pid="${pid}"]`)?.value?.trim() || '';
+      items.push({ prod: cb.dataset.prod, gusto: cb.dataset.gusto, cant, obs, obsProd });
+    });
+
+    if (!items.length) { toast('Marcá al menos un producto','error'); return; }
+
+    const datos = { pdv_id: String(pdvId), pdv_nombre: pdvNombre, fecha, items, hora: horaAR(), usuario: currentUser?.username||'' };
+
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      // Upsert por empresa+pdv+fecha (reemplaza el del día)
+      await fetch(`${SUPABASE_URL}/rest/v1/pedidos_envio?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=eq.${fecha}`, { method:'DELETE', headers:H });
+      await fetch(`${SUPABASE_URL}/rest/v1/pedidos_envio`, { method:'POST', headers:H,
+        body: JSON.stringify({ empresa_id: String(empresaActual), pdv_id: String(pdvId), pdv_nombre: pdvNombre, fecha, datos: JSON.stringify(datos) }) });
+      toast('📤 Pedido enviado correctamente','success');
+      // Desmarcar todo
+      document.querySelectorAll('.ep-check').forEach(c => c.checked = false);
+      document.querySelectorAll('.ep-cant,.ep-obs,.ep-obs-prod').forEach(i => i.value = '');
+    } catch(e) { toast('Error al enviar: '+e.message,'error'); }
+  }
+
+  async function initReciboPedido() {
+    const pdvs = await getPdv();
+    const sel = document.getElementById('rp-pdv-sel');
+    if (sel) {
+      sel.innerHTML = '<option value="">— Todos los PDVs —</option>' + pdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+    }
+    await cargarReciboPedido();
+  }
+
+  async function cargarReciboPedido() {
+    const cont = document.getElementById('rp-lista');
+    if (!cont) return;
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:32px;text-align:center;">Cargando...</div>';
+    const pdvFiltro = document.getElementById('rp-pdv-sel')?.value || '';
+    const fecha = fechaHoyAR();
+    try {
+      let url = `pedidos_envio?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&archivado=is.false&order=created_at.desc&select=*`;
+      if (pdvFiltro) url += `&pdv_id=eq.${pdvFiltro}`;
+      const pedidos = await sbApi(url) || [];
+      if (!pedidos.length) {
+        cont.innerHTML = '<div class="empty-state">📥<p>No hay pedidos recibidos hoy.</p></div>';
+        return;
+      }
+      cont.innerHTML = pedidos.map(p => {
+        const d = typeof p.datos === 'string' ? JSON.parse(p.datos) : p.datos;
+        const items = d.items || [];
+        return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+          <div style="padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <span style="font-size:14px;font-weight:800;">🏪 ${p.pdv_nombre||'PDV'}</span>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:10px;">📅 ${p.fecha} ${d.hora||''}</span>
+              ${d.usuario ? `<span style="font-size:11px;color:var(--text-dim);margin-left:6px;">— ${d.usuario}</span>` : ''}
+            </div>
+            <button onclick="archivarPedido('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text-muted);cursor:pointer;">✅ Archivar</button>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="background:var(--surface);">
+              <th style="padding:7px 14px;text-align:left;font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Producto</th>
+              <th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Sabor</th>
+              <th style="padding:7px 10px;text-align:center;font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Cant.</th>
+              <th style="padding:7px 14px;text-align:left;font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Observación</th>
+            </tr></thead>
+            <tbody>
+              ${items.map((it,ii) => `<tr style="border-top:1px solid var(--border);${ii%2===1?'background:rgba(255,255,255,.018)':''}">
+                <td style="padding:7px 14px;font-weight:600;color:var(--text);">${it.prod}</td>
+                <td style="padding:7px 10px;color:var(--text-muted);">${it.gusto}</td>
+                <td style="padding:7px 10px;text-align:center;font-family:var(--mono);color:var(--accent);">${it.cant||'—'}</td>
+                <td style="padding:7px 14px;color:var(--text-dim);font-size:12px;">${it.obs||it.obsProd||'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+  async function archivarPedido(id) {
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/pedidos_envio?id=eq.${id}`, { method:'PATCH', headers:H, body: JSON.stringify({ archivado: true }) });
+      toast('✅ Pedido archivado','success');
+      cargarReciboPedido();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
   // ── CLIENTES SOLO LECTURA PARA OPERADOR ─────────────────────────────────
   let _clientesOpData = [];
   async function cargarClientesOp() {
@@ -4545,6 +4826,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='monitor')         initMonitor();
     if (sub==='lista-precios-op') initListaPreciosOp();
     if (sub==='clientes-op')     cargarClientesOp();
+    if (sub==='envio-pedido')    initEnvioPedido();
+    if (sub==='recibo-pedido')   initReciboPedido();
     if (sub==='elaboracion')     initElaboracion();
     if (sub==='informes')        initInformes();
     if (sub==='caja') {
@@ -4553,7 +4836,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
     if (sub==='productos')   renderProd();
     if (sub==='empresa')     renderEmpresa();
-    if (sub==='config')      { renderControlEfectivo(); }
+    if (sub==='config')      { renderControlEfectivo(); }  // tab activo por defecto es mensajes
   }
 
   // ── DESPERDICIOS ─────────────────────────────────────────────────────
@@ -7046,6 +7329,38 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
 
   // ── INFORME CLIENTES ──────────────────────────────────────────────────
+  async function loadInformesPedidosInt(desde, hasta) {
+    const cont = document.getElementById('inf-body') || document.getElementById('inf-resultado');
+    if (!cont) return;
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:32px;text-align:center;">Cargando pedidos internos...</div>';
+    try {
+      const pedidos = await sbApi(`pedidos_envio?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=fecha.desc,created_at.desc&select=*&limit=200`) || [];
+      if (!pedidos.length) { cont.innerHTML = '<div class="empty-state">📋<p>No hay pedidos en ese período.</p></div>'; return; }
+      cont.innerHTML = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;font-family:var(--mono);">${pedidos.length} pedido${pedidos.length!==1?'s':''} encontrados</div>` +
+        pedidos.map(p => {
+          const d = typeof p.datos === 'string' ? JSON.parse(p.datos) : p.datos;
+          const items = d?.items || [];
+          return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px;">
+            <div style="padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:700;">🏪 ${p.pdv_nombre||'PDV'}</span>
+              <span style="font-size:12px;color:var(--text-muted);">📅 ${p.fecha}</span>
+              ${d?.hora?`<span style="font-size:11px;color:var(--text-dim);">🕐 ${d.hora}</span>`:''}
+              ${d?.usuario?`<span style="font-size:11px;color:var(--text-dim);">👤 ${d.usuario}</span>`:''}
+              ${p.archivado?'<span style="font-size:10px;background:rgba(110,231,183,.15);color:#6ee7b7;padding:2px 8px;border-radius:4px;font-weight:700;">✅ ARCHIVADO</span>':''}
+            </div>
+            <div style="padding:10px 14px;">
+              ${items.map(it=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;">
+                <span style="font-weight:600;min-width:120px;">${it.prod}</span>
+                <span style="color:var(--text-muted);min-width:100px;">${it.gusto}</span>
+                <span style="font-family:var(--mono);color:var(--accent);min-width:50px;">${it.cant||'—'}</span>
+                <span style="color:var(--text-dim);font-size:12px;">${it.obs||it.obsProd||''}</span>
+              </div>`).join('')}
+            </div>
+          </div>`;
+        }).join('');
+    } catch(e) { cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`; }
+  }
+
   async function loadInformesClientes() {
     const body = document.getElementById('inf-body');
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando clientes...</p></div>';
@@ -8070,7 +8385,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       show('neg-btn-productos'); show('neg-btn-empresa');
       show('neg-btn-elaboracion'); show('neg-btn-informes'); show('neg-btn-caja');
       show('neg-btn-config'); hide('neg-btn-pedido-recibido');
-      show('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); hide('neg-btn-ventas-op');
+      if (perms.mensajes !== false) show('neg-btn-mensajes'); else hide('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); hide('neg-btn-ventas-op');
+      show('neg-btn-envio-pedido'); show('neg-btn-recibo-pedido');
       setupNegLayout(true);
       const tabAgAdmin = document.getElementById('tab-btn-agregar');
       if (tabAgAdmin) tabAgAdmin.textContent = '+ Agregar';
@@ -8100,8 +8416,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.recuento)      show('neg-btn-recuento');     else hide('neg-btn-recuento');
       if (perms.listaPrecios) show('neg-btn-lista-precios-op'); else hide('neg-btn-lista-precios-op');
       if (perms.listaProd) show('neg-btn-lista-prod'); else hide('neg-btn-lista-prod');
+      if (perms.envioPedidoInt) show('neg-btn-envio-pedido'); else hide('neg-btn-envio-pedido');
+      if (perms.reciboPedido) show('neg-btn-recibo-pedido'); else hide('neg-btn-recibo-pedido');
       hide('neg-btn-ventas');
       if (perms.ventas)       show('neg-btn-ventas-op');       else hide('neg-btn-ventas-op');
+      if (perms.monitor !== false) show('neg-btn-monitor'); else hide('neg-btn-monitor');
       if (perms.detalleCliente) show('neg-btn-clientes-op'); else hide('neg-btn-clientes-op');
       setupNegLayout(false);
       // Renombrar tab agregar para operadores
@@ -8110,7 +8429,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       hide('neg-btn-empresa');
       if (perms.caja) show('neg-btn-caja'); else hide('neg-btn-caja');
       if (perms.config) show('neg-btn-config'); else hide('neg-btn-config');
-      show('neg-btn-pedido-recibido');
+      if (perms.pedidoRecibido) show('neg-btn-pedido-recibido'); else hide('neg-btn-pedido-recibido');
     }
   }
 
@@ -8785,8 +9104,149 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>`).join('');
   }
 
+  async function renderProdOpConfig() {
+    const cont = document.getElementById('cfg-prodop-lista');
+    if (!cont) return;
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">Cargando...</div>';
+
+    const dbUsers = await loadUsersFromSupabase();
+    if (dbUsers && dbUsers.length) { saveUsers(dbUsers); }
+    const users = getUsers().filter(u => u.role !== 'admin' && (u.perms?.pedido === true || u.perms?.pedido === 'true'));
+
+    if (!users.length) {
+      cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:16px;">No hay operadores con acceso a Orden de pedido.</div>';
+      return;
+    }
+
+    // Paso 1: selector de operador
+    cont.innerHTML = '<div style="display:flex;flex-direction:column;gap:14px;">' +
+      '<div style="display:flex;flex-direction:column;gap:6px;">' +
+        '<label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Operador</label>' +
+        '<select id="cfg-prodop-sel" onchange="cargarProdsPorOp()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;color:var(--text);outline:none;max-width:300px;">' +
+          '<option value="">— Elegí un operador —</option>' +
+          users.map(u => '<option value="'+(u.username||u.id||'')+'">'+(u.displayName||u.display_name||u.username||u.id||'Operador')+'</option>').join('') +
+        '</select>' +
+      '</div>' +
+      '<div id="cfg-prodop-prods" style="display:none;"></div>' +
+    '</div>';
+  }
+
+  async function cargarProdsPorOp() {
+    const username = document.getElementById('cfg-prodop-sel')?.value;
+    const cont = document.getElementById('cfg-prodop-prods');
+    if (!cont) return;
+    if (!username) { cont.style.display = 'none'; return; }
+
+    cont.style.display = '';
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">Cargando productos...</div>';
+
+    const prods = await getProd();
+    _listaProdData = prods;
+    const u = getUsers().find(x => x.username === username);
+    if (!u) return;
+
+    const prodsPedido = (u.perms?.prodsPedido || []).map(String);
+
+    const checks = prods.map(p => {
+      const checked = prodsPedido.includes(String(p.id));
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:var(--surface2);padding:8px 12px;border-radius:8px;border:1px solid '+(checked?'var(--accent)':'var(--border)')+';">' +
+        '<input type="checkbox" '+(checked?'checked':'')+' onchange="toggleProdPedidoCfg(this.dataset.u,this.dataset.p,this)" data-u="'+username+'" data-p="'+p.id+'" />' +
+        (p.nombre||p.name) + '</label>';
+    }).join('');
+
+    cont.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Productos visibles en Orden de pedido</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+checks+'</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">Sin selección = ve todos los productos.</div>';
+  }
+
+  async function toggleProdPedidoCfg(username, prodId, checkbox) {
+    const u = getUsers().find(x => x.username === username);
+    if (!u) return;
+    const perms = u.perms || {};
+    let prodsPedido = Array.isArray(perms.prodsPedido) ? [...perms.prodsPedido.map(String)] : [];
+    if (checkbox.checked) {
+      if (!prodsPedido.includes(String(prodId))) prodsPedido.push(String(prodId));
+    } else {
+      prodsPedido = prodsPedido.filter(id => id !== String(prodId));
+    }
+    perms.prodsPedido = prodsPedido;
+    u.perms = perms;
+    const users = getUsers();
+    const idx = users.findIndex(x => x.username === username);
+    if (idx !== -1) { users[idx] = u; saveUsers(users); }
+    await saveUserToSupabase(u);
+    // Actualizar borde del label
+    const lbl = checkbox.closest('label');
+    if (lbl) lbl.style.borderColor = checkbox.checked ? 'var(--accent)' : 'var(--border)';
+    toast('✓ Guardado', 'success');
+  }
+
+  async function renderProdIntConfig() {
+    const cont = document.getElementById('cfg-prodint-lista');
+    if (!cont) return;
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">Cargando...</div>';
+    const dbUsers = await loadUsersFromSupabase();
+    if (dbUsers && dbUsers.length) saveUsers(dbUsers);
+    const allUsers = getUsers().filter(u => u.role !== 'admin');
+    const users = allUsers.filter(u => !!u.perms?.envioPedidoInt);
+    if (!users.length) {
+      cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:16px;">No hay operadores con acceso a Envío pedido interno.<br><small style="color:var(--text-dim);">Activá el permiso "📦 Envío pedido interno" en Admin → Usuarios.</small></div>';
+      return;
+    }
+    cont.innerHTML = '<div style="display:flex;flex-direction:column;gap:14px;">' +
+      '<div style="display:flex;flex-direction:column;gap:6px;">' +
+        '<label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Operador</label>' +
+        '<select id="cfg-prodint-sel" onchange="cargarProdsIntPorOp()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;color:var(--text);outline:none;max-width:300px;">' +
+          '<option value="">— Elegí un operador —</option>' +
+          users.map(u => '<option value="'+u.username+'">'+(u.displayName||u.username)+'</option>').join('') +
+        '</select>' +
+      '</div>' +
+      '<div id="cfg-prodint-prods" style="display:none;"></div>' +
+    '</div>';
+  }
+
+  async function cargarProdsIntPorOp() {
+    const username = document.getElementById('cfg-prodint-sel')?.value;
+    const cont = document.getElementById('cfg-prodint-prods');
+    if (!cont) return;
+    if (!username) { cont.style.display = 'none'; return; }
+    cont.style.display = '';
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">Cargando productos...</div>';
+    const prods = await getProd();
+    const u = getUsers().find(x => x.username === username);
+    if (!u) return;
+    const prodsInt = (u.perms?.prodsPedidoInterno || []).map(String);
+    const checks = prods.map(p => {
+      const checked = prodsInt.includes(String(p.id));
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:var(--surface2);padding:8px 12px;border-radius:8px;border:1px solid '+(checked?'var(--accent)':'var(--border)')+';">' +
+        '<input type="checkbox" '+(checked?'checked':'')+' onchange="toggleProdInt(this.dataset.u,this.dataset.p,this)" data-u="'+username+'" data-p="'+p.id+'" />' +
+        (p.nombre||p.name) + '</label>';
+    }).join('');
+    cont.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Productos visibles en Envío pedido interno</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+checks+'</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text-dim);">Sin selección = ve todos los productos.</div>';
+  }
+
+  async function toggleProdInt(username, prodId, checkbox) {
+    const users = getUsers();
+    const u = users.find(x => x.username === username);
+    if (!u) return;
+    const perms = u.perms || {};
+    let prodsInt = Array.isArray(perms.prodsPedidoInterno) ? [...perms.prodsPedidoInterno.map(String)] : [];
+    if (checkbox.checked) { if (!prodsInt.includes(String(prodId))) prodsInt.push(String(prodId)); }
+    else { prodsInt = prodsInt.filter(id => id !== String(prodId)); }
+    perms.prodsPedidoInterno = prodsInt;
+    u.perms = perms;
+    const idx = users.findIndex(x => x.username === username);
+    if (idx !== -1) { users[idx] = u; saveUsers(users); }
+    await saveUserToSupabase(u);
+    const lbl = checkbox.closest('label');
+    if (lbl) lbl.style.borderColor = checkbox.checked ? 'var(--accent)' : 'var(--border)';
+    toast('✓ Guardado', 'success');
+  }
+
   function switchCfgTab(tab) {
-    ['mensajes','efectivo'].forEach(t => {
+    ['mensajes','efectivo','prodop','prodint'].forEach(t => {
       const btn = document.getElementById(`cfg-tab-btn-${t}`);
       const panel = document.getElementById(`cfg-tab-${t}`);
       const active = t === tab;
@@ -8794,6 +9254,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (panel) panel.style.display = active ? '' : 'none';
     });
     if (tab === 'efectivo') renderControlEfectivo();
+    if (tab === 'prodop') renderProdOpConfig();
+    if (tab === 'prodint') renderProdIntConfig();
   }
 
   async function renderControlEfectivo() {
