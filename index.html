@@ -126,9 +126,9 @@
     .neg-stab:hover { color:var(--text); background:rgba(255,255,255,.04); }
     .neg-stab.active { background:var(--surface); color:var(--text); font-weight:600; box-shadow:0 1px 4px rgba(0,0,0,.4); border:1px solid var(--border); }
     /* Sidebar vertical para operador */
-    .neg-stab-vertical { padding:11px 16px; border:none; background:none; color:var(--text-muted); font-family:var(--font); font-size:14px; font-weight:500; cursor:pointer; border-radius:8px; transition:all .15s; white-space:nowrap; letter-spacing:-.01em; text-align:left; width:100%; display:block; }
-    .neg-stab-vertical:hover { color:var(--text); background:rgba(255,255,255,.06); }
-    .neg-stab-vertical.active { background:var(--accent); color:#000; font-weight:700; }
+    .neg-stab-vertical { padding:13px 18px; border:1px solid #e6b800; background:#ffd700; color:#000; font-family:var(--font); font-size:16px; font-weight:700; cursor:pointer; border-radius:10px; transition:all .15s; white-space:nowrap; letter-spacing:-.01em; text-align:left; width:100%; display:block; margin-bottom:3px; }
+    .neg-stab-vertical:hover { color:#000; background:#ffe033; border-color:#e6b800; box-shadow:0 2px 8px rgba(255,215,0,.4); }
+    .neg-stab-vertical.active { background:#fff176; color:#000; font-weight:800; font-size:16px; border-color:#e6b800; box-shadow:0 2px 10px rgba(255,215,0,.5); }
     .neg-panel { display:none; animation:fadeIn .2s ease; }
     #neg-layout > div:last-child { flex:1; min-width:0; }
     .neg-panel.active { display:block; }
@@ -567,7 +567,7 @@
       </div>
 
       <!-- VENTAS -->
-      <div id="neg-ventas" class="neg-panel" style="display:none">
+      <div id="neg-ventas" class="neg-panel" style="display:none;font-size:16px;">
 
         <!-- Header compacto -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
@@ -582,7 +582,7 @@
             <select id="ventas-pdv-sel-top" onchange="document.getElementById('ventas-pdv-sel').value=this.value;document.getElementById('ventas-pdv-sel-top').value=this.value;" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;">
               <option value="">— PDV —</option>
             </select>
-            <input type="date" id="ventas-fecha" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;">
+            <input type="date" id="ventas-fecha" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:11px;color:var(--text);outline:none;width:120px;">
   
           </div>
 
@@ -603,31 +603,35 @@
               <button id="ventas-btn-venta-doc" onclick="selDocTipo('venta')" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🛒 Venta</button>
               <button id="ventas-btn-presupuesto" onclick="selDocTipo('presupuesto')" style="background:none;border:1px solid #ffb432;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#ffb432;cursor:pointer;">📋 Presupuesto</button>
               <button id="ventas-btn-recibo" onclick="selDocTipo('recibo')" style="background:none;border:1px solid #6ee7b7;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#6ee7b7;cursor:pointer;">🧾 Recibo</button>
+              <button onclick="imprimirVentas()" title="Imprimir" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:var(--text);cursor:pointer;">🖨️</button>
+              <button onclick="compartirVentasEmail()" title="Email" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:var(--text);cursor:pointer;">✉️</button>
+              <button onclick="abrirEnvioWAVentas()" title="WhatsApp" style="background:none;border:1px solid #25D366;border-radius:8px;padding:8px 11px;font-size:13px;color:#25D366;cursor:pointer;">📱</button>
+              <button onclick="ventasLimpiar()" title="Limpiar" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:#ff5a5a;cursor:pointer;">🗑️</button>
             </div>
           </div>
         </div>
 
         <!-- Datos del cliente -->
-        <div id="ventas-cliente-section" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">👤 Datos del cliente</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
-              <label style="font-size:11px;font-weight:600;color:var(--text);letter-spacing:.03em;">✏️ Nombre</label>
+        <div id="ventas-cliente-section" style="background:var(--surface);border:2px solid rgba(139,180,248,.4);border-radius:12px;padding:14px 18px;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:800;color:#8ab4f8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">👤 Datos del cliente</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px;">
+              <label style="font-size:12px;font-weight:700;color:#8ab4f8;letter-spacing:.04em;">✏️ Nombre</label>
               <input type="text" id="ventas-cliente-nombre" placeholder="Nombre del cliente..." autocomplete="off"
-                style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
-                onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+                style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 12px;font-size:15px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
+                onfocus="this.style.borderColor='#8ab4f8'" onblur="this.style.borderColor='var(--border)'">
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
-              <label style="font-size:11px;font-weight:600;color:#25D366;letter-spacing:.03em;">📱 Teléfono / WhatsApp</label>
+            <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px;">
+              <label style="font-size:12px;font-weight:700;color:#25D366;letter-spacing:.04em;">📱 Número cliente</label>
               <input type="tel" id="ventas-cliente-tel" placeholder="+54 9..." autocomplete="off" oninput="verificarClienteExistente()"
-                style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
+                style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 12px;font-size:15px;color:var(--text);font-family:var(--mono);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
                 onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='var(--border)'">
               <div id="ventas-cliente-msg-tel" style="font-size:11px;color:var(--accent);margin-top:2px;display:none;"></div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
-              <label style="font-size:11px;font-weight:600;color:#8ab4f8;letter-spacing:.03em;">✉️ Email</label>
+            <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px;">
+              <label style="font-size:12px;font-weight:700;color:#8ab4f8;letter-spacing:.04em;">✉️ Email</label>
               <input type="email" id="ventas-cliente-email" placeholder="cliente@..." autocomplete="off" oninput="verificarClienteExistente()"
-                style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
+                style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 12px;font-size:15px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
                 onfocus="this.style.borderColor='#8ab4f8'" onblur="this.style.borderColor='var(--border)'">
               <div id="ventas-cliente-msg-email" style="font-size:11px;color:var(--accent);margin-top:2px;display:none;"></div>
             </div>
@@ -635,44 +639,36 @@
         </div>
 
         <!-- PDV + fecha + acciones -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center;">
-          <select id="ventas-pdv-sel" style="display:none;">
+        <select id="ventas-pdv-sel" style="display:none;">
             <option value="">— PDV —</option>
           </select>
 
-          <span id="ventas-hora-actual" style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;white-space:nowrap;"></span>
-          <button onclick="imprimirVentas()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);cursor:pointer;">🖨️ Imprimir</button>
-          <button onclick="compartirVentasEmail()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);cursor:pointer;">✉️ Email</button>
-          <button onclick="abrirEnvioWAVentas()" style="background:none;border:1px solid #25D366;border-radius:7px;padding:7px 12px;font-size:12px;color:#25D366;cursor:pointer;">📱 WhatsApp</button>
-          <button onclick="ventasLimpiar()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:#ff5a5a;cursor:pointer;">🗑️ Limpiar</button>
-        </div>
-
         <!-- Fila agregar -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-          <div style="display:flex;flex-direction:column;gap:3px;flex:2;min-width:140px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Producto</label>
-            <input type="text" id="ventas-prod-input" list="ventas-prod-list" placeholder="Buscar..." autocomplete="off" oninput="ventasOnProdInput()" onchange="ventasOnProdChange()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;">
+        <div style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:5px;flex:2;min-width:160px;">
+            <label style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">📦 Producto</label>
+            <input type="text" id="ventas-prod-input" list="ventas-prod-list" placeholder="Buscar producto..." autocomplete="off" oninput="ventasOnProdInput()" onchange="ventasOnProdChange()" style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 12px;font-size:15px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
             <datalist id="ventas-prod-list"></datalist>
           </div>
-          <div style="display:flex;flex-direction:column;gap:3px;flex:2;min-width:140px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sabor</label>
-            <input type="text" id="ventas-gusto-input" list="ventas-gusto-list" placeholder="Buscar..." autocomplete="off" oninput="ventasOnGustoInput()" onchange="ventasOnGustoChange()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;width:100%;box-sizing:border-box;">
+          <div style="display:flex;flex-direction:column;gap:5px;flex:2;min-width:160px;">
+            <label style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">🏷️ Sabor</label>
+            <input type="text" id="ventas-gusto-input" list="ventas-gusto-list" placeholder="Buscar sabor..." autocomplete="off" oninput="ventasOnGustoInput()" onchange="ventasOnGustoChange()" style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 12px;font-size:15px;color:var(--text);outline:none;width:100%;box-sizing:border-box;transition:border .2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
             <datalist id="ventas-gusto-list"></datalist>
           </div>
-          <div style="display:flex;flex-direction:column;gap:3px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Cantidad</label>
-            <div style="display:flex;gap:4px;align-items:center;">
-              <input type="number" id="ventas-cant" min="0.001" step="any" value="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;color:var(--text);font-family:var(--mono);outline:none;width:70px;text-align:center;">
-              <span id="ventas-unidad-badge" style="font-size:12px;font-weight:700;color:var(--accent);font-family:var(--mono);min-width:28px;">u</span>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">🔢 Cantidad</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="number" id="ventas-cant" min="0.001" step="any" value="1" style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px;font-size:16px;color:var(--text);font-family:var(--mono);outline:none;width:80px;text-align:center;transition:border .2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+              <span id="ventas-unidad-badge" style="font-size:14px;font-weight:800;color:var(--accent);font-family:var(--mono);min-width:32px;">u</span>
               <input type="hidden" id="ventas-unidad" value="u">
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:3px;">
-            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Precio $</label>
-            <input type="text" id="ventas-precio" placeholder="0,00" readonly style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:13px;color:var(--text-muted);font-family:var(--mono);outline:none;width:80px;text-align:right;cursor:default;">
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">💲 Precio</label>
+            <input type="text" id="ventas-precio" placeholder="0,00" readonly style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px;font-size:16px;font-weight:700;color:var(--text);font-family:var(--mono);outline:none;width:100px;text-align:right;cursor:default;">
           </div>
-          <button onclick="ventasAgregarItem()" class="btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;height:36px;">+ Agregar</button>
-          <button onclick="guardarVenta()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;height:36px;">💾 Guardar</button>
+          <button onclick="ventasAgregarItem()" class="btn-primary" style="padding:10px 22px;font-size:15px;font-weight:800;white-space:nowrap;height:44px;">+ Agregar</button>
+          <button onclick="guardarVenta()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 22px;font-size:15px;font-weight:800;cursor:pointer;white-space:nowrap;height:44px;">💾 Guardar</button>
 
         </div>
 
@@ -680,19 +676,19 @@
         <div style="display:flex;gap:14px;align-items:flex-start;overflow:hidden;">
 
           <!-- Tabla ítems -->
-          <div style="flex:3;min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:400px;">
+          <div style="flex:3;min-width:0;background:var(--surface);border:2px solid var(--border);border-radius:12px;overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:15px;min-width:400px;">
               <thead>
                 <tr style="background:var(--surface2);border-bottom:2px solid var(--accent);">
-                  <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Producto / Sabor</th>
-                  <th style="padding:9px 10px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Cant.</th>
-                  <th style="padding:9px 10px;text-align:right;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">$ Unit.</th>
-                  <th style="padding:9px 10px;text-align:right;font-size:11px;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Subtotal</th>
-                  <th style="padding:9px 8px;width:30px;"></th>
+                  <th style="padding:12px 14px;text-align:left;font-size:12px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Producto / Sabor</th>
+                  <th style="padding:12px 12px;text-align:center;font-size:12px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Cant.</th>
+                  <th style="padding:12px 12px;text-align:right;font-size:12px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">$ Unit.</th>
+                  <th style="padding:12px 12px;text-align:right;font-size:12px;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;">Subtotal</th>
+                  <th style="padding:12px 8px;width:30px;"></th>
                 </tr>
               </thead>
               <tbody id="ventas-tbody">
-                <tr><td colspan="5" style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;font-style:italic;">Elegí un producto arriba para agregar</td></tr>
+                <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;font-style:italic;">Elegí un producto arriba para agregar</td></tr>
               </tbody>
             </table>
           </div>
@@ -5961,6 +5957,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // Fecha default hoy
     const fechaInputEl = document.getElementById('ventas-fecha');
     fechaInputEl.value = fechaHoyAR();
+    const fechaBottom = document.getElementById('ventas-fecha-bottom');
+    if (fechaBottom) fechaBottom.value = fechaHoyAR();
     // Bloquear fecha para operadores
     const isAdminV = currentUser?.role === 'admin';
     fechaInputEl.readOnly = !isAdminV;
@@ -6223,7 +6221,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       gusto_id: item.gustoId,
       gusto_nombre: item.gusto,
       cantidad: item.cant,
-      precio: window._ventasDescuento > 0 ? parsePrecioAR(item.precio||0) * (1 - window._ventasDescuento/100) : parsePrecioAR(item.precio||0),
+      precio: (() => {
+        const base = parsePrecioAR(item.precio||0);
+        const totalBase = _ventasItems.reduce((s,it)=>s+parsePrecioAR(it.precio||0)*it.cant,0);
+        if (window._ventasMontoFijo > 0 && totalBase > 0) {
+          return base * (1 - window._ventasMontoFijo/totalBase);
+        }
+        return window._ventasDescuento > 0 ? base * (1 - window._ventasDescuento/100) : base;
+      })(),
       lista: lista === '4' ? 'Lista 4' : 'Lista '+lista,
       metodo_pago: metodoPago === 'tarjeta' && window._tarjetaTipo ? 'tarjeta_' + window._tarjetaTipo : metodoPago,
       username: currentUser?.username || '',
@@ -6506,25 +6511,25 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     tbody.innerHTML = _ventasItems.map((item, i) => {
       const precio = ventasParsePrecio(item.precio);
       const subtotal = precio * item.cant;
-      return `<tr style="border-top:1px solid var(--border);${i%2===1?'background:rgba(255,255,255,.02)':''}">
-        <td style="padding:7px 10px;">
-          <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.2;">${item.prod}</div>
-          <div style="font-size:11px;color:var(--text-muted);">${item.gusto}</div>
+      return `<tr style="border-top:2px solid var(--border);${i%2===1?'background:rgba(255,255,255,.03)':''}">
+        <td style="padding:12px 14px;">
+          <div style="font-size:16px;font-weight:800;color:var(--text);line-height:1.2;">${item.prod}</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${item.gusto}</div>
         </td>
-        <td style="padding:7px 8px;text-align:center;">
+        <td style="padding:12px 10px;text-align:center;">
           ${item.unidad && item.unidad !== 'u'
-            ? `<span style="font-family:var(--mono);font-size:12px;color:var(--text);">${item.cantDisplay||item.cant+' '+item.unidad}</span>`
+            ? `<span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);">${item.cantDisplay||item.cant+' '+item.unidad}</span>`
             : `<input type="number" min="1" step="1" value="${item.cant}"
                 onchange="ventasUpdateCant(${i}, this.value)"
-                style="width:54px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:13px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;" />`
+                style="width:64px;background:var(--surface2);border:2px solid var(--border);border-radius:7px;padding:6px 8px;font-size:15px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;" />`
           }
         </td>
-        <td style="padding:7px 8px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text-muted);">
-          ${item.unidad&&item.unidad!=='u' ? '<span style="font-size:10px;color:var(--text-dim);">$'+( item.precioUnitario||item.precio)+'/ kg</span><br>' : ''}$ ${item.precio||'—'}
+        <td style="padding:12px 10px;text-align:right;font-family:var(--mono);font-size:14px;color:var(--text-muted);">
+          ${item.unidad&&item.unidad!=='u' ? '<span style="font-size:11px;color:var(--text-dim);">$'+( item.precioUnitario||item.precio)+'/ kg</span><br>' : ''}$ ${item.precio||'—'}
         </td>
-        <td style="padding:7px 8px;text-align:right;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--accent);">$ ${subtotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-        <td style="padding:7px 6px;text-align:center;">
-          <button onclick="ventasEliminarItem(${i})" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">✕</button>
+        <td style="padding:12px 10px;text-align:right;font-family:var(--mono);font-size:16px;font-weight:900;color:var(--accent);">$ ${subtotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td style="padding:12px 8px;text-align:center;">
+          <button onclick="ventasEliminarItem(${i})" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:18px;line-height:1;padding:4px 6px;">✕</button>
         </td>
       </tr>`;
     }).join('');
@@ -6549,7 +6554,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     });
 
     const descPct = window._ventasDescuento || 0;
-    const totalFinal = descPct > 0 ? grandTotal * (1 - descPct/100) : grandTotal;
+    const montoFijo = window._ventasMontoFijo || 0;
+    const totalFinal = montoFijo > 0 ? Math.max(0, grandTotal - montoFijo) : (descPct > 0 ? grandTotal * (1 - descPct/100) : grandTotal);
     resHtml += `<div style="padding:8px 14px;border-top:1px solid var(--border);">
       <div style="display:flex;gap:6px;align-items:center;">
         <input type="text" id="ventas-voucher-input" placeholder="Código voucher..." autocomplete="off"
@@ -6558,6 +6564,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         ${descPct > 0 ? '<button onclick="quitarVoucher()" style="background:none;border:1px solid #ff5a5a;border-radius:6px;padding:6px 8px;font-size:11px;color:#ff5a5a;cursor:pointer;">✕</button>' : ''}
       </div>
       ${descPct > 0 ? '<div style="font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--mono);">✓ Descuento '+descPct+'% aplicado</div>' : ''}
+      ${montoFijo > 0 ? '<div style="font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--mono);">✓ Descuento $'+montoFijo.toLocaleString("es-AR",{minimumFractionDigits:2})+' aplicado</div>' : ''}
     </div>
     <div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:rgba(200,240,74,.1);border-top:2px solid var(--accent);">
       <div>
@@ -7117,31 +7124,22 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         return;
       }
 
-      // Agrupar por operador
-      const byOp = {};
-      ventas.forEach(v => {
-        const op = v.username || 'Sin asignar';
-        if (!byOp[op]) byOp[op] = {
-          ventas: [], total: 0, efectivo: 0, tarjeta: 0,
-          pdvs: new Set(), ultimaVenta: null
-        };
-        byOp[op].ventas.push(v);
-        const imp = (v.precio||0)*(v.cantidad||0);
-        byOp[op].total += imp;
-        if (v.metodo_pago === 'tarjeta') byOp[op].tarjeta += imp;
-        else byOp[op].efectivo += imp;
-        byOp[op].pdvs.add(pdvMap[String(v.pdv_id)]||v.pdv_id);
-        const ts = new Date(v.created_at);
-        if (!byOp[op].ultimaVenta || ts > byOp[op].ultimaVenta.ts) {
-          byOp[op].ultimaVenta = {
-            ts,
-            hora: ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}),
-            total: imp,
-            pdv: pdvMap[String(v.pdv_id)]||v.pdv_id,
-            lista: v.lista||''
-          };
-        }
+      // Agrupar por PDV
+      const byPdv = {};
+      pdvs.forEach(p => {
+        byPdv[String(p.id)] = { nombre: p.nombre||p.name, ventas: [], total: 0, efectivo: 0, tarjeta: 0 };
       });
+      ventas.forEach(v => {
+        const pdvId = String(v.pdv_id);
+        if (!byPdv[pdvId]) byPdv[pdvId] = { nombre: pdvMap[pdvId]||'PDV', ventas: [], total: 0, efectivo: 0, tarjeta: 0 };
+        byPdv[pdvId].ventas.push(v);
+        const imp = (v.precio||0)*(v.cantidad||0);
+        byPdv[pdvId].total += imp;
+        if ((v.metodo_pago||'').includes('tarjeta') || v.metodo_pago === 'transferencia') byPdv[pdvId].tarjeta += imp;
+        else byPdv[pdvId].efectivo += imp;
+      });
+      // Solo PDVs con ventas
+      const pdvsConVentas = Object.entries(byPdv).filter(([,d]) => d.ventas.length > 0);
 
       // Totales globales
       const grandTotal = ventas.reduce((s,v)=>(s+(v.precio||0)*(v.cantidad||0)),0);
@@ -7176,46 +7174,43 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </div>
           <div style="flex:1;min-width:100px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;">
             <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Operadores</div>
-            <div style="font-size:22px;font-weight:900;font-family:var(--mono);color:var(--text);">${Object.keys(byOp).length}</div>
+            <div style="font-size:22px;font-weight:900;font-family:var(--mono);color:var(--text);">${pdvsConVentas.length}</div>
           </div>
         </div>
 
-        <!-- Cards por operador -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">`;
+        <!-- Ventas por PDV en columnas -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;">`;
 
-      // Ordenar por total desc
-      Object.entries(byOp).sort(([,a],[,b])=>b.total-a.total).forEach(([op, data]) => {
-        const nombre = userMap[op] || op;
-        const opTicketKey = `op_${op}`;
-        const ticketsOp = new Set(data.ventas.map(v=>{
+      pdvsConVentas.sort(([,a],[,b]) => b.total - a.total).forEach(([pdvId, data]) => {
+        // Agrupar ventas por ticket (username+hora)
+        const ticketsMap = {};
+        data.ventas.forEach(v => {
           const ts = new Date(v.created_at);
-          const min = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
-          return `${v.username}_${min}`;
-        })).size;
-        const minHace = data.ultimaVenta ? Math.floor((new Date() - data.ultimaVenta.ts)/60000) : null;
-        const hace = minHace !== null ? (minHace < 1 ? 'Ahora mismo' : minHace < 60 ? `Hace ${minHace} min` : `Hace ${Math.floor(minHace/60)}h`) : '';
-        const activo = esHoy && minHace !== null && minHace < 15;
+          const hora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+          const key = (v.username||'')+'_'+hora;
+          if (!ticketsMap[key]) ticketsMap[key] = { hora, op: userMap[v.username]||v.username||'—', metodo: v.metodo_pago, total: 0, items: [] };
+          ticketsMap[key].total += (v.precio||0)*(v.cantidad||1);
+          ticketsMap[key].items.push(v.prod_nombre||'');
+        });
+        const tickets = Object.values(ticketsMap).sort((a,b) => b.hora.localeCompare(a.hora));
 
-        html += `<div onclick="verVentasOperador('${op}')" style="background:var(--surface);border:1px solid ${activo?'var(--accent)':'var(--border)'};border-radius:12px;overflow:hidden;cursor:pointer;transition:all .15s;${activo?'box-shadow:0 0 0 1px var(--accent)':''}" onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
-          <div style="background:var(--surface2);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="width:10px;height:10px;border-radius:50%;background:${activo?'#22c55e':'#6b7280'};flex-shrink:0;${activo?'animation:pulse 2s infinite':''}"></span>
-              <span style="font-size:14px;font-weight:800;color:var(--text);">${nombre}</span>
-            </div>
-            <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${[...data.pdvs].join(', ')}</span>
+        html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+          <div style="background:var(--surface2);padding:12px 16px;border-bottom:2px solid var(--accent);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:15px;font-weight:800;color:var(--text);">🏪 ${data.nombre}</span>
+            <span style="font-size:16px;font-weight:900;font-family:var(--mono);color:var(--accent);">$${data.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
           </div>
-          <div style="padding:12px 16px;">
-            <div style="font-size:20px;font-weight:900;font-family:var(--mono);color:var(--accent);margin-bottom:8px;">$${data.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-            <div style="display:flex;gap:10px;margin-bottom:10px;font-family:var(--mono);font-size:12px;">
-              <span style="color:#6ee7b7;">💵 $${data.efectivo.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-              <span style="color:#93c5fd;">💳 $${data.tarjeta.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-              <span style="color:var(--text-muted);">${ticketsOp} ticket${ticketsOp!==1?'s':''}</span>
-            </div>
-            ${data.ultimaVenta ? `<div style="font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px;">
-              <span style="font-family:var(--mono);">🕐 ${data.ultimaVenta.hora}</span>
-              <span style="margin-left:8px;">${hace}</span>
-              <span style="float:right;font-family:var(--mono);color:var(--accent);">$${data.ultimaVenta.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-            </div>` : ''}
+          <div style="display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;font-family:var(--mono);">
+            <span style="color:#6ee7b7;">💵 $${data.efectivo.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+            <span style="color:#93c5fd;">💳 $${data.tarjeta.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+            <span style="color:var(--text-muted);">${tickets.length} venta${tickets.length!==1?'s':''}</span>
+          </div>
+          <div style="max-height:320px;overflow-y:auto;">
+            ${tickets.map(t => `<div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);font-size:13px;">
+              <span style="font-family:var(--mono);color:var(--text-muted);min-width:38px;font-size:12px;">${t.hora}</span>
+              <span style="font-weight:600;color:var(--text);flex:1;">${t.op}</span>
+              <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${(t.metodo||'').includes('tarjeta')||t.metodo==='transferencia'?'rgba(147,197,253,.15)':'rgba(110,231,183,.15)'};color:${(t.metodo||'').includes('tarjeta')||t.metodo==='transferencia'?'#93c5fd':'#6ee7b7'};">${(t.metodo||'').includes('tarjeta')?'💳':(t.metodo==='transferencia'?'📲':'💵')}</span>
+              <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">$${t.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+            </div>`).join('')}
           </div>
         </div>`;
       });
@@ -7405,6 +7400,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         sbApi(`vouchers?empresa_id=eq.${empresaActual}&select=*&order=created_at.desc`) || []
       ]);
       window._vouchersData = vouchers || [];
+      // Precargar ventas del mes para conteo de visitas
+      try {
+        const hoy = new Date();
+        const desde = hoy.getFullYear()+'-'+(String(hoy.getMonth()+1).padStart(2,'0'))+'-01';
+        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&select=cliente_tel,fecha`) || [];
+        window._ventasClientesCache = ventasMes;
+      } catch(e) { window._ventasClientesCache = []; }
 
       if (!clientes.length) {
         body.innerHTML = '<div class="empty-state">👥<p>No hay clientes registrados todavía.</p></div>';
@@ -7436,6 +7438,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Email</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">PDV</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Fecha</th>
+            <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Visitas mes</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Tipo</th>
             <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;"></th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:#ffb432;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">🎟️ Vouchers</th>
@@ -7463,6 +7466,24 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <td style="padding:9px 12px;font-size:13px;">${emailLink}</td>
         <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.pdv_nombre||'—'}</td>
         <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">${fecha}</td>
+        <td style="padding:9px 12px;text-align:center;">
+          ${(() => {
+            const tel = (c.telefono||'').replace(/[^0-9]/g,'');
+            if (!tel) return '<span style="color:var(--text-dim);">—</span>';
+            const hoy = new Date();
+            const mes = hoy.getMonth();
+            const anio = hoy.getFullYear();
+            const ventas = (window._ventasClientesCache||[]).filter(v => {
+              if (!v.cliente_tel || v.cliente_tel.replace(/[^0-9]/g,'') !== tel) return false;
+              const f = new Date(v.fecha+'T00:00:00');
+              return f.getMonth() === mes && f.getFullYear() === anio;
+            });
+            const visitas = [...new Set(ventas.map(v => v.fecha))].length;
+            return visitas > 0
+              ? '<span style="background:rgba(200,240,74,.15);color:var(--accent);font-size:12px;font-weight:700;padding:2px 10px;border-radius:12px;">'+visitas+'</span>'
+              : '<span style="color:var(--text-dim);">0</span>';
+          })()}
+        </td>
         <td style="padding:9px 12px;">
           ${(() => {
             const notas = (c.notas||'').toUpperCase();
@@ -7482,6 +7503,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             style="background:none;border:1px solid #8ab4f8;border-radius:7px;padding:4px 10px;font-size:12px;color:#8ab4f8;cursor:pointer;margin-left:4px;">👋 Saludo</button>` : ''}
           ${c.telefono ? `<button onclick="verHistorialCliente(${i})" title="Ver historial de compras"
             style="background:none;border:1px solid #a78bfa;border-radius:7px;padding:4px 10px;font-size:12px;color:#a78bfa;cursor:pointer;margin-left:4px;">🛍️ Historial</button>` : ''}
+          <button onclick="borrarCliente('${c.id}')" title="Eliminar cliente"
+            style="background:none;border:1px solid #ff5a5a;border-radius:7px;padding:4px 8px;font-size:12px;color:#ff5a5a;cursor:pointer;margin-left:4px;">🗑️</button>
         </td>
         <td style="padding:9px 12px;font-size:12px;">
           ${(() => {
@@ -7498,6 +7521,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </td>
       </tr>`;
     }).join('');
+  }
+
+  async function borrarCliente(id) {
+    if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+      await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${id}`, { method:'DELETE', headers:H });
+      window._clientesData = (window._clientesData||[]).filter(c => c.id !== id);
+      filtrarClientes();
+      toast('Cliente eliminado','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
   function filtrarClientes() {
@@ -8026,16 +8060,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (v.usado) { toast('❌ Este voucher ya fue utilizado','error'); return; }
       if (v.vence && v.vence < hoy) { toast(`❌ Voucher vencido el ${v.vence}`,'error'); return; }
 
-      window._ventasDescuento = v.pct;
+      window._ventasVoucherData = v;
       window._ventasVoucherCodigo = codigo;
-      toast(`✓ Voucher aplicado: ${v.pct}% de descuento${v.cliente_nombre?' para '+v.cliente_nombre:''}`, 'success');
+      if (v.tipo === 'monto') {
+        window._ventasDescuento = 0;
+        window._ventasMontoFijo = parseFloat(v.monto_fijo)||0;
+        toast(`✓ Voucher aplicado: $${window._ventasMontoFijo} de descuento${v.cliente_nombre?' para '+v.cliente_nombre:''}`, 'success');
+      } else {
+        window._ventasDescuento = v.pct||0;
+        window._ventasMontoFijo = 0;
+        toast(`✓ Voucher aplicado: ${v.pct}% de descuento${v.cliente_nombre?' para '+v.cliente_nombre:''}`, 'success');
+      }
       ventasRenderTabla();
     } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
   function quitarVoucher() {
     window._ventasDescuento = 0;
+    window._ventasMontoFijo = 0;
     window._ventasVoucherCodigo = '';
+    window._ventasVoucherData = null;
     ventasRenderTabla();
     toast('Voucher removido','success');
   }
