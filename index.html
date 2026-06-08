@@ -8135,11 +8135,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           })()}
         </td>
         <td style="padding:9px 12px;text-align:center;">
-          ${c.telefono ? `<button onclick="abrirVoucher(${i})" title="Enviar voucher de descuento"
+          ${c.telefono ? `<button onclick="abrirVoucher('${c.id}')" title="Enviar voucher de descuento"
             style="background:none;border:1px solid #25D366;border-radius:7px;padding:4px 10px;font-size:12px;color:#25D366;cursor:pointer;">🎟️ Voucher</button>` : ''}
-          ${c.telefono ? `<button onclick="abrirSaludo(${i})" title="Enviar saludo"
+          ${c.telefono ? `<button onclick="abrirSaludo('${c.id}')" title="Enviar saludo"
             style="background:none;border:1px solid #8ab4f8;border-radius:7px;padding:4px 10px;font-size:12px;color:#8ab4f8;cursor:pointer;margin-left:4px;">👋 Saludo</button>` : ''}
-          ${c.telefono ? `<button onclick="verHistorialCliente(${i})" title="Ver historial de compras"
+          ${c.telefono ? `<button onclick="verHistorialCliente('${c.id}')" title="Ver historial de compras"
             style="background:none;border:1px solid #a78bfa;border-radius:7px;padding:4px 10px;font-size:12px;color:#a78bfa;cursor:pointer;margin-left:4px;">🛍️ Historial</button>` : ''}
           <button onclick="borrarCliente('${c.id}')" title="Eliminar cliente"
             style="background:none;border:1px solid #ff5a5a;border-radius:7px;padding:4px 8px;font-size:12px;color:#ff5a5a;cursor:pointer;margin-left:4px;">🗑️</button>
@@ -8307,8 +8307,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   // ── VOUCHER ───────────────────────────────────────────────────────────
-  function abrirVoucher(idx) {
-    const c = (window._clientesData||[])[idx];
+  function abrirVoucher(cid) {
+    const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     if (!c) return;
 
     const overlay = document.createElement('div');
@@ -8494,8 +8494,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
 
   // ── HISTORIAL DE COMPRAS POR CLIENTE ────────────────────────────────────
-  async function verHistorialCliente(idx) {
-    const c = (window._clientesData||[])[idx];
+  async function verHistorialCliente(cid) {
+    const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     if (!c || !c.telefono) return;
     const telNorm = c.telefono.replace(/[^0-9]/g,'');
 
@@ -8602,8 +8602,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   // ── SALUDO A CLIENTES ────────────────────────────────────────────────────
-  function abrirSaludo(idx) {
-    const c = (window._clientesData||[])[idx];
+  function abrirSaludo(cid) {
+    const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     if (!c) return;
 
     const overlay = document.createElement('div');
@@ -9236,10 +9236,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const myPdvIds = (currentUser?.role==='admin') ? pdvs.map(p=>String(p.id)) : (currentUser?.pdvs||[]).map(String);
       const pdvId = myPdvIds[0] || '';
       const pdvNombreActual = pdvs.find(p=>String(p.id)===pdvId)?.nombre || pdvId || '—';
-      const [cats, subcats, valsData] = await Promise.all([
+      const [cats, subcats, valsData, colsCfg] = await Promise.all([
         sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&order=orden.asc,created_at.asc&select=*`) || [],
         sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || [],
-        sbApi(`cashflow_vals?empresa_id=eq.${empresaActual}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=eq.${pdvId}&select=*`) || []
+        sbApi(`cashflow_vals?empresa_id=eq.${empresaActual}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=eq.${pdvId}&select=*`) || [],
+        sbApi(`cashflow_cols?empresa_id=eq.${empresaActual}&order=orden.asc&select=*`) || []
       ]);
 
       // Cargar config de egresos
@@ -9254,7 +9255,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       }
 
       const vals = {};
-      (valsData||[]).forEach(v => { vals[v.subcat_id] = v.valor; });
+      const colVals = {};
+      (valsData||[]).forEach(v => {
+        if (v.col_id) colVals[v.subcat_id+'_'+v.col_id] = v.formula || v.valor;
+        else vals[v.subcat_id] = v.valor;
+      });
 
       const fmt = n => parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
 
@@ -9313,6 +9318,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?empresa_id=eq.${empresaActual}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=eq.${pdvId}`, { method:'DELETE', headers:H });
 
       // Insertar valores con pdv_id
+      // Valores principales (monto por subcategoría)
       const rows = inputs
         .filter(x => x.input.value !== '' && !isNaN(parseFloat(x.input.value)))
         .map(x => ({
@@ -9322,6 +9328,27 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           dia, mes, anio,
           valor: parseFloat(x.input.value)
         }));
+
+      // Valores de columnas extra
+      const colInputsAll = document.querySelectorAll('[id^="egrop-col-"]');
+      colInputsAll.forEach(inp => {
+        const parts = inp.id.replace('egrop-col-','').split('-');
+        // id format: egrop-col-{subcatId}-{colId} but subcatId is uuid with dashes
+        // Find colId as last uuid segment
+        const colId = parts.slice(-5).join('-'); // uuid is 5 parts
+        const subcatId = parts.slice(0,-5).join('-');
+        if (inp.value.trim()) {
+          rows.push({
+            empresa_id: String(empresaActual),
+            subcat_id: subcatId,
+            col_id: colId,
+            pdv_id: pdvId,
+            dia, mes, anio,
+            formula: inp.value.trim(),
+            valor: parseFloat(inp.value)||0
+          });
+        }
+      });
 
       if (rows.length) {
         await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals`, { method:'POST', headers:H, body: JSON.stringify(rows) });
@@ -9467,6 +9494,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const mes = parseInt(document.getElementById('cf-mes')?.value) || new Date().getMonth()+1;
     const anio = parseInt(document.getElementById('cf-anio')?.value) || new Date().getFullYear();
     const diasEnMes = new Date(anio, mes, 0).getDate();
+    const diaDesde = 1;
+    const diaHasta = diasEnMes;
     const dias = Array.from({length: diasEnMes}, (_,i) => i+1);
     const diasSem = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
 
@@ -9474,166 +9503,111 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const [cats, subcats, valsData, colsCfg] = await Promise.all([
         sbApi('cashflow_cats?empresa_id=eq.'+empresaActual+'&order=orden.asc,created_at.asc&select=*') || [],
         sbApi('cashflow_subcats?empresa_id=eq.'+empresaActual+'&order=orden.asc,created_at.asc&select=*') || [],
-        sbApi('cashflow_vals?empresa_id=eq.'+empresaActual+'&mes=eq.'+mes+'&anio=eq.'+anio+'&select=*') || [],
+        sbApi('cashflow_vals?empresa_id=eq.'+empresaActual+'&mes=eq.'+mes+'&anio=eq.'+anio+'&select=*&limit=1000') || [],
         sbApi('cashflow_cols?empresa_id=eq.'+empresaActual+'&order=orden.asc&select=*') || []
       ]);
 
-      // Build vals map: subcat_id_dia -> valor, subcat_id_col_id -> valor extra
-      const vals = {};
-      (valsData||[]).forEach(v => {
-        // Para columnas extra (col_id), guardar el valor
-        if (v.col_id) vals[v.subcat_id+'_col_'+v.col_id] = v.formula || v.valor;
-      });
-
-      window._cfCats = cats;
-      window._cfSubcats = subcats;
-      window._cfVals = vals;
-      window._cfDias = dias;
-      window._cfMes = mes;
-      window._cfAnio = anio;
-      window._cfCols = colsCfg || [];
-
       if (!cats.length) {
-        cont.innerHTML = '<div class="empty-state">💹<p>No hay categorias. Hace clic en "+ Categoria" para empezar.</p></div>';
+        cont.innerHTML = '<div class="empty-state">💹<p>No hay categorias. Configuralas en ⚙️ Configuracion → Egresos.</p></div>';
         return;
       }
 
-      const fmt = n => {
-        const v = parseFloat(n);
-        if (isNaN(v) || v===0) return '';
-        return v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-      };
-
-      // Helper: evaluate formula for a subcat on a day or col
-      const evalFormula = (formula, subcatId, dia) => {
-        if (!formula || formula === '') return '';
-        // If it's just a number, return it
-        const num = parseFloat(formula);
-        if (!isNaN(num) && formula.trim() === String(num)) return num;
-        // Try to evaluate expression with cell references
-        // Refs: =SUM, =D5-D6, plain math with other subcats
-        try {
-          // Simple: replace any text references with 0 and eval
-          let expr = formula.replace(/[^0-9+\-*/().,%]/g, '');
-          return eval(expr) || 0;
-        } catch(e) { return 0; }
-      };
-
-      const getVal = (subcatId, d) => parseFloat(vals[subcatId+'_'+d]) || 0;
-      const getColVal = (subcatId, colId) => {
-        const v = vals[subcatId+'_col_'+colId];
-        if (!v && v!==0) return null;
-        return v;
-      };
-
-      // Calculate subcat total for a day (used by formula rows)
-      const subcatDayTotal = {};
-      subcats.forEach(s => {
-        dias.forEach(d => {
-          subcatDayTotal[s.id+'_'+d] = getVal(s.id, d);
-        });
+      const vals = {};
+      (valsData||[]).forEach(v => {
+        if (v.col_id) vals[v.subcat_id+'_col_'+v.col_id] = v.formula || v.valor;
       });
 
-      // Cat subtotals per day
+      // getVal: suma todos los valores para ese subcat/día (con y sin pdv_id)
+      console.log('valsData total:', (valsData||[]).length, 'con pdv_id:', (valsData||[]).filter(v=>v.pdv_id).length);
+      const getVal = (sid,d) => {
+        const allForDay = (valsData||[]).filter(v =>
+          String(v.subcat_id) === String(sid) &&
+          parseInt(v.dia) === parseInt(d) &&
+          !v.col_id
+        );
+        const opVals = allForDay.filter(v => v.pdv_id);
+        const manualVal = allForDay.find(v => !v.pdv_id);
+        const result = opVals.length > 0
+          ? opVals.reduce((s,v) => s + (parseFloat(v.valor)||0), 0)
+          : (manualVal ? parseFloat(manualVal.valor)||0 : 0);
+        if (result > 0) console.log('getVal', sid, d, '->', result, 'opVals:', opVals.length, 'manual:', manualVal?.valor);
+        return result;
+      };
+
+      const fmt = n => { const v=parseFloat(n); return (!isNaN(v)&&v!==0)?v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):''; };
+      const CW = 64;
+
       const catDayTot = {};
       cats.forEach(cat => {
         const mySubs = subcats.filter(s => s.cat_id === cat.id);
-        dias.forEach(d => {
-          catDayTot[cat.id+'_'+d] = mySubs.reduce((s,sub) => s + getVal(sub.id, d), 0);
-        });
+        dias.forEach(d => { catDayTot[cat.id+'_'+d] = mySubs.reduce((s,sub)=>s+getVal(sub.id,d),0); });
       });
 
-      // Extra cols eval per subcat
-      const evalColFormula = (formula, subcatId) => {
-        if (!formula) return null;
-        const n = parseFloat(formula);
-        if (!isNaN(n)) return n;
-        // Replace $TOTAL with row total
-        const rowTotal = dias.reduce((s,d) => s + getVal(subcatId, d), 0);
-        let expr = formula.replace(/\$TOTAL/g, rowTotal);
-        // Replace $D1..$D31 with day values
-        expr = expr.replace(/\$D(\d+)/g, (_, d) => getVal(subcatId, parseInt(d)));
-        try { return eval(expr); } catch(e) { return null; }
-      };
-
-      // Cell width
-      const CW = 64;
-      const TH = `<th style="padding:5px 4px;text-align:center;font-size:10px;color:var(--text-muted);font-family:var(--mono);min-width:${CW}px;border:1px solid var(--border);">`;
-
-      let html = `<table style="border-collapse:collapse;font-size:12px;min-width:max-content;table-layout:fixed;">
+      let cfRowNum = 0;
+      let html = `<table style="border-collapse:collapse;font-size:13px;min-width:max-content;table-layout:fixed;">
         <colgroup>
           <col style="width:180px;min-width:180px;">
-          ${dias.map(() => `<col style="width:${CW}px;">`).join('')}
+          ${dias.map(()=>`<col style="width:${CW}px;">`).join('')}
           <col style="width:90px;">
-          ${(colsCfg||[]).map(() => `<col style="width:90px;">`).join('')}
+          ${(colsCfg||[]).map(()=>`<col style="width:90px;">`).join('')}
           <col style="width:40px;">
         </colgroup>
         <thead>
-          <!-- Fila de letras de columna -->
           <tr style="background:#1a1a2e;">
             <th style="padding:3px 10px;font-size:10px;color:rgba(255,255,255,.3);border:1px solid var(--border);position:sticky;left:0;background:#1a1a2e;z-index:3;"></th>
-            ${dias.map((d,i) => '<th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);border:1px solid var(--border);">' + String.fromCharCode(65+i) + '</th>').join('')}
+            ${dias.map((_,i)=>`<th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);border:1px solid var(--border);">${String.fromCharCode(65+i)}</th>`).join('')}
             <th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);border:1px solid var(--border);">${String.fromCharCode(65+diasEnMes)}</th>
-            ${(colsCfg||[]).map((_,i) => '<th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(147,197,253,.5);font-family:var(--mono);border:1px solid var(--border);">' + String.fromCharCode(65+diasEnMes+1+i) + '</th>').join('')}
+            ${(colsCfg||[]).map((_,i)=>`<th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(147,197,253,.5);font-family:var(--mono);border:1px solid var(--border);">${String.fromCharCode(65+diasEnMes+1+i)}</th>`).join('')}
             <th style="border:1px solid var(--border);background:#1a1a2e;"></th>
           </tr>
           <tr style="background:var(--surface2);">
             <th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text-muted);border:1px solid var(--border);position:sticky;left:0;background:var(--surface2);z-index:3;">Categoría</th>
-            ${dias.map(d => {
-              const dow = new Date(anio, mes-1, d).getDay();
-              const esFinde = dow===0||dow===6;
-              return TH + `<div style="font-size:9px;opacity:.6;">${diasSem[dow]}</div><div style="${esFinde?'color:#a78bfa;font-weight:700;':''}">${d}</div></th>`;
-            }).join('')}
-            <th style="padding:5px 8px;text-align:right;font-size:10px;color:var(--accent);font-family:var(--mono);border:1px solid var(--border);min-width:90px;">TOTAL</th>
-            ${(colsCfg||[]).map(col => `<th style="padding:5px 6px;text-align:center;font-size:10px;color:#93c5fd;border:1px solid var(--border);min-width:90px;">${col.nombre}</th>`).join('')}
+            ${dias.map(d=>{const dow=new Date(anio,mes-1,d).getDay();const esFinde=dow===0||dow===6;return`<th style="padding:4px 2px;text-align:center;font-size:10px;min-width:${CW}px;border:1px solid var(--border);${esFinde?'color:#a78bfa;':'color:var(--text-muted);'}"><div style="font-size:9px;opacity:.6;">${diasSem[dow]}</div><div>${d}</div></th>`;}).join('')}
+            <th style="padding:5px 8px;text-align:right;font-size:10px;color:var(--accent);border:1px solid var(--border);">TOTAL</th>
+            ${(colsCfg||[]).map(col=>`<th style="padding:5px 6px;text-align:center;font-size:10px;color:#93c5fd;border:1px solid var(--border);">${col.nombre}</th>`).join('')}
             <th style="border:1px solid var(--border);width:40px;"></th>
           </tr>
         </thead>
         <tbody>`;
 
-      // Aplicar filtro de egresos
-      const cfFiltros = getCfCatsFiltro();
-      const catsFiltradas = cats.filter(cat => cfFiltros[cat.id] !== false);
-      let cfRowNum = 0;
-      catsFiltradas.forEach(cat => {
+      cats.forEach(cat => {
         const mySubs = subcats.filter(s => s.cat_id === cat.id);
         const isTotal = cat.tipo === 'total';
 
         if (isTotal) {
-          const expr = cat.formula || '';
+          cfRowNum++;
+          const expr = cat.formula||'';
           const catIds = expr.split(',').map(s=>s.trim()).filter(Boolean);
           let rowTotal = 0;
           html += `<tr style="background:rgba(200,240,74,.07);">
             <td style="padding:6px 10px;font-weight:800;color:var(--accent);position:sticky;left:0;background:rgba(200,240,74,.07);z-index:1;border:1px solid var(--border);">
-              ${cat.nombre}
+              <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>${cat.nombre}
               <button onclick="window.editarFormulaCF('${cat.id}','${cat.formula||''}')" style="background:none;border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;color:var(--text-muted);cursor:pointer;margin-left:5px;">⚙️</button>
             </td>
-            ${dias.map(d => {
-              let val = 0;
-              catIds.forEach(sid => {
-                const op = sid.match(/^[+\-*\/\%]/)?.[0] || '+';
-                const cleanId = sid.replace(/^[+\-*\/\%]/, '');
-                const catVal = catDayTot[cleanId+'_'+d] || 0;
-                if (op==='+') val+=catVal; else if (op==='-') val-=catVal;
-                else if (op==='*') val*=catVal; else if (op==='/') val=catVal?val/catVal:0;
-                else if (op==='%') val=val*catVal/100;
+            ${dias.map(d=>{
+              let val=0;
+              catIds.forEach(sid=>{
+                const op=sid.match(/^[+\-*\/%]/)?.[0]||'+';
+                const cleanId=sid.replace(/^[+\-*\/%]/,'');
+                const cv=catDayTot[cleanId+'_'+d]||0;
+                if(op==='+')val+=cv; else if(op==='-')val-=cv; else if(op==='*')val*=cv;
+                else if(op==='/')val=cv?val/cv:0; else if(op==='%')val=val*cv/100;
               });
-              rowTotal += val;
-              return `<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-weight:700;color:${val>0?'var(--accent)':val<0?'#ff5a5a':'var(--text-dim)'};border:1px solid var(--border);">${fmt(val)}</td>`;
+              rowTotal+=val;
+              const esFinde2=new Date(anio,mes-1,d).getDay()===0||new Date(anio,mes-1,d).getDay()===6;
+              return`<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-weight:700;color:${val>0?'var(--accent)':val<0?'#ff5a5a':'var(--text-dim)'};border:1px solid var(--border);background:${esFinde2?'rgba(167,139,250,.05)':'transparent'};">${val?'$'+fmt(val):''}</td>`;
             }).join('')}
-            <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:900;color:${rowTotal>=0?'var(--accent)':'#ff5a5a'};border:1px solid var(--border);">${fmt(rowTotal)}</td>
-            ${(colsCfg||[]).map(() => '<td style="border:1px solid var(--border);"></td>').join('')}
+            <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:900;color:${rowTotal>=0?'var(--accent)':'#ff5a5a'};border:1px solid var(--border);">${rowTotal?'$'+fmt(rowTotal):''}</td>
+            ${(colsCfg||[]).map(()=>'<td style="border:1px solid var(--border);"></td>').join('')}
             <td style="border:1px solid var(--border);text-align:center;"><button onclick="window.eliminarCategoriaCF('${cat.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:11px;">✕</button></td>
           </tr>`;
           return;
         }
 
-        // Category header row
         cfRowNum++;
         html += `<tr style="background:var(--surface2);">
           <td colspan="${diasEnMes+2+(colsCfg||[]).length+1}" style="padding:7px 10px;font-weight:800;font-size:12px;color:var(--text);position:sticky;left:0;background:var(--surface2);z-index:1;border:1px solid var(--border);">
-            <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>
-            📁 ${cat.nombre}
+            <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>📁 ${cat.nombre}
             <button onclick="window.agregarSubcatCF('${cat.id}')" style="background:none;border:1px solid var(--border);border-radius:3px;padding:1px 7px;font-size:10px;color:var(--text-muted);cursor:pointer;margin-left:6px;">+ Sub</button>
             <button onclick="window.eliminarCategoriaCF('${cat.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:11px;margin-left:3px;">✕</button>
           </td>
@@ -9641,33 +9615,36 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
         let catTot = 0;
         const catDiaSums = {};
-        dias.forEach(d => catDiaSums[d] = 0);
+        dias.forEach(d => catDiaSums[d]=0);
 
         mySubs.forEach(sub => {
-          let subTotal = 0;
           cfRowNum++;
+          let subTotal = 0;
           html += `<tr>
             <td style="padding:5px 10px 5px 20px;color:var(--text);font-size:12px;position:sticky;left:0;background:var(--surface);z-index:1;border:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">
               <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:4px;">${cfRowNum}</span>${sub.nombre}
               <button onclick="window.eliminarSubcatCF('${sub.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:10px;margin-left:3px;">✕</button>
             </td>
-            ${dias.map(d => {
-              const v = vals[sub.id+'_'+d];
-              subTotal += parseFloat(v)||0;
-              catDiaSums[d] += parseFloat(v)||0;
-              return `<td style="padding:2px 2px;border:1px solid var(--border);">
-                <input type="number" step="any" value="${v||''}" placeholder=""
+            ${dias.map(d=>{
+              const v=getVal(sub.id,d);
+              subTotal+=v;
+              catDiaSums[d]+=v;
+              // Get direct value (sin pdv_id) para edicion
+              const vDirect = (valsData||[]).find(x=>String(x.subcat_id)===String(sub.id)&&parseInt(x.dia)===parseInt(d)&&!x.pdv_id&&!x.col_id);
+              const vEdit = vDirect ? parseFloat(vDirect.valor)||0 : 0;
+              const esFinde = new Date(anio,mes-1,d).getDay()===0||new Date(anio,mes-1,d).getDay()===6;
+              return`<td style="padding:2px 2px;border:1px solid var(--border);background:${esFinde?'rgba(167,139,250,.05)':'transparent'};">
+                <input type="number" step="any" value="${vEdit||''}" placeholder=""
                   onchange="window.guardarValCF('${sub.id}',${d},${mes},${anio},this.value)"
-                  style="width:100%;background:transparent;border:none;padding:4px 5px;font-size:11px;font-family:var(--mono);color:var(--text);text-align:right;outline:none;"
-                  onfocus="this.style.background='rgba(200,240,74,.1)'" onblur="this.style.background='transparent'">
+                  style="width:100%;background:transparent;border:none;padding:5px 5px;font-size:12px;font-family:var(--mono);color:${v>0?'var(--accent)':'var(--text)'};text-align:right;outline:none;font-weight:${v>0?'600':'400'};"
+                  onfocus="this.style.background='rgba(200,240,74,.12)';this.style.color='var(--text)'" onblur="this.style.background='transparent'">
               </td>`;
             }).join('')}
-            <td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-weight:600;color:var(--text);border:1px solid var(--border);">${fmt(subTotal)}</td>
-            ${(colsCfg||[]).map(col => {
-              const colVal = getColVal(sub.id, col.id);
-              const fmtColVal = colVal !== null ? evalColFormula(String(colVal), sub.id) : null;
-              return `<td style="padding:2px 2px;border:1px solid var(--border);">
-                <input type="text" value="${colVal!==null?colVal:''}" placeholder=""
+            <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:700;color:${subTotal>0?'var(--accent)':'var(--text)'};border:1px solid var(--border);">${subTotal?'$'+fmt(subTotal):''}</td>
+            ${(colsCfg||[]).map(col=>{
+              const cv=vals[sub.id+'_col_'+col.id];
+              return`<td style="padding:2px 2px;border:1px solid var(--border);">
+                <input type="text" value="${cv!==null&&cv!==undefined?cv:''}" placeholder=""
                   onchange="window.guardarColValCF('${sub.id}','${col.id}',${mes},${anio},this.value)"
                   style="width:100%;background:transparent;border:none;padding:4px 5px;font-size:11px;font-family:var(--mono);color:#93c5fd;text-align:right;outline:none;"
                   onfocus="this.style.background='rgba(147,197,253,.1)'" onblur="this.style.background='transparent'">
@@ -9675,17 +9652,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             }).join('')}
             <td style="border:1px solid var(--border);"></td>
           </tr>`;
-          catTot += subTotal;
+          catTot+=subTotal;
         });
 
-        // Subtotal row
         cfRowNum++;
         html += `<tr style="background:rgba(255,255,255,.03);">
           <td style="padding:5px 10px;font-weight:700;font-size:11px;color:var(--text-muted);position:sticky;left:0;background:rgba(255,255,255,.03);z-index:1;border:1px solid var(--border);">
-            <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>Subtotal ${cat.nombre}</td>
-          ${dias.map(d => `<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-muted);border:1px solid var(--border);">${catDiaSums[d]?fmt(catDiaSums[d]):''}</td>`).join('')}
-          <td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--text);border:1px solid var(--border);">${fmt(catTot)}</td>
-          ${(colsCfg||[]).map(() => '<td style="border:1px solid var(--border);"></td>').join('')}
+            <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>Subtotal ${cat.nombre}
+          </td>
+          ${dias.map(d=>{const esFinde=new Date(anio,mes-1,d).getDay()===0||new Date(anio,mes-1,d).getDay()===6;return`<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-muted);border:1px solid var(--border);background:${esFinde?'rgba(167,139,250,.05)':'transparent'};">${catDiaSums[d]?'$'+fmt(catDiaSums[d]):''}</td>`;}).join('')}
+          <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--text);border:1px solid var(--border);">${catTot?'$'+fmt(catTot):''}</td>
+          ${(colsCfg||[]).map(()=>'<td style="border:1px solid var(--border);"></td>').join('')}
           <td style="border:1px solid var(--border);"></td>
         </tr>`;
       });
@@ -9704,8 +9681,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     try {
       const HD = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
       const HI = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-      // Borrar registro existente sin pdv_id
-      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?empresa_id=eq.${empresaActual}&subcat_id=eq.${subcatId}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=is.null`, { method:'DELETE', headers:HD });
+      // Borrar TODOS los registros de ese subcat/día (con y sin pdv_id, sin col_id)
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?empresa_id=eq.${empresaActual}&subcat_id=eq.${subcatId}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&col_id=is.null`, { method:'DELETE', headers:HD });
       if (!isNaN(val) && valor !== '') {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals`, { method:'POST', headers:HI,
           body: JSON.stringify({ empresa_id: String(empresaActual), subcat_id: String(subcatId), dia: parseInt(dia), mes: parseInt(mes), anio: parseInt(anio), valor: val, pdv_id: null }) });
@@ -10779,23 +10756,20 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   async function renderCfgEgresos() {
-    // Reusar la lógica de initEgresos pero en el div de configuración
     const body = document.getElementById('egresos-body-cfg');
     if (!body) return;
     body.innerHTML = '<div style="text-align:center;padding:32px;"><span class="spin"></span></div>';
     try {
-      const [cats, subcats] = await Promise.all([
-        sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&order=orden.asc,created_at.asc&select=*`) || [],
+      const [cats, subcats, colsCfg] = await Promise.all([
+        sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || [],
         sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || []
+        ,sbApi(`cashflow_cols?empresa_id=eq.${empresaActual}&order=orden.asc&select=*`) || []
       ]);
-      if (!cats.length) {
-        body.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:12px 0;">No hay categorías en Cashflow todavía.</div>';
-        return;
-      }
+
       const egCfgKey = `egresos_cats_cfg_${empresaActual}`;
       let filtros = {};
       try { filtros = JSON.parse(localStorage.getItem(egCfgKey)||'{}'); } catch(e) {}
-      window._egresosCats = cats;
+      window._egresosCats = cats.filter(c=>c.tipo!=='total');
       window._egresosSubcats = subcats;
 
       const toggleHtml = (id, activo) =>
@@ -10803,31 +10777,52 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div style="position:absolute;top:3px;${activo?'right:3px':'left:3px'};width:14px;height:14px;border-radius:50%;background:${activo?'#000':'var(--text-muted)'};" ></div>
         </div>`;
 
-      let html = `<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Activá las categorías y subcategorías que el operador puede ingresar en Egresos.</p>
-        <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <button onclick="activarTodosEgresos();renderCfgEgresos();" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;">✅ Todos</button>
-          <button onclick="desactivarTodosEgresos();renderCfgEgresos();" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;">❌ Ninguno</button>
+      let html = `
+        <!-- Botones de acción -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          <button onclick="window.agregarCategoriaCF();setTimeout(renderCfgEgresos,500);" style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">+ Categoría</button>
+          <button onclick="window.configurarColsCF();setTimeout(renderCfgEgresos,500);" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">⚙️ Columnas extra</button>
+          <button onclick="activarTodosEgresos();renderCfgEgresos();" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">✅ Activar todos</button>
+          <button onclick="desactivarTodosEgresos();renderCfgEgresos();" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">❌ Desactivar todos</button>
         </div>
+
+        <!-- Columnas extra configuradas -->
+        ${colsCfg.length ? `<div style="margin-bottom:16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Columnas extra</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${colsCfg.map(col=>`<span style="background:rgba(147,197,253,.15);color:#93c5fd;border:1px solid rgba(147,197,253,.3);border-radius:6px;padding:4px 10px;font-size:12px;">${col.nombre}</span>`).join('')}
+          </div>
+        </div>` : ''}
+
+        <!-- Categorías y subcategorías -->
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Toggle = visible para operador en Egresos</div>
         <div style="display:flex;flex-direction:column;gap:8px;">`;
 
       cats.forEach(cat => {
         const mySubs = subcats.filter(s => s.cat_id === cat.id);
-        const catActivo = filtros['cat_'+cat.id] !== false;
-        html += `<div style="background:var(--surface2);border:1px solid ${catActivo?'var(--accent)':'var(--border)'};border-radius:10px;overflow:hidden;">
-          <div style="padding:9px 14px;display:flex;align-items:center;justify-content:space-between;">
-            <span style="font-size:13px;font-weight:700;color:${catActivo?'var(--text)':'var(--text-dim)'};">📁 ${cat.nombre}</span>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:11px;color:${catActivo?'var(--accent)':'var(--text-dim)'};">${catActivo?'Activa':'Inactiva'}</span>
-              ${toggleHtml('cat_'+cat.id, catActivo)}
+        const isTotal = cat.tipo === 'total';
+        const catActivo = !isTotal && filtros['cat_'+cat.id] !== false;
+
+        html += `<div style="background:var(--surface2);border:2px solid ${isTotal?'rgba(200,240,74,.3)':catActivo?'var(--accent)':'var(--border)'};border-radius:10px;overflow:hidden;">
+          <div style="padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;">
+              <span style="font-size:13px;font-weight:800;color:${isTotal?'var(--accent)':catActivo?'var(--text)':'var(--text-dim)'};">${isTotal?'📊':'📁'} ${cat.nombre}</span>
+              ${isTotal ? '<span style="font-size:10px;background:rgba(200,240,74,.15);color:var(--accent);border-radius:4px;padding:2px 6px;">TOTAL</span>' : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              ${!isTotal ? `<button onclick="window.agregarSubcatCF('${cat.id}');setTimeout(renderCfgEgresos,500);" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:10px;color:var(--text-muted);cursor:pointer;">+ Sub</button>` : ''}
+              ${isTotal ? `<button onclick="window.editarFormulaCF('${cat.id}','${cat.formula||''}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:10px;color:var(--text-muted);cursor:pointer;">⚙️</button>` : ''}
+              <button onclick="window.eliminarCategoriaCF('${cat.id}');setTimeout(renderCfgEgresos,500);" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:13px;">✕</button>
+              ${!isTotal ? toggleHtml('cat_'+cat.id, catActivo) : ''}
             </div>
           </div>
-          ${mySubs.length ? `<div style="padding:6px 14px 10px 28px;border-top:1px solid var(--border);">
+          ${mySubs.length ? `<div style="padding:6px 14px 10px 24px;border-top:1px solid var(--border);">
             ${mySubs.map(sub => {
               const subActivo = filtros['sub_'+sub.id] !== false;
               return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
-                <span style="font-size:12px;color:${subActivo?'var(--text-muted)':'var(--text-dim)'};">— ${sub.nombre}</span>
+                <span style="font-size:12px;color:${subActivo?'var(--text)':'var(--text-dim)'};">— ${sub.nombre}</span>
                 <div style="display:flex;align-items:center;gap:6px;">
-                  <span style="font-size:10px;color:${subActivo?'var(--accent)':'var(--text-dim)'};">${subActivo?'✓':'✗'}</span>
+                  <button onclick="window.eliminarSubcatCF('${sub.id}');setTimeout(renderCfgEgresos,500);" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:11px;">✕</button>
                   ${toggleHtml('sub_'+sub.id, subActivo)}
                 </div>
               </div>`;
@@ -10835,6 +10830,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </div>` : ''}
         </div>`;
       });
+
+      if (!cats.length) html += '<div style="color:var(--text-dim);font-size:13px;padding:12px 0;">No hay categorías. Hacé clic en "+ Categoría" para empezar.</div>';
 
       html += '</div>';
       body.innerHTML = html;
