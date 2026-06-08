@@ -3807,7 +3807,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='pedidos') { await loadInformesPedidos(range); return; }
     if (seccion==='desperdicios') { await loadInformesDesperdicios(range); return; }
     if (seccion==='ventas')       { await loadInformesVentas(range); return; }
-    if (seccion==='clientes')     { await loadInformesClientes(); return; }
+    if (seccion==='clientes')     { await loadInformesClientes(range); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
     if (seccion==='tarjetas')     { await loadInformesTarjetas(range.desde, range.hasta); return; }
@@ -8024,7 +8024,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     } catch(e) { cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`; }
   }
 
-  async function loadInformesClientes() {
+  async function loadInformesClientes(range) {
     const body = document.getElementById('inf-body');
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando clientes...</p></div>';
 
@@ -8036,11 +8036,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       ]);
       window._clientesPdvs = pdvs;
       window._vouchersData = vouchers || [];
-      // Precargar ventas del mes para conteo de visitas
+      // Cargar ventas del rango seleccionado para conteo de visitas
       try {
-        const hoy = new Date();
-        const desde = hoy.getFullYear()+'-'+(String(hoy.getMonth()+1).padStart(2,'0'))+'-01';
-        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&select=cliente_tel,fecha&order=fecha.desc&limit=5000`) || [];
+        const desde = range?.desde || (()=>{ const h=new Date(); return h.getFullYear()+'-'+(String(h.getMonth()+1).padStart(2,'0'))+'-01'; })();
+        const hasta = range?.hasta || new Date().toISOString().slice(0,10);
+        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cliente_tel,fecha&order=fecha.desc&limit=5000`) || [];
         window._ventasClientesCache = ventasMes;
       } catch(e) { window._ventasClientesCache = []; }
 
