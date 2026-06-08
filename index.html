@@ -488,6 +488,7 @@
               <option value="pedidosInt">📦 Pedidos internos</option>
               <option value="desperdicios">🗑️ Desperdicios</option>
               <option value="ventas">🛒 Ventas</option>
+              <option value="cantVentas">📊 Cantidad de ventas</option>
               <option value="clientes">👥 Clientes</option>
             </select>
           </div>
@@ -3980,6 +3981,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='pedidos') { await loadInformesPedidos(range); return; }
     if (seccion==='desperdicios') { await loadInformesDesperdicios(range); return; }
     if (seccion==='ventas')       { await loadInformesVentas(range); return; }
+    if (seccion==='cantVentas')   { await loadInformesCantVentas(range); return; }
     if (seccion==='clientes')     { await loadInformesClientes(range); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
@@ -6713,10 +6715,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                        document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1' ? 'tarjeta' : 'efectivo';
     const clienteTelVenta = window._ventasClienteTelGuardar || (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
     const clienteNombreVenta = window._ventasClienteNombreGuardar || document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    const ticketId = `${fecha}_${pdvId}_${Date.now()}`;
     const rows = _ventasItems.map(item => ({
       empresa_id: String(empresaActual),
       pdv_id: String(pdvId),
       fecha,
+      ticket_id: ticketId,
       prod_id: item.prodId,
       prod_nombre: item.prod,
       gusto_id: item.gustoId,
@@ -7365,6 +7369,98 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
 
   // ── INFORME VENTAS ────────────────────────────────────────────────────
+  async function loadInformesCantVentas(range) {
+    const body = document.getElementById('inf-body');
+    body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando...</p></div>';
+    try {
+      const desde = range?.desde;
+      const hasta = range?.hasta;
+      const periodo = document.getElementById('inf-periodo')?.value || 'diario';
+
+      const [pdvs, ventas] = await Promise.all([
+        getPdv(),
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,ticket_id&order=fecha.asc&limit=50000`) || []
+      ]);
+
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre||p.name||p.id);
+      const pdvIds = pdvs.map(p=>String(p.id));
+
+      if (!ventas.length) {
+        body.innerHTML = '<div class="empty-state">📊<p>Sin ventas en el período seleccionado.</p></div>';
+        return;
+      }
+
+      const periodoKey = (fecha) => {
+        const d = new Date(fecha+'T00:00:00');
+        if (periodo==='diario')  return fecha;
+        if (periodo==='semanal') { const ini=new Date(d); ini.setDate(d.getDate()-d.getDay()+1); return ini.toISOString().slice(0,10); }
+        if (periodo==='mensual') return fecha.slice(0,7);
+        if (periodo==='anual')   return fecha.slice(0,4);
+        return fecha;
+      };
+
+      const periodoLabel = (key) => {
+        if (periodo==='diario') return new Date(key+'T00:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+        if (periodo==='semanal') { const d=new Date(key+'T00:00:00'); const fin=new Date(d); fin.setDate(d.getDate()+6); return `${d.toLocaleDateString('es-AR',{day:'numeric',month:'short'})} - ${fin.toLocaleDateString('es-AR',{day:'numeric',month:'short'})}`; }
+        if (periodo==='mensual') { const [y,m]=key.split('-'); return new Date(y,m-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'}); }
+        return key;
+      };
+
+      // Agrupar tickets únicos por período y PDV
+      const gruposSet = {};
+      ventas.forEach(v => {
+        const k = periodoKey(v.fecha);
+        const pid = String(v.pdv_id);
+        const tkey = v.ticket_id || `${v.fecha}_${pid}_${Math.random()}`;
+        if (!gruposSet[k]) gruposSet[k] = {};
+        if (!gruposSet[k][pid]) gruposSet[k][pid] = new Set();
+        gruposSet[k][pid].add(tkey);
+      });
+      // Convertir Sets a conteos
+      const grupos = {};
+      Object.keys(gruposSet).forEach(k => {
+        grupos[k] = {};
+        Object.keys(gruposSet[k]).forEach(pid => { grupos[k][pid] = gruposSet[k][pid].size; });
+      });
+
+      const keys = Object.keys(grupos).sort();
+      const fmt = n => n.toLocaleString('es-AR');
+
+      const totPdv = {};
+      pdvIds.forEach(pid => totPdv[pid]=0);
+      keys.forEach(k => pdvIds.forEach(pid => { totPdv[pid]+=(grupos[k][pid]||0); }));
+      const totGeneral = Object.values(totPdv).reduce((s,v)=>s+v,0);
+
+      let html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:var(--surface2);">
+          <th style="padding:10px 14px;text-align:left;border:1px solid var(--border);position:sticky;left:0;background:var(--surface2);font-size:11px;color:var(--text-muted);text-transform:uppercase;">Período</th>
+          ${pdvIds.map(pid=>`<th style="padding:10px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:var(--accent);">${pdvMap[pid]||pid}</th>`).join('')}
+          <th style="padding:10px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:var(--text-muted);text-transform:uppercase;">Total</th>
+        </tr></thead><tbody>`;
+
+      keys.forEach(k => {
+        const totFila = pdvIds.reduce((s,pid)=>s+(grupos[k][pid]||0),0);
+        html += `<tr>
+          <td style="padding:8px 14px;border:1px solid var(--border);position:sticky;left:0;background:var(--surface);font-weight:600;">${periodoLabel(k)}</td>
+          ${pdvIds.map(pid=>`<td style="padding:8px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);">${fmt(grupos[k][pid]||0)}</td>`).join('')}
+          <td style="padding:8px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:700;color:var(--accent);">${fmt(totFila)}</td>
+        </tr>`;
+      });
+
+      html += `<tr style="background:rgba(200,240,74,.07);font-weight:800;">
+        <td style="padding:10px 14px;border:1px solid var(--border);position:sticky;left:0;background:rgba(200,240,74,.07);color:var(--accent);font-size:12px;text-transform:uppercase;">TOTAL</td>
+        ${pdvIds.map(pid=>`<td style="padding:10px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-size:14px;color:var(--accent);">${fmt(totPdv[pid])}</td>`).join('')}
+        <td style="padding:10px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-size:16px;font-weight:900;color:var(--accent);">${fmt(totGeneral)}</td>
+      </tr></tbody></table></div>`;
+
+      body.innerHTML = html;
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+      console.error(e);
+    }
+  }
+
   async function loadInformesVentas(range) {
     const body = document.getElementById('inf-body');
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando ventas...</p></div>';
