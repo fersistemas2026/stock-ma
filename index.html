@@ -9512,12 +9512,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (togState.tarjetas === undefined) togState.tarjetas = true;
     if (togState.ventas   === undefined) togState.ventas   = true;
     if (togState.buzon    === undefined) togState.buzon    = true;
+    if (togState.pedidos  === undefined) togState.pedidos  = true;
 
     const toggleDefs = [
       { key:'z',        label:'📋 Informe Z',  color:'#a78bfa' },
       { key:'tarjetas', label:'💳 Tarjetas',    color:'#93c5fd' },
       { key:'ventas',   label:'🛒 Ventas',      color:'var(--accent)' },
       { key:'buzon',    label:'📬 Buzón',       color:'#fb923c' },
+      { key:'pedidos',  label:'📦 Pedidos',     color:'#34d399' },
     ];
     if (togglesEl) {
       togglesEl.innerHTML = toggleDefs.map(t => `
@@ -9534,7 +9536,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     try {
       const [pdvs, cajas, ventas, buzon] = await Promise.all([
         getPdv(),
-        togState.z || togState.tarjetas
+        togState.z || togState.tarjetas || togState.pedidos
           ? sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&tipo=eq.cierre&select=*`) || []
           : Promise.resolve([]),
         togState.ventas
@@ -9553,6 +9555,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const totTarjetas = togState.tarjetas ? cajas.reduce((s,x)=>s+parseFloat(x.tarjetas||0),0)  : 0;
       const totVentas   = togState.ventas   ? ventas.reduce((s,x)=>s+(parseFloat(x.precio||0)*parseFloat(x.cantidad||1)),0) : 0;
       const totBuzon    = togState.buzon    ? buzon.reduce((s,x)=>s+parseFloat(x.monto||0),0)     : 0;
+      const totPedidos  = togState.pedidos  ? cajas.reduce((s,x)=>s+parseFloat(x.pedidos||0),0)   : 0;
 
       const pdvIds = [...new Set([
         ...cajas.map(x=>String(x.pdv_id)),
@@ -9565,13 +9568,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         return;
       }
 
-      const colorMap = { z:'#a78bfa', tarjetas:'#93c5fd', ventas:'var(--accent)', buzon:'#fb923c' };
+      const colorMap = { z:'#a78bfa', tarjetas:'#93c5fd', ventas:'var(--accent)', buzon:'#fb923c', pedidos:'#34d399' };
 
       let summaryHtml = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">`;
       if (togState.z)        summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.z};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.z};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Informe Z</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.z};margin-top:4px;">${fmt(totZ)}</div></div>`;
       if (togState.tarjetas) summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.tarjetas};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.tarjetas};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Tarjetas</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.tarjetas};margin-top:4px;">${fmt(totTarjetas)}</div></div>`;
       if (togState.ventas)   summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.ventas};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.ventas};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Ventas</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.ventas};margin-top:4px;">${fmt(totVentas)}</div></div>`;
       if (togState.buzon)    summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.buzon};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.buzon};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Buzón</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.buzon};margin-top:4px;">${fmt(totBuzon)}</div></div>`;
+      if (togState.pedidos)  summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.pedidos};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.pedidos};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Pedidos</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.pedidos};margin-top:4px;">${fmt(totPedidos)}</div></div>`;
       summaryHtml += `</div>`;
 
       let tableHtml = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -9581,6 +9585,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           ${togState.tarjetas ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.tarjetas};">Tarjetas</th>` : ''}
           ${togState.ventas   ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.ventas};">Ventas</th>` : ''}
           ${togState.buzon    ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.buzon};">Buzón</th>` : ''}
+          ${togState.pedidos  ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.pedidos};">Pedidos</th>` : ''}
           <th style="padding:9px 12px;text-align:center;border:1px solid var(--border);font-size:11px;color:var(--text-muted);">→ Cashflow</th>
         </tr></thead><tbody>`;
 
@@ -9593,12 +9598,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const vTarjetas = togState.tarjetas ? cajasPdv.reduce((s,x)=>s+parseFloat(x.tarjetas||0),0)  : null;
         const vVentas   = togState.ventas   ? ventasPdv.reduce((s,x)=>s+(parseFloat(x.precio||0)*parseFloat(x.cantidad||1)),0) : null;
         const vBuzon    = togState.buzon    ? buzonPdv.reduce((s,x)=>s+parseFloat(x.monto||0),0)     : null;
+        const vPedidos  = togState.pedidos  ? cajasPdv.reduce((s,x)=>s+parseFloat(x.pedidos||0),0)   : null;
         // Guardar datos del PDV en variable global para el modal
         window._ingDatos = window._ingDatos || {};
         const pidKey = 'pdv_' + pid;
         window._ingDatos[pidKey] = { pid, pdvNombre, fecha, togState,
           cajasPdv: cajasPdv.map(x=>({turno:x.turno||'-',z:parseFloat(x.reporte_z||0),tarj:parseFloat(x.tarjetas||0)})),
-          vZ, vTarjetas, vVentas, vBuzon };
+          vZ, vTarjetas, vVentas, vBuzon, vPedidos };
 
         tableHtml += `<tr>
           <td style="padding:9px 14px;border:1px solid var(--border);font-weight:700;">🏪 ${pdvNombre}</td>
@@ -9606,6 +9612,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           ${togState.tarjetas ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.tarjetas};">${fmt(vTarjetas)}</td>` : ''}
           ${togState.ventas   ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.ventas};">${fmt(vVentas)}</td>` : ''}
           ${togState.buzon    ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.buzon};">${fmt(vBuzon)}</td>` : ''}
+          ${togState.pedidos  ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.pedidos};">${fmt(vPedidos)}</td>` : ''}
           <td style="padding:6px 10px;text-align:center;border:1px solid var(--border);">
             <button onclick="window.ingEnviarACashflow('${pidKey}')"
               style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
@@ -9621,6 +9628,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         ${togState.tarjetas ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.tarjetas};">${fmt(totTarjetas)}</td>` : ''}
         ${togState.ventas   ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.ventas};">${fmt(totVentas)}</td>` : ''}
         ${togState.buzon    ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.buzon};">${fmt(totBuzon)}</td>` : ''}
+        ${togState.pedidos  ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.pedidos};">${fmt(totPedidos)}</td>` : ''}
         <td style="border:1px solid var(--border);"></td>
       </tr></tbody></table></div>`;
 
@@ -9643,7 +9651,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   window.ingEnviarACashflow = async function ingEnviarACashflow(pidKey) {
     const datos = (window._ingDatos || {})[pidKey];
     if (!datos) { toast('Error: sin datos del PDV','error'); return; }
-    const { pid: pdvId, pdvNombre, fecha, togState, cajasPdv, vZ, vTarjetas, vVentas, vBuzon } = datos;
+    const { pid: pdvId, pdvNombre, fecha, togState, cajasPdv, vZ, vTarjetas, vVentas, vBuzon, vPedidos } = datos;
 
     const subcats = await sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&select=id,nombre,cat_id`) || [];
     const cats    = await sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&select=id,nombre`) || [];
@@ -9687,6 +9695,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       { key:'tarjetas', label:'💳 Tarjetas',    val:togState.tarjetas ? finalTarjetas : null, color:'#93c5fd' },
       { key:'ventas',   label:'🛒 Ventas',      val:togState.ventas   ? vVentas       : null, color:'var(--accent)' },
       { key:'buzon',    label:'📬 Buzón',       val:togState.buzon    ? vBuzon        : null, color:'#fb923c' },
+      { key:'pedidos',  label:'📦 Pedidos',     val:togState.pedidos  ? vPedidos      : null, color:'#34d399' },
     ].filter(x => x.val !== null);
 
     window._ingPendiente = { items, dia, mes, anio, pdvId, dests: {}, cajasPdv, vZ, vTarjetas, modo: 'suma', togState };
