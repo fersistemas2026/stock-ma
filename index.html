@@ -963,6 +963,8 @@
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">🗑️ Desperdicios</button>
           <button id="cfg-tab-btn-egresos" onclick="switchCfgTab('egresos')"
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📊 Egresos</button>
+          <button id="cfg-tab-btn-seguridad" onclick="switchCfgTab('seguridad')"
+            style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">🔒 Seguridad</button>
         </div>
 
         <!-- Tab Mensajes -->
@@ -1012,6 +1014,63 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
 
         <!-- Tab Egresos -->
+        <div id="cfg-tab-seguridad" style="display:none;max-width:520px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px;">🔒 Seguridad de sesión</div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Tiempo de inactividad (minutos)</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="number" id="sec-timeout" min="1" max="480" value="5"
+                  style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;">
+                <span style="font-size:12px;color:var(--text-muted);">minutos sin actividad cierra la sesión</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Intentos fallidos antes de bloquear</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="number" id="sec-intentos" min="1" max="20" value="5"
+                  style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;">
+                <span style="font-size:12px;color:var(--text-muted);">intentos incorrectos bloquean el acceso</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Tiempo de bloqueo (minutos)</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="number" id="sec-bloqueo" min="1" max="60" value="15"
+                  style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;">
+                <span style="font-size:12px;color:var(--text-muted);">minutos bloqueado tras superar intentos</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Clave maestra de desbloqueo</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="password" id="sec-clave-maestra" placeholder="Clave secreta" maxlength="30"
+                  style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;">
+                <span style="font-size:12px;color:var(--text-muted);">se usa en el login bloqueado</span>
+              </div>
+            </div>
+
+            <button onclick="window.guardarConfigSeguridad()"
+              style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:11px 24px;font-size:14px;font-weight:800;cursor:pointer;margin-top:4px;">
+              💾 Guardar configuración
+            </button>
+            <div id="sec-status" style="font-size:12px;color:#6ee7b7;display:none;">✓ Configuración guardada</div>
+
+            <div style="border-top:1px solid var(--border);padding-top:16px;">
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">🔓 Desbloqueo manual</div>
+              <div id="sec-estado-bloqueo" style="font-size:12px;color:var(--text-muted);margin-bottom:10px;"></div>
+              <button onclick="window.desbloquearManual()"
+                style="background:none;border:1px solid #ff5a5a;color:#ff5a5a;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">
+                🔓 Desbloquear ahora
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div id="cfg-tab-egresos" style="display:none;max-width:720px;">
           <div id="egresos-body-cfg"></div>
         </div>
@@ -1295,12 +1354,115 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   // ── SESSION ───────────────────────────────────────────────────────────
   let currentUser = null;
 
+
+  // ── SEGURIDAD ─────────────────────────────────────────────────────────
+
+  function getSecConfig() {
+    try { return JSON.parse(localStorage.getItem('sec_config_'+empresaActual)||'{}'); } catch(e) { return {}; }
+  }
+
+  window.guardarConfigSeguridad = function() {
+    const timeout  = parseInt(document.getElementById('sec-timeout')?.value)  || 5;
+    const intentos = parseInt(document.getElementById('sec-intentos')?.value) || 5;
+    const bloqueo  = parseInt(document.getElementById('sec-bloqueo')?.value)  || 15;
+    const claveMaestra = document.getElementById('sec-clave-maestra')?.value.trim() || '';
+    const prevCfg = getSecConfig();
+    const cfg = { timeout, intentos, bloqueo, claveMaestra: claveMaestra || prevCfg.claveMaestra || '' };
+    localStorage.setItem('sec_config_'+empresaActual, JSON.stringify(cfg));
+    resetInactivityTimer();
+    const st = document.getElementById('sec-status');
+    if (st) { st.style.display='block'; setTimeout(()=>st.style.display='none', 2000); }
+    // Limpiar campo clave por seguridad
+    const cm = document.getElementById('sec-clave-maestra');
+    if (cm) cm.value = '';
+    toast('✓ Configuración de seguridad guardada','success');
+  };
+
+  window.desbloquearManual = function() {
+    resetLoginAttempts();
+    const el = document.getElementById('sec-estado-bloqueo');
+    if (el) el.innerHTML = '<span style="color:#6ee7b7;">✓ Desbloqueado correctamente</span>';
+    toast('✓ Acceso desbloqueado','success');
+  };
+
+  // ── TIMEOUT DE INACTIVIDAD ────────────────────────────────────────────
+  let _inactivityTimer = null;
+
+  function resetInactivityTimer() {
+    if (_inactivityTimer) clearTimeout(_inactivityTimer);
+    if (!currentUser) return;
+    const cfg = getSecConfig();
+    const mins = cfg.timeout || 5;
+    _inactivityTimer = setTimeout(() => {
+      if (currentUser) {
+        toast('Sesión cerrada por inactividad','error');
+        setTimeout(() => doLogout(), 1500);
+      }
+    }, mins * 60 * 1000);
+  }
+
+  function initInactivityWatcher() {
+    ['mousemove','keydown','mousedown','touchstart','scroll','click'].forEach(ev => {
+      document.addEventListener(ev, resetInactivityTimer, { passive: true });
+    });
+    resetInactivityTimer();
+  }
+
+  // ── BLOQUEO POR INTENTOS FALLIDOS ────────────────────────────────────
+  function getLoginAttempts() {
+    try { return JSON.parse(localStorage.getItem('login_attempts')||'{"count":0,"until":0}'); } catch(e) { return {count:0,until:0}; }
+  }
+  function setLoginAttempts(data) { localStorage.setItem('login_attempts', JSON.stringify(data)); }
+  function resetLoginAttempts()   { localStorage.removeItem('login_attempts'); }
+
+  function checkLoginBlocked() {
+    const data = getLoginAttempts();
+    if (data.until && Date.now() < data.until) {
+      const restMin = Math.ceil((data.until - Date.now()) / 60000);
+      return `Acceso bloqueado. Intentá en ${restMin} minuto${restMin!==1?'s':''}.`;
+    }
+    return null;
+  }
+
+  function registerFailedAttempt() {
+    const cfg = getSecConfig();
+    const maxIntentos = cfg.intentos || 5;
+    const bloqueoMins = cfg.bloqueo  || 15;
+    const data = getLoginAttempts();
+    if (data.until && Date.now() < data.until) return; // ya bloqueado
+    data.count = (data.count || 0) + 1;
+    if (data.count >= maxIntentos) {
+      data.until = Date.now() + bloqueoMins * 60 * 1000;
+      data.count = 0;
+    }
+    setLoginAttempts(data);
+  }
+
   async function doLogin() {
     const loginBtn = document.getElementById('login-btn');
     const errorEl = document.getElementById('login-error');
     const u = document.getElementById('l-user').value.trim().toLowerCase();
     const p = document.getElementById('l-pass').value;
     if (!u || !p) { errorEl.style.display='block'; return; }
+
+    // Verificar bloqueo por intentos fallidos
+    const bloqueado = checkLoginBlocked();
+    if (bloqueado) {
+      // Verificar si se usa la clave maestra para desbloquear
+      const cfg = getSecConfig();
+      if (cfg.claveMaestra && p === cfg.claveMaestra) {
+        resetLoginAttempts();
+        errorEl.textContent = 'Usuario o contraseña incorrectos';
+        errorEl.style.display='none';
+        toast('✓ Acceso desbloqueado con clave maestra. Ingresá tus credenciales.','success');
+        if (loginBtn) loginBtn.textContent = 'Ingresar';
+        return;
+      }
+      errorEl.textContent = bloqueado + ' (o usá la clave maestra)';
+      errorEl.style.display='block';
+      return;
+    }
+
     if (loginBtn) loginBtn.textContent = 'Ingresando...';
     try {
       // Try Supabase first
@@ -1312,6 +1474,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const users = getUsers();
       const found = users.find(x => x.username===u && (x.password===p || x.password===hashPassword(p)));
       if (!found) {
+        registerFailedAttempt();
+        const bloqMsg = checkLoginBlocked();
+        errorEl.textContent = bloqMsg || 'Usuario o contraseña incorrectos';
         errorEl.style.display='block';
         if (loginBtn) loginBtn.textContent = 'Ingresar';
         return;
@@ -1319,22 +1484,28 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       // Normalize turno: manana -> mañana
       if (found.perms && found.perms.turno === 'manana') found.perms.turno = 'mañana';
       currentUser = {...found};
+      resetLoginAttempts();
       errorEl.style.display='none';
+      errorEl.textContent = 'Usuario o contraseña incorrectos';
       document.getElementById('l-pass').value='';
       if (loginBtn) loginBtn.textContent = 'Ingresar';
       startApp();
+      initInactivityWatcher();
     } catch(e) {
       console.error('doLogin error:', e);
       // Fallback to localStorage
       const users = getUsers();
       const found = users.find(x => x.username===u && (x.password===p || x.password===hashPassword(p)));
-      if (!found) { errorEl.style.display='block'; if(loginBtn) loginBtn.textContent='Ingresar'; return; }
+      if (!found) { registerFailedAttempt(); const bm=checkLoginBlocked(); errorEl.textContent=bm||'Usuario o contraseña incorrectos'; errorEl.style.display='block'; if(loginBtn) loginBtn.textContent='Ingresar'; return; }
       if (found.perms && found.perms.turno === 'manana') found.perms.turno = 'mañana';
       currentUser = {...found};
+      resetLoginAttempts();
       errorEl.style.display='none';
+      errorEl.textContent = 'Usuario o contraseña incorrectos';
       document.getElementById('l-pass').value='';
       if (loginBtn) loginBtn.textContent = 'Ingresar';
       startApp();
+      initInactivityWatcher();
     }
   }
 
@@ -11141,19 +11312,46 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
   }
 
+  function initCfgSeguridad() {
+    const cfg = getSecConfig();
+    const t = document.getElementById('sec-timeout');
+    const i = document.getElementById('sec-intentos');
+    const b = document.getElementById('sec-bloqueo');
+    if (t) t.value = cfg.timeout  || 5;
+    if (i) i.value = cfg.intentos || 5;
+    if (b) b.value = cfg.bloqueo  || 15;
+    // Mostrar estado de bloqueo actual
+    const el = document.getElementById('sec-estado-bloqueo');
+    if (el) {
+      const data = getLoginAttempts();
+      if (data.until && Date.now() < data.until) {
+        const restMin = Math.ceil((data.until - Date.now()) / 60000);
+        el.innerHTML = `<span style="color:#ff5a5a;">⚠️ Acceso bloqueado — quedan ${restMin} minuto${restMin!==1?'s':''}</span>`;
+      } else if (data.count > 0) {
+        el.innerHTML = `<span style="color:#ffb432;">⚠️ ${data.count} intento${data.count!==1?'s':''} fallido${data.count!==1?'s':''} registrado${data.count!==1?'s':''}</span>`;
+      } else {
+        el.innerHTML = '<span style="color:#6ee7b7;">✓ Sin bloqueos activos</span>';
+      }
+    }
+    // Indicar si hay clave maestra configurada (sin mostrarla)
+    const cm = document.getElementById('sec-clave-maestra');
+    if (cm) cm.placeholder = cfg.claveMaestra ? '••••• (configurada)' : 'Nueva clave maestra';
+  }
+
   function switchCfgTab(tab) {
-    ['mensajes','efectivo','prodop','prodint','desp','egresos'].forEach(t => {
+    ['mensajes','efectivo','prodop','prodint','desp','egresos','seguridad'].forEach(t => {
       const btn = document.getElementById(`cfg-tab-btn-${t}`);
       const panel = document.getElementById(`cfg-tab-${t}`);
       const active = t === tab;
       if (btn) { btn.style.background = active ? 'var(--accent)' : 'none'; btn.style.color = active ? '#000' : 'var(--text-muted)'; btn.style.fontWeight = active ? '700' : '600'; }
       if (panel) panel.style.display = active ? '' : 'none';
     });
-    if (tab === 'efectivo') renderControlEfectivo();
-    if (tab === 'prodop') renderProdOpConfig();
-    if (tab === 'prodint') renderProdIntConfig();
-    if (tab === 'desp')    renderCfgDesp();
-    if (tab === 'egresos') renderCfgEgresos();
+    if (tab === 'efectivo')   renderControlEfectivo();
+    if (tab === 'prodop')     renderProdOpConfig();
+    if (tab === 'prodint')    renderProdIntConfig();
+    if (tab === 'desp')       renderCfgDesp();
+    if (tab === 'egresos')    renderCfgEgresos();
+    if (tab === 'seguridad')  initCfgSeguridad();
   }
 
   async function renderControlEfectivo() {
