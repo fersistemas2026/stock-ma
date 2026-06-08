@@ -65,6 +65,9 @@
     input:focus { border-color: var(--accent); }
     input::placeholder { color: var(--text-dim); }
     input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.4); }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
     .form-actions { margin-top: 24px; display: flex; justify-content: flex-end; }
 
     .btn-primary { background: var(--accent); color: #080c10; border: none; padding: 11px 26px; border-radius: 8px; font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 7px; letter-spacing: -.01em; }
@@ -355,6 +358,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;informes&#39;)" id="neg-btn-informes" style="display:none">📈 Informes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;caja&#39;)" id="neg-btn-caja" style="display:none">💰 Caja</button>
         <button class="neg-stab" onclick="switchNeg(&#39;config&#39;)" id="neg-btn-config" style="display:none">⚙️ Configuración</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;ingresos&#39;)" id="neg-btn-ingresos" style="display:none">💵 Ingresos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;cashflow&#39;)" id="neg-btn-cashflow" style="display:none">💹 Cashflow</button>
 
         <button class="neg-stab" onclick="switchNeg(&#39;egresos-op&#39;)" id="neg-btn-egresos-op" style="display:none">📊 Egresos</button>
@@ -1059,6 +1063,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </div>
         </div>
         <div id="egresos-op-body"></div>
+      </div>
+
+
+      <!-- INGRESOS -->
+      <div id="neg-ingresos" class="neg-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+          <div class="form-title" style="margin-bottom:0;">💵 Ingresos</div>
+          <input type="date" id="ing-fecha" onchange="window.loadIngresos()"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;">
+        </div>
+        <div id="ing-toggles" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+        <div id="ing-body"></div>
       </div>
 
       <!-- CASHFLOW -->
@@ -5128,6 +5144,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='pedido-recibido') loadPedidoRecibido();
     if (sub==='config')          initConfig();
     if (sub==='cashflow')        initCashflow();
+    if (sub==='ingresos')        initIngresos();
     if (sub==='egresos')         initEgresos();
     if (sub==='egresos-op')      initEgresosOp();
 
@@ -7696,7 +7713,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       }
 
       const fmt = n => { const v=parseFloat(n); return (!isNaN(v)&&v!==0)?v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):''; };
-      // getVal: misma lógica que renderCashflow — si hay valores de operador (pdv_id) los suma, sino usa el manual
+      // getVal: misma lógica que renderCashflow
       const getVal = (sid,d) => {
         const all = (valsData||[]).filter(v => String(v.subcat_id)===String(sid) && parseInt(v.dia)===parseInt(d) && !v.col_id);
         const opVals = all.filter(v => v.pdv_id);
@@ -7705,13 +7722,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           ? opVals.reduce((s,v) => s+(parseFloat(v.valor)||0), 0)
           : (manualVal ? parseFloat(manualVal.valor)||0 : 0);
       };
-      // vals para mostrar en inputs: mismo criterio
       const vals = {};
-      dias.forEach(d => {
-        subcats.forEach(sub => {
-          vals[sub.id+'_'+d] = getVal(sub.id, d) || '';
-        });
-      });
+      dias.forEach(d => { subcats.forEach(sub => { vals[sub.id+'_'+d] = getVal(sub.id,d)||''; }); });
       const diasSem = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
 
       // Si es un solo día mostrar columna simple, si es rango mostrar varios días
@@ -9167,7 +9179,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       show('neg-btn-stock'); show('neg-btn-pedido'); show('neg-btn-pedido-suc');
       show('neg-btn-productos'); show('neg-btn-empresa');
       show('neg-btn-elaboracion'); show('neg-btn-informes'); show('neg-btn-caja');
-      show('neg-btn-config'); show('neg-btn-cashflow'); hide('neg-btn-egresos-op'); hide('neg-btn-pedido-recibido');
+      show('neg-btn-config'); show('neg-btn-ingresos'); show('neg-btn-cashflow'); hide('neg-btn-egresos-op'); hide('neg-btn-pedido-recibido');
       if (perms.mensajes !== false) show('neg-btn-mensajes'); else hide('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); show('neg-btn-egresos-op'); hide('neg-btn-egresos'); hide('neg-btn-ventas-op');
       show('neg-btn-envio-pedido'); show('neg-btn-recibo-pedido');
       setupNegLayout(true);
@@ -9283,11 +9295,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div style="padding:12px 16px;">
             ${mySubs.map(sub => {
               const v = vals[sub.id]||'';
+              const vFmt = v ? parseFloat(v).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
               return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
                 <span style="font-size:13px;color:var(--text);">— ${sub.nombre}</span>
-                <input type="number" step="any" value="${v}" placeholder="0,00" id="egrop-${sub.id}"
+                <input type="text" inputmode="decimal" value="${vFmt}" placeholder="0,00" id="egrop-${sub.id}" data-value="${v||''}"
                   style="width:140px;background:var(--surface2);border:2px solid var(--border);border-radius:7px;padding:7px 10px;font-size:14px;font-family:var(--mono);color:var(--text);text-align:right;outline:none;"
-                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+                  onfocus="this.style.borderColor='var(--accent)';this.value=this.dataset.value||'';this.select();"
+                  onblur="this.style.borderColor='var(--border)';const n=parseFloat(this.value.replace(',','.'));if(!isNaN(n)&&this.value!==''){this.dataset.value=n;this.value=n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}else{this.dataset.value='';this.value=''}"
+                  onkeydown="if(event.key==='ArrowDown'||event.key==='Enter'){event.preventDefault();const all=Array.from(document.querySelectorAll('[id^=egrop-]:not([id*=col])'));const i=all.indexOf(this);if(i<all.length-1)all[i+1].focus();}else if(event.key==='ArrowUp'){event.preventDefault();const all=Array.from(document.querySelectorAll('[id^=egrop-]:not([id*=col])'));const i=all.indexOf(this);if(i>0)all[i-1].focus();}">
               </div>`;
             }).join('')}
           </div>
@@ -9327,13 +9342,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       // Insertar valores con pdv_id
       // Valores principales (monto por subcategoría)
       const rows = inputs
-        .filter(x => x.input.value !== '' && !isNaN(parseFloat(x.input.value)))
+        .filter(x => (x.input.dataset.value||x.input.value) !== '' && !isNaN(parseFloat(x.input.dataset.value||x.input.value)))
         .map(x => ({
           empresa_id: String(empresaActual),
           subcat_id: x.id,
           pdv_id: pdvId,
           dia, mes, anio,
-          valor: parseFloat(x.input.value)
+          valor: parseFloat(x.input.dataset.value||x.input.value)
         }));
 
       // Valores de columnas extra
@@ -9475,6 +9490,219 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // This is for cashflow section filter (all cats visible by default)
     return {};
   }
+
+  // ── INGRESOS ──────────────────────────────────────────────────────────
+
+  async function initIngresos() {
+    const fechaEl = document.getElementById('ing-fecha');
+    if (fechaEl && !fechaEl.value) fechaEl.value = fechaHoyAR();
+    await window.loadIngresos();
+  }
+
+  window.loadIngresos = async function loadIngresos() {
+    const fecha = document.getElementById('ing-fecha')?.value || fechaHoyAR();
+    const body  = document.getElementById('ing-body');
+    const togglesEl = document.getElementById('ing-toggles');
+    if (!body) return;
+
+    const togKey = `ing_toggles_${empresaActual}`;
+    let togState;
+    try { togState = JSON.parse(localStorage.getItem(togKey)||'{}'); } catch(e) { togState = {}; }
+    if (togState.z        === undefined) togState.z        = true;
+    if (togState.tarjetas === undefined) togState.tarjetas = true;
+    if (togState.ventas   === undefined) togState.ventas   = true;
+    if (togState.buzon    === undefined) togState.buzon    = true;
+
+    const toggleDefs = [
+      { key:'z',        label:'📋 Informe Z',  color:'#a78bfa' },
+      { key:'tarjetas', label:'💳 Tarjetas',    color:'#93c5fd' },
+      { key:'ventas',   label:'🛒 Ventas',      color:'var(--accent)' },
+      { key:'buzon',    label:'📬 Buzón',       color:'#fb923c' },
+    ];
+    if (togglesEl) {
+      togglesEl.innerHTML = toggleDefs.map(t => `
+        <button id="ing-tog-${t.key}" onclick="window.ingToggle('${t.key}')"
+          style="border:2px solid ${t.color};border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;
+            background:${togState[t.key] ? t.color : 'transparent'};
+            color:${togState[t.key] ? '#000' : t.color};">
+          ${t.label}
+        </button>`).join('');
+    }
+
+    body.innerHTML = '<div style="text-align:center;padding:32px;"><span class="spin"></span></div>';
+
+    try {
+      const [pdvs, cajas, ventas, buzon] = await Promise.all([
+        getPdv(),
+        togState.z || togState.tarjetas
+          ? sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&tipo=eq.cierre&select=*`) || []
+          : Promise.resolve([]),
+        togState.ventas
+          ? sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&select=pdv_id,precio,cantidad`) || []
+          : Promise.resolve([]),
+        togState.buzon
+          ? sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&select=pdv_id,monto`) || []
+          : Promise.resolve([]),
+      ]);
+
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre||p.name||p.id);
+      const fmt = n => '$' + parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+      const totZ        = togState.z        ? cajas.reduce((s,x)=>s+parseFloat(x.reporte_z||0),0) : 0;
+      const totTarjetas = togState.tarjetas ? cajas.reduce((s,x)=>s+parseFloat(x.tarjetas||0),0)  : 0;
+      const totVentas   = togState.ventas   ? ventas.reduce((s,x)=>s+(parseFloat(x.precio||0)*parseFloat(x.cantidad||1)),0) : 0;
+      const totBuzon    = togState.buzon    ? buzon.reduce((s,x)=>s+parseFloat(x.monto||0),0)     : 0;
+
+      const pdvIds = [...new Set([
+        ...cajas.map(x=>String(x.pdv_id)),
+        ...ventas.map(x=>String(x.pdv_id)),
+        ...buzon.map(x=>String(x.pdv_id)),
+      ])].filter(Boolean);
+
+      if (!pdvIds.length) {
+        body.innerHTML = '<div class="empty-state">💵<p>Sin datos para esta fecha.</p></div>';
+        return;
+      }
+
+      const colorMap = { z:'#a78bfa', tarjetas:'#93c5fd', ventas:'var(--accent)', buzon:'#fb923c' };
+
+      let summaryHtml = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">`;
+      if (togState.z)        summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.z};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.z};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Informe Z</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.z};margin-top:4px;">${fmt(totZ)}</div></div>`;
+      if (togState.tarjetas) summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.tarjetas};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.tarjetas};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Tarjetas</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.tarjetas};margin-top:4px;">${fmt(totTarjetas)}</div></div>`;
+      if (togState.ventas)   summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.ventas};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.ventas};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Ventas</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.ventas};margin-top:4px;">${fmt(totVentas)}</div></div>`;
+      if (togState.buzon)    summaryHtml += `<div style="flex:1;min-width:140px;background:var(--surface2);border:1px solid ${colorMap.buzon};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:${colorMap.buzon};font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Buzón</div><div style="font-size:18px;font-family:var(--mono);font-weight:800;color:${colorMap.buzon};margin-top:4px;">${fmt(totBuzon)}</div></div>`;
+      summaryHtml += `</div>`;
+
+      let tableHtml = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:var(--surface2);">
+          <th style="padding:9px 14px;text-align:left;border:1px solid var(--border);font-size:11px;color:var(--text-muted);text-transform:uppercase;">PDV</th>
+          ${togState.z        ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.z};">Informe Z</th>` : ''}
+          ${togState.tarjetas ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.tarjetas};">Tarjetas</th>` : ''}
+          ${togState.ventas   ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.ventas};">Ventas</th>` : ''}
+          ${togState.buzon    ? `<th style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-size:11px;color:${colorMap.buzon};">Buzón</th>` : ''}
+          <th style="padding:9px 12px;text-align:center;border:1px solid var(--border);font-size:11px;color:var(--text-muted);">→ Cashflow</th>
+        </tr></thead><tbody>`;
+
+      pdvIds.forEach(pid => {
+        const pdvNombre = pdvMap[pid] || pid;
+        const cajasPdv  = cajas.filter(x=>String(x.pdv_id)===pid);
+        const ventasPdv = ventas.filter(x=>String(x.pdv_id)===pid);
+        const buzonPdv  = buzon.filter(x=>String(x.pdv_id)===pid);
+        const vZ        = togState.z        ? cajasPdv.reduce((s,x)=>s+parseFloat(x.reporte_z||0),0) : null;
+        const vTarjetas = togState.tarjetas ? cajasPdv.reduce((s,x)=>s+parseFloat(x.tarjetas||0),0)  : null;
+        const vVentas   = togState.ventas   ? ventasPdv.reduce((s,x)=>s+(parseFloat(x.precio||0)*parseFloat(x.cantidad||1)),0) : null;
+        const vBuzon    = togState.buzon    ? buzonPdv.reduce((s,x)=>s+parseFloat(x.monto||0),0)     : null;
+
+        tableHtml += `<tr>
+          <td style="padding:9px 14px;border:1px solid var(--border);font-weight:700;">🏪 ${pdvNombre}</td>
+          ${togState.z        ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.z};">${fmt(vZ)}</td>` : ''}
+          ${togState.tarjetas ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.tarjetas};">${fmt(vTarjetas)}</td>` : ''}
+          ${togState.ventas   ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.ventas};">${fmt(vVentas)}</td>` : ''}
+          ${togState.buzon    ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.buzon};">${fmt(vBuzon)}</td>` : ''}
+          <td style="padding:6px 10px;text-align:center;border:1px solid var(--border);">
+            <button onclick="window.ingEnviarACashflow('${pid}','${pdvNombre}',${vZ??'null'},${vTarjetas??'null'},${vVentas??'null'},${vBuzon??'null'},'${fecha}')"
+              style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
+              💹 Enviar
+            </button>
+          </td>
+        </tr>`;
+      });
+
+      tableHtml += `<tr style="background:rgba(255,255,255,.04);">
+        <td style="padding:9px 14px;border:1px solid var(--border);color:var(--text-muted);font-size:11px;text-transform:uppercase;font-weight:800;">TOTAL</td>
+        ${togState.z        ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.z};">${fmt(totZ)}</td>` : ''}
+        ${togState.tarjetas ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.tarjetas};">${fmt(totTarjetas)}</td>` : ''}
+        ${togState.ventas   ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.ventas};">${fmt(totVentas)}</td>` : ''}
+        ${togState.buzon    ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${colorMap.buzon};">${fmt(totBuzon)}</td>` : ''}
+        <td style="border:1px solid var(--border);"></td>
+      </tr></tbody></table></div>`;
+
+      body.innerHTML = summaryHtml + tableHtml;
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+      console.error(e);
+    }
+  };
+
+  window.ingToggle = function ingToggle(key) {
+    const togKey = `ing_toggles_${empresaActual}`;
+    let togState;
+    try { togState = JSON.parse(localStorage.getItem(togKey)||'{}'); } catch(e) { togState = {}; }
+    togState[key] = !togState[key];
+    localStorage.setItem(togKey, JSON.stringify(togState));
+    window.loadIngresos();
+  };
+
+  window.ingEnviarACashflow = async function ingEnviarACashflow(pdvId, pdvNombre, vZ, vTarjetas, vVentas, vBuzon, fecha) {
+    const subcats = await sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&select=id,nombre,cat_id`) || [];
+    const cats    = await sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&select=id,nombre`) || [];
+    const catMap  = {};
+    cats.forEach(c => catMap[c.id] = c.nombre);
+    if (!subcats.length) { toast('No hay subcategorías en Cashflow. Creá una primero.','error'); return; }
+
+    const fechaDate = new Date(fecha+'T00:00:00');
+    const dia  = fechaDate.getDate();
+    const mes  = fechaDate.getMonth()+1;
+    const anio = fechaDate.getFullYear();
+    const fmt  = n => n !== null ? '$'+parseFloat(n).toLocaleString('es-AR',{minimumFractionDigits:2}) : '—';
+
+    const items = [
+      { key:'z',        label:'📋 Informe Z',  val:vZ,        color:'#a78bfa' },
+      { key:'tarjetas', label:'💳 Tarjetas',    val:vTarjetas, color:'#93c5fd' },
+      { key:'ventas',   label:'🛒 Ventas',      val:vVentas,   color:'var(--accent)' },
+      { key:'buzon',    label:'📬 Buzón',       val:vBuzon,    color:'#fb923c' },
+    ].filter(x => x.val !== null);
+
+    // Guardar en variable global para evitar problemas con JSON en atributos HTML
+    window._ingPendiente = { items, dia, mes, anio, pdvId, dests: {} };
+
+    const opts = subcats.map(s => `<option value="${s.id}">${catMap[s.cat_id]||'?'} → ${s.nombre}</option>`).join('');
+
+    const overlay = document.createElement('div');
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;padding:24px;">
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px;">💹 Enviar a Cashflow</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px;">📅 ${fecha} · 🏪 ${pdvNombre}</div>
+      ${items.map(item => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+          <div style="min-width:100px;font-size:12px;font-weight:700;color:${item.color};">${item.label}</div>
+          <div style="font-family:var(--mono);font-weight:700;min-width:90px;color:${item.color};">${fmt(item.val)}</div>
+          <select id="ing-dest-${item.key}" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;color:var(--text);outline:none;">
+            <option value="">— No enviar —</option>${opts}
+          </select>
+        </div>`).join('')}
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;cursor:pointer;color:var(--text);">Cancelar</button>
+        <button onclick="const ov=this.closest('[style*=fixed]');const dests={};document.querySelectorAll('[id^=ing-dest-]').forEach(s=>{dests[s.id.replace('ing-dest-','')]=s.value;});window._ingPendiente.dests=dests;ov.remove();window.ingConfirmarEnvio();"
+          style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar envío</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+  };
+
+  window.ingConfirmarEnvio = async function ingConfirmarEnvio() {
+    const { items, dia, mes, anio, pdvId, dests } = window._ingPendiente || {};
+    if (!items) { toast('Error: sin datos pendientes','error'); return; }
+    const HD = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+    const HI = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+    let enviados = 0;
+    for (const item of items) {
+      const subcatId = dests && dests[item.key];
+      if (!subcatId || item.val === null) continue;
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?empresa_id=eq.${empresaActual}&subcat_id=eq.${subcatId}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=eq.${pdvId}&col_id=is.null`, { method:'DELETE', headers:HD });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals`, { method:'POST', headers:HI,
+        body: JSON.stringify({ empresa_id: String(empresaActual), subcat_id: subcatId, pdv_id: pdvId, dia, mes, anio, valor: parseFloat(item.val) })
+      });
+      if (res.ok) enviados++;
+    }
+    window._ingPendiente = null;
+    if (enviados) toast(`✓ ${enviados} valor${enviados>1?'es':''} enviado${enviados>1?'s':''} a Cashflow`, 'success');
+    else toast('No se seleccionó ningún destino','error');
+    const cfPanel = document.getElementById('neg-cashflow');
+    if (cfPanel && cfPanel.style.display !== 'none') window.renderCashflow();
+  };
 
   // ── CASHFLOW ──────────────────────────────────────────────────────────
 
@@ -9638,7 +9866,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               catDiaSums[d]+=v;
               // Get direct value (sin pdv_id) para edicion
               const vDirect = (valsData||[]).find(x=>String(x.subcat_id)===String(sub.id)&&parseInt(x.dia)===parseInt(d)&&!x.pdv_id&&!x.col_id);
-              const vEdit = vDirect ? parseFloat(vDirect.valor)||0 : 0;
+              const opValsDay = (valsData||[]).filter(x=>String(x.subcat_id)===String(sub.id)&&parseInt(x.dia)===parseInt(d)&&x.pdv_id&&!x.col_id);
+              const vEdit = opValsDay.length > 0 ? opValsDay.reduce((s,x)=>s+(parseFloat(x.valor)||0),0) : (vDirect ? parseFloat(vDirect.valor)||0 : 0);
               const esFinde = new Date(anio,mes-1,d).getDay()===0||new Date(anio,mes-1,d).getDay()===6;
               return`<td style="padding:2px 2px;border:1px solid var(--border);background:${esFinde?'rgba(167,139,250,.05)':'transparent'};">
                 <input type="number" step="any" value="${vEdit||''}" placeholder=""
@@ -10080,9 +10309,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <span style="font-size:13px;color:var(--text-muted);min-width:80px;">Efectivo <span style="color:#ff5a5a">*</span></span>
           <div style="display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:7px;overflow:hidden;flex:1;">
             <span style="padding:9px 10px;font-size:14px;font-weight:700;color:var(--text-muted);border-right:1px solid var(--border);">$</span>
-            <input type="number" id="caja-op-inicio-ef" min="0" max="10000000" step="1" placeholder="0"
-              style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;-moz-appearance:textfield;"
-              oninput="if(this.value>10000000)this.value=10000000;" />
+            <input type="text" inputmode="decimal" id="caja-op-inicio-ef" placeholder="0" data-value="" style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;" onfocus="this.value=this.dataset.value||'';this.select();" onblur="const n=parseFloat(this.value.replace(',','.'));if(!isNaN(n)&&this.value!==''){this.dataset.value=n;this.value=n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}else{this.dataset.value='';this.value='';}" onkeydown="if(event.key==='ArrowDown'||event.key==='Enter'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i<all.length-1)all[i+1].focus();}else if(event.key==='ArrowUp'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i>0)all[i-1].focus();}" />10000000)this.value=10000000;" />
           </div>
           <button class="btn-primary" style="padding:9px 14px;font-size:13px;white-space:nowrap;" onclick="guardarCajaOp('inicio','${pdvId}','${turno}')">💾 Agregar</button>
         </div>
@@ -10118,9 +10345,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <span style="font-size:13px;color:var(--text-muted);min-width:80px;">${label}</span>
           <div style="display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:7px;overflow:hidden;flex:1;">
             <span style="padding:9px 10px;font-size:14px;font-weight:700;color:var(--text-muted);border-right:1px solid var(--border);">$</span>
-            <input type="number" id="${fid}" min="0" max="10000000" step="1" placeholder="0"
-              style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;-moz-appearance:textfield;"
-              oninput="if(this.value>10000000)this.value=10000000;" />
+            <input type="text" inputmode="decimal" id="${fid}" placeholder="0" data-value="" style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;" onfocus="this.value=this.dataset.value||'';this.select();" onblur="const n=parseFloat(this.value.replace(',','.'));if(!isNaN(n)&&this.value!==''){this.dataset.value=n;this.value=n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}else{this.dataset.value='';this.value='';}" onkeydown="if(event.key==='ArrowDown'||event.key==='Enter'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i<all.length-1)all[i+1].focus();}else if(event.key==='ArrowUp'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i>0)all[i-1].focus();}" />10000000)this.value=10000000;" />
           </div>
         </div>`).join('')}
         <button class="btn-primary" style="margin-top:8px;width:100%;padding:11px;" onclick="guardarCajaOp('cierre','${pdvId}','${turno}')">💾 Agregar cierre</button>
@@ -10139,9 +10364,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <span style="font-size:13px;color:var(--text-muted);min-width:80px;">Monto</span>
         <div style="display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:7px;overflow:hidden;flex:1;">
           <span style="padding:9px 10px;font-size:14px;font-weight:700;color:var(--text-muted);border-right:1px solid var(--border);">$</span>
-          <input type="number" id="buzon-monto-${turno}" min="0" max="10000000" step="1" placeholder="0"
-            style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;-moz-appearance:textfield;"
-            oninput="if(this.value>10000000)this.value=10000000;" />
+          <input type="text" inputmode="decimal" id="buzon-monto-${turno}" placeholder="0" data-value="" style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;" onfocus="this.value=this.dataset.value||'';this.select();" onblur="const n=parseFloat(this.value.replace(',','.'));if(!isNaN(n)&&this.value!==''){this.dataset.value=n;this.value=n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}else{this.dataset.value='';this.value='';}" onkeydown="if(event.key==='ArrowDown'||event.key==='Enter'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i<all.length-1)all[i+1].focus();}else if(event.key==='ArrowUp'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i>0)all[i-1].focus();}" />10000000)this.value=10000000;" />
         </div>
         <button class="btn-primary" style="padding:9px 16px;font-size:13px;white-space:nowrap;" onclick="guardarBuzon('${pdvId}','${turno}')">💾 Agregar</button>
       </div>
@@ -10161,9 +10384,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <span style="font-size:13px;color:var(--text-muted);min-width:80px;">Monto</span>
           <div style="display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:7px;overflow:hidden;flex:1;">
             <span style="padding:9px 10px;font-size:14px;font-weight:700;color:var(--text-muted);border-right:1px solid var(--border);">$</span>
-            <input type="number" id="gasto-monto-${turno}" min="0" max="10000000" step="1" placeholder="0"
-              style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;-moz-appearance:textfield;"
-              oninput="if(this.value>10000000)this.value=10000000;" />
+            <input type="text" inputmode="decimal" id="gasto-monto-${turno}" placeholder="0" data-value="" style="flex:1;background:none;border:none;padding:9px 10px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;" onfocus="this.value=this.dataset.value||'';this.select();" onblur="const n=parseFloat(this.value.replace(',','.'));if(!isNaN(n)&&this.value!==''){this.dataset.value=n;this.value=n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}else{this.dataset.value='';this.value='';}" onkeydown="if(event.key==='ArrowDown'||event.key==='Enter'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i<all.length-1)all[i+1].focus();}else if(event.key==='ArrowUp'){event.preventDefault();const all=Array.from(document.querySelectorAll('input[data-value]'));const i=all.indexOf(this);if(i>0)all[i-1].focus();}" />10000000)this.value=10000000;" />
           </div>
           <button class="btn-primary" style="padding:9px 16px;font-size:13px;white-space:nowrap;" onclick="guardarGasto('${pdvId}','${turno}')">💾 Agregar</button>
         </div>
@@ -10178,7 +10399,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function guardarGasto(pdvId, turno) {
     const desc = document.getElementById(`gasto-desc-${turno}`)?.value.trim();
-    const monto = parseFloat(document.getElementById(`gasto-monto-${turno}`)?.value)||0;
+    const _gmEl = document.getElementById(`gasto-monto-${turno}`); const monto = parseFloat(_gmEl?.dataset.value||_gmEl?.value)||0;
     if (!desc) { toast('Ingresá una descripción','error'); return; }
     if (!monto) { toast('Ingresá un monto','error'); return; }
     const fecha = fechaHoyAR();
@@ -10214,7 +10435,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   async function guardarBuzon(pdvId, turno) {
-    const monto = parseFloat(document.getElementById(`buzon-monto-${turno}`)?.value)||0;
+    const _bmEl = document.getElementById(`buzon-monto-${turno}`); const monto = parseFloat(_bmEl?.dataset.value||_bmEl?.value)||0;
     if (!monto) { toast('Ingresá un monto','error'); return; }
     const fecha = fechaHoyAR();
     try {
@@ -10271,14 +10492,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const fecha = fechaHoyAR();
     let row = {empresa_id:String(empresaActual), fecha, turno, tipo, pdv_id:String(pdvId)};
     if (tipo==='inicio') {
-      const ef = parseFloat(document.getElementById('caja-op-inicio-ef')?.value)||0;
+      const _ief = document.getElementById('caja-op-inicio-ef'); const ef = parseFloat(_ief?.dataset.value||_ief?.value)||0;
       if (!ef) { toast('Ingresá el efectivo','error'); return; }
       row.efectivo = ef;
     } else {
-      row.efectivo  = parseFloat(document.getElementById('caja-op-cierre-ef')?.value)||0;
-      row.tarjetas  = parseFloat(document.getElementById('caja-op-cierre-tarj')?.value)||0;
-      row.pedidos   = parseFloat(document.getElementById('caja-op-cierre-ped')?.value)||0;
-      row.reporte_z = parseFloat(document.getElementById('caja-op-cierre-rz')?.value)||0;
+      const _cef = document.getElementById('caja-op-cierre-ef'); row.efectivo = parseFloat(_cef?.dataset.value||_cef?.value)||0;
+      const _cta = document.getElementById('caja-op-cierre-tarj'); row.tarjetas = parseFloat(_cta?.dataset.value||_cta?.value)||0;
+      const _cpe = document.getElementById('caja-op-cierre-ped'); row.pedidos = parseFloat(_cpe?.dataset.value||_cpe?.value)||0;
+      const _crz = document.getElementById('caja-op-cierre-rz'); row.reporte_z = parseFloat(_crz?.dataset.value||_crz?.value)||0;
     }
     try {
       await fetch(`${SUPABASE_URL}/rest/v1/caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${encodeURIComponent(pdvId)}&turno=eq.${encodeURIComponent(turno)}&tipo=eq.${tipo}`,
