@@ -9593,6 +9593,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const vTarjetas = togState.tarjetas ? cajasPdv.reduce((s,x)=>s+parseFloat(x.tarjetas||0),0)  : null;
         const vVentas   = togState.ventas   ? ventasPdv.reduce((s,x)=>s+(parseFloat(x.precio||0)*parseFloat(x.cantidad||1)),0) : null;
         const vBuzon    = togState.buzon    ? buzonPdv.reduce((s,x)=>s+parseFloat(x.monto||0),0)     : null;
+        // Guardar datos del PDV en variable global para el modal
+        window._ingDatos = window._ingDatos || {};
+        const pidKey = 'pdv_' + pid;
+        window._ingDatos[pidKey] = { pid, pdvNombre, fecha, togState,
+          cajasPdv: cajasPdv.map(x=>({turno:x.turno||'-',z:parseFloat(x.reporte_z||0),tarj:parseFloat(x.tarjetas||0)})),
+          vZ, vTarjetas, vVentas, vBuzon };
 
         tableHtml += `<tr>
           <td style="padding:9px 14px;border:1px solid var(--border);font-weight:700;">🏪 ${pdvNombre}</td>
@@ -9601,7 +9607,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           ${togState.ventas   ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.ventas};">${fmt(vVentas)}</td>` : ''}
           ${togState.buzon    ? `<td style="padding:9px 12px;text-align:right;border:1px solid var(--border);font-family:var(--mono);color:${colorMap.buzon};">${fmt(vBuzon)}</td>` : ''}
           <td style="padding:6px 10px;text-align:center;border:1px solid var(--border);">
-            <button onclick="window.ingEnviarACashflow('${pid}','${pdvNombre}',${vZ??'null'},${vTarjetas??'null'},${vVentas??'null'},${vBuzon??'null'},'${fecha}')"
+            <button onclick="window.ingEnviarACashflow('${pidKey}')"
               style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
               💹 Enviar
             </button>
@@ -9634,7 +9640,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window.loadIngresos();
   };
 
-  window.ingEnviarACashflow = async function ingEnviarACashflow(pdvId, pdvNombre, vZ, vTarjetas, vVentas, vBuzon, fecha) {
+  window.ingEnviarACashflow = async function ingEnviarACashflow(pidKey) {
+    const datos = (window._ingDatos || {})[pidKey];
+    if (!datos) { toast('Error: sin datos del PDV','error'); return; }
+    const { pid: pdvId, pdvNombre, fecha, togState, cajasPdv, vZ, vTarjetas, vVentas, vBuzon } = datos;
+
     const subcats = await sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&select=id,nombre,cat_id`) || [];
     const cats    = await sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&select=id,nombre`) || [];
     const catMap  = {};
@@ -9647,24 +9657,49 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const anio = fechaDate.getFullYear();
     const fmt  = n => n !== null ? '$'+parseFloat(n).toLocaleString('es-AR',{minimumFractionDigits:2}) : '—';
 
+    // Detectar si hay múltiples turnos en caja (Z y Tarjetas)
+    const multiTurno = cajasPdv && cajasPdv.length > 1;
+
+    // Construir valores finales — si hay multi turno, preguntar sumar o elegir turno
+    let finalZ = vZ, finalTarjetas = vTarjetas;
+    let turnoSelector = '';
+    if (multiTurno && (togState.z || togState.tarjetas)) {
+      turnoSelector = `<div style="margin-bottom:14px;padding:10px 14px;background:rgba(251,146,60,.1);border:1px solid #fb923c;border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:#fb923c;margin-bottom:8px;">⚠️ Hay ${cajasPdv.length} turnos — ¿Cómo querés enviar Z y Tarjetas?</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <button id="ing-modo-suma" onclick="window.ingSetModo('suma')"
+            style="border:2px solid #fb923c;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;background:#fb923c;color:#000;">
+            ➕ Sumar todos
+          </button>
+          ${cajasPdv.map((t,i) => `<button id="ing-modo-t${i}" onclick="window.ingSetModo('t${i}')"
+            style="border:2px solid var(--border);border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--text);">
+            Solo ${t.turno} (Z:${fmt(t.z)} / T:${fmt(t.tarj)})
+          </button>`).join('')}
+        </div>
+        <div id="ing-modo-resumen" style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">
+          Modo: <b>Sumar todos</b> → Z: ${fmt(vZ)} / Tarjetas: ${fmt(vTarjetas)}
+        </div>
+      </div>`;
+    }
+
     const items = [
-      { key:'z',        label:'📋 Informe Z',  val:vZ,        color:'#a78bfa' },
-      { key:'tarjetas', label:'💳 Tarjetas',    val:vTarjetas, color:'#93c5fd' },
-      { key:'ventas',   label:'🛒 Ventas',      val:vVentas,   color:'var(--accent)' },
-      { key:'buzon',    label:'📬 Buzón',       val:vBuzon,    color:'#fb923c' },
+      { key:'z',        label:'📋 Informe Z',  val:togState.z        ? finalZ        : null, color:'#a78bfa' },
+      { key:'tarjetas', label:'💳 Tarjetas',    val:togState.tarjetas ? finalTarjetas : null, color:'#93c5fd' },
+      { key:'ventas',   label:'🛒 Ventas',      val:togState.ventas   ? vVentas       : null, color:'var(--accent)' },
+      { key:'buzon',    label:'📬 Buzón',       val:togState.buzon    ? vBuzon        : null, color:'#fb923c' },
     ].filter(x => x.val !== null);
 
-    // Guardar en variable global para evitar problemas con JSON en atributos HTML
-    window._ingPendiente = { items, dia, mes, anio, pdvId, dests: {} };
+    window._ingPendiente = { items, dia, mes, anio, pdvId, dests: {}, cajasPdv, vZ, vTarjetas, modo: 'suma', togState };
 
     const opts = subcats.map(s => `<option value="${s.id}">${catMap[s.cat_id]||'?'} → ${s.nombre}</option>`).join('');
 
     const overlay = document.createElement('div');
     overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
-    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;padding:24px;">
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:24px;">
       <div style="font-size:15px;font-weight:800;margin-bottom:4px;">💹 Enviar a Cashflow</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px;">📅 ${fecha} · 🏪 ${pdvNombre}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">📅 ${fecha} · 🏪 ${pdvNombre}</div>
+      ${turnoSelector}
       ${items.map(item => `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
           <div style="min-width:100px;font-size:12px;font-weight:700;color:${item.color};">${item.label}</div>
@@ -9680,6 +9715,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>
     </div>`;
     document.body.appendChild(overlay);
+  };
+
+  window.ingSetModo = function ingSetModo(modo) {
+    if (!window._ingPendiente) return;
+    window._ingPendiente.modo = modo;
+    const { cajasPdv, vZ, vTarjetas, togState } = window._ingPendiente;
+    const fmt = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+    let newZ = vZ, newTarj = vTarjetas, label = 'Sumar todos';
+    if (modo !== 'suma') {
+      const idx = parseInt(modo.replace('t',''));
+      const t = cajasPdv[idx];
+      newZ = t.z; newTarj = t.tarj; label = 'Turno: ' + t.turno;
+    }
+    // Actualizar items
+    window._ingPendiente.items = window._ingPendiente.items.map(item => {
+      if (item.key === 'z')        return { ...item, val: togState.z        ? newZ    : null };
+      if (item.key === 'tarjetas') return { ...item, val: togState.tarjetas ? newTarj : null };
+      return item;
+    }).filter(x => x.val !== null);
+    // Actualizar UI
+    const resumen = document.getElementById('ing-modo-resumen');
+    if (resumen) resumen.innerHTML = `Modo: <b>${label}</b> → Z: ${fmt(newZ)} / Tarjetas: ${fmt(newTarj)}`;
+    // Resaltar botón activo
+    document.querySelectorAll('[id^=ing-modo-]').forEach(b => {
+      const isActive = b.id === 'ing-modo-' + modo;
+      b.style.background = isActive ? '#fb923c' : 'transparent';
+      b.style.color = isActive ? '#000' : 'var(--text)';
+      b.style.borderColor = isActive ? '#fb923c' : 'var(--border)';
+    });
   };
 
   window.ingConfirmarEnvio = async function ingConfirmarEnvio() {
