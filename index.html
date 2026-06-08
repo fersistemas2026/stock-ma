@@ -10286,141 +10286,159 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   window.exportarCashflowExcel = async function exportarCashflowExcel() {
     try {
-      const mes  = parseInt(document.getElementById('cf-mes')?.value)  || (new Date().getMonth()+1);
-      const anio = parseInt(document.getElementById('cf-anio')?.value) || new Date().getFullYear();
-      const diasEnMes = new Date(anio, mes, 0).getDate();
-      const dias = Array.from({length: diasEnMes}, (_,i) => i+1);
-      const diasSem = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      const mesSel  = parseInt(document.getElementById('cf-mes')?.value)  || (new Date().getMonth()+1);
+      const anioSel = parseInt(document.getElementById('cf-anio')?.value) || new Date().getFullYear();
       const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const diasNombre = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-      const [cats, subcats, valsData, colsCfg] = await Promise.all([
+      // Función para generar letras estilo Excel: A,B,...Z,AA,AB,...
+      const colLetter = n => {
+        let s=''; n++;
+        while(n>0){ s=String.fromCharCode(64+(n%26||26))+s; n=Math.floor((n-(n%26||26))/26); }
+        return s;
+      };
+
+      const [cats, subcats, colsCfg] = await Promise.all([
         sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || [],
         sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || [],
-        sbApi(`cashflow_vals?empresa_id=eq.${empresaActual}&mes=eq.${mes}&anio=eq.${anio}&select=*`) || [],
         sbApi(`cashflow_cols?empresa_id=eq.${empresaActual}&order=orden.asc&select=*`) || []
       ]);
 
-      const getVal = (sid,d) => {
-        const all = (valsData||[]).filter(v=>String(v.subcat_id)===String(sid)&&parseInt(v.dia)===parseInt(d)&&!v.col_id);
-        const opVals = all.filter(v=>v.pdv_id);
-        const manual = all.find(v=>!v.pdv_id);
-        return opVals.length>0 ? opVals.reduce((s,v)=>s+(parseFloat(v.valor)||0),0) : (manual?parseFloat(manual.valor)||0:0);
-      };
-
-      // Estilos reutilizables
-      const borderStyle = { top:{style:'thin',color:{rgb:'000000'}}, bottom:{style:'thin',color:{rgb:'000000'}}, left:{style:'thin',color:{rgb:'000000'}}, right:{style:'thin',color:{rgb:'000000'}} };
+      // Estilos
+      const brd = { top:{style:'thin',color:{rgb:'000000'}}, bottom:{style:'thin',color:{rgb:'000000'}}, left:{style:'thin',color:{rgb:'000000'}}, right:{style:'thin',color:{rgb:'000000'}} };
       const fmtPeso = '"$"#,##0.00';
-      const mkCell = (v, opts={}) => ({ v, t: typeof v==='number'?'n':'s', ...opts });
-      const mkNum  = (v, opts={}) => v ? { v: parseFloat(v), t:'n', z: fmtPeso, s:{ border:borderStyle, ...opts.s } } : { v:'', t:'s', s:{ border:borderStyle } };
-      const mkStr  = (v, bgRGB, bold=false, color='000000') => ({
+      const mkNum = (v, bgRGB, bold=false) => ({
+        v: parseFloat(v)||0, t:'n', z:fmtPeso,
+        s:{ border:brd, fill:{fgColor:{rgb:bgRGB||'FFFFFF'}}, font:{bold, color:{rgb:'000000'}} }
+      });
+      const mkStr = (v, bgRGB, bold=false, color='000000') => ({
         v: String(v||''), t:'s',
-        s:{ border:borderStyle, fill:{ fgColor:{ rgb:bgRGB||'FFFFFF' } }, font:{ bold, color:{ rgb:color } }, alignment:{ wrapText:false } }
+        s:{ border:brd, fill:{fgColor:{rgb:bgRGB||'FFFFFF'}}, font:{bold, color:{rgb:color}}, alignment:{wrapText:false} }
       });
-      const mkBlack = cols => Array(cols).fill({ v:'', t:'s', s:{ fill:{ fgColor:{ rgb:'000000' } }, border:borderStyle } });
+      const mkBlack = cols => Array(cols).fill(null).map(()=>({ v:'', t:'s', s:{ fill:{fgColor:{rgb:'000000'}}, border:brd } }));
 
-      const totalCols = 1 + diasEnMes + 1 + (colsCfg||[]).length;
-      const rows = [];
+      // Generar hoja para un mes dado
+      const generarHoja = async (mes, anio) => {
+        const diasEnMes = new Date(anio, mes, 0).getDate();
+        const dias = Array.from({length:diasEnMes},(_,i)=>i+1);
+        const totalCols = 1 + diasEnMes + 1 + (colsCfg||[]).length;
 
-      // Fila título
-      const tituloRow = [mkStr(`Cashflow — ${meses[mes-1]} ${anio}`, 'FFFFF0', true, '000000')];
-      for(let i=1;i<totalCols;i++) tituloRow.push(mkStr('','FFFFF0'));
-      rows.push(tituloRow);
-      rows.push(mkBlack(totalCols)); // separador negro
+        const valsData = await sbApi(`cashflow_vals?empresa_id=eq.${empresaActual}&mes=eq.${mes}&anio=eq.${anio}&select=*`) || [];
 
-      // Header fila 1: día del nombre (Lun, Mar...)
-      const hdr1 = [mkStr('', 'D9D9D9', true)];
-      dias.forEach(d => {
-        const dow = new Date(anio, mes-1, d).getDay();
-        const esFinde = dow===0||dow===6;
-        hdr1.push(mkStr(diasSem[dow], esFinde?'C9B1F5':'D9D9D9', true, '000000'));
-      });
-      hdr1.push(mkStr('TOTAL','D9D9D9',true));
-      (colsCfg||[]).forEach(c => hdr1.push(mkStr(c.nombre,'D9D9D9',true)));
-      rows.push(hdr1);
+        const getVal = (sid,d) => {
+          const all = valsData.filter(v=>String(v.subcat_id)===String(sid)&&parseInt(v.dia)===parseInt(d)&&!v.col_id);
+          const opVals = all.filter(v=>v.pdv_id);
+          const manual = all.find(v=>!v.pdv_id);
+          return opVals.length>0 ? opVals.reduce((s,v)=>s+(parseFloat(v.valor)||0),0) : (manual?parseFloat(manual.valor)||0:0);
+        };
 
-      // Header fila 2: número de día
-      const hdr2 = [mkStr('Concepto','D9D9D9',true)];
-      dias.forEach(d => {
-        const dow = new Date(anio, mes-1, d).getDay();
-        const esFinde = dow===0||dow===6;
-        hdr2.push(mkStr(String(d), esFinde?'C9B1F5':'D9D9D9', true, '000000'));
-      });
-      hdr2.push(mkStr('TOTAL','D9D9D9',true));
-      (colsCfg||[]).forEach(c => hdr2.push(mkStr('','D9D9D9')));
-      rows.push(hdr2);
+        const rows = [];
 
-      rows.push(mkBlack(totalCols)); // separador negro
+        // Título
+        const tRow = [mkStr(`Cashflow — ${meses[mes-1]} ${anio}`,'FFFFF0',true)];
+        for(let i=1;i<totalCols;i++) tRow.push(mkStr('','FFFFF0'));
+        rows.push(tRow);
+        rows.push(mkBlack(totalCols));
 
-      cats.forEach(cat => {
-        const isTotal = cat.tipo === 'total';
-        const mySubs  = subcats.filter(s=>s.cat_id===cat.id);
+        // Header fila 1: número de columna estilo Excel
+        const hdrLetras = [mkStr('','D9D9D9',true)];
+        for(let i=0;i<diasEnMes+1+(colsCfg||[]).length;i++) hdrLetras.push(mkStr(colLetter(i),'D9D9D9',true));
+        rows.push(hdrLetras);
 
-        if (isTotal) {
-          const catIds = (cat.formula||'').split(',').map(s=>s.trim()).filter(Boolean);
-          const rowDays = dias.map(d => {
-            let val=0;
-            catIds.forEach(sid=>{
-              const op=sid.match(/^[+\-*\/%]/)?.[0]||'+';
-              const cleanId=sid.replace(/^[+\-*\/%]/,'');
-              const cv=(valsData||[]).filter(v=>String(v.subcat_id)===cleanId&&parseInt(v.dia)===parseInt(d)&&!v.col_id)
-                .reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
-              if(op==='+')val+=cv; else if(op==='-')val-=cv;
+        // Header fila 2: nombre completo del día
+        const hdr1 = [mkStr('','D9D9D9',true)];
+        dias.forEach(d => {
+          const dow = new Date(anio,mes-1,d).getDay();
+          hdr1.push(mkStr(diasNombre[dow], dow===0||dow===6?'C9B1F5':'D9D9D9', true));
+        });
+        hdr1.push(mkStr('TOTAL','D9D9D9',true));
+        (colsCfg||[]).forEach(c=>hdr1.push(mkStr(c.nombre,'D9D9D9',true)));
+        rows.push(hdr1);
+
+        // Header fila 3: número de día
+        const hdr2 = [mkStr('Concepto','D9D9D9',true)];
+        dias.forEach(d => {
+          const dow = new Date(anio,mes-1,d).getDay();
+          hdr2.push(mkStr(String(d), dow===0||dow===6?'C9B1F5':'D9D9D9', true));
+        });
+        hdr2.push(mkStr('','D9D9D9',true));
+        (colsCfg||[]).forEach(()=>hdr2.push(mkStr('','D9D9D9')));
+        rows.push(hdr2);
+        rows.push(mkBlack(totalCols));
+
+        cats.forEach(cat => {
+          const isTotal = cat.tipo === 'total';
+          const mySubs  = subcats.filter(s=>s.cat_id===cat.id);
+
+          if (isTotal) {
+            const catIds = (cat.formula||'').split(',').map(s=>s.trim()).filter(Boolean);
+            const rowDays = dias.map(d => {
+              let val=0;
+              catIds.forEach(sid=>{
+                const op=sid.match(/^[+\-*\/%]/)?.[0]||'+';
+                const cleanId=sid.replace(/^[+\-*\/%]/,'');
+                const cv=valsData.filter(v=>String(v.subcat_id)===cleanId&&parseInt(v.dia)===parseInt(d)&&!v.col_id)
+                  .reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+                if(op==='+')val+=cv; else if(op==='-')val-=cv;
+              });
+              return val;
             });
-            return val;
+            const rowTotal = rowDays.reduce((s,v)=>s+v,0);
+            const totRow = [mkStr(cat.nombre,'C8F04A',true)];
+            rowDays.forEach(v=>totRow.push(mkNum(v,'EAFFD0',true)));
+            totRow.push(mkNum(rowTotal,'C8F04A',true));
+            (colsCfg||[]).forEach(()=>totRow.push(mkStr('','C8F04A')));
+            rows.push(totRow);
+            rows.push(mkBlack(totalCols));
+            return;
+          }
+
+          // Header categoría
+          const catH = [mkStr(`📁 ${cat.nombre}`,'BFDBFE',true)];
+          for(let i=1;i<totalCols;i++) catH.push(mkStr('','BFDBFE',true));
+          rows.push(catH);
+
+          const catDays = {}; dias.forEach(d=>catDays[d]=0);
+
+          mySubs.forEach(sub => {
+            const subRow = [mkStr(`   ${sub.nombre}`,'FFFFFF')];
+            let subTotal=0;
+            dias.forEach(d=>{ const v=getVal(sub.id,d); catDays[d]+=v; subTotal+=v; subRow.push(mkNum(v,'FFFFFF')); });
+            subRow.push(mkNum(subTotal,'F0F0F0',true));
+            (colsCfg||[]).forEach(col=>{
+              const cv=valsData.find(v=>String(v.subcat_id)===String(sub.id)&&String(v.col_id)===String(col.id));
+              subRow.push(mkNum(cv?parseFloat(cv.valor)||0:0,'FFFFFF'));
+            });
+            rows.push(subRow);
           });
-          const rowTotal = rowDays.reduce((s,v)=>s+v,0);
-          const totalRow = [mkStr(cat.nombre,'C8F04A',true,'000000')];
-          rowDays.forEach(v => totalRow.push(mkNum(v, {s:{fill:{fgColor:{rgb:'EAFFD0'}},font:{bold:true}}})));
-          totalRow.push(mkNum(rowTotal, {s:{fill:{fgColor:{rgb:'C8F04A'}},font:{bold:true}}}));
-          (colsCfg||[]).forEach(()=>totalRow.push(mkStr('','C8F04A')));
-          rows.push(totalRow);
+
+          const stRow = [mkStr(`Subtotal ${cat.nombre}`,'E8F4FD',true)];
+          let catTot=0;
+          dias.forEach(d=>{ catTot+=catDays[d]||0; stRow.push(mkNum(catDays[d]||0,'E8F4FD',true)); });
+          stRow.push(mkNum(catTot,'BFDBFE',true));
+          (colsCfg||[]).forEach(()=>stRow.push(mkStr('','E8F4FD')));
+          rows.push(stRow);
           rows.push(mkBlack(totalCols));
-          return;
-        }
-
-        // Header de categoría
-        const catHdrRow = [mkStr(`📁 ${cat.nombre}`, 'BFDBFE', true, '000000')];
-        for(let i=1;i<totalCols;i++) catHdrRow.push(mkStr('','BFDBFE',true));
-        rows.push(catHdrRow);
-
-        const catDays = {};
-        dias.forEach(d=>catDays[d]=0);
-
-        mySubs.forEach(sub => {
-          const subRow = [mkStr(`   ${sub.nombre}`,'FFFFFF',false,'000000')];
-          let subTotal = 0;
-          dias.forEach(d => {
-            const v = getVal(sub.id,d);
-            catDays[d]+=v; subTotal+=v;
-            subRow.push(mkNum(v));
-          });
-          subRow.push(mkNum(subTotal, {s:{font:{bold:true}}}));
-          (colsCfg||[]).forEach(col => {
-            const cv = (valsData||[]).find(v=>String(v.subcat_id)===String(sub.id)&&String(v.col_id)===String(col.id));
-            subRow.push(mkNum(cv ? parseFloat(cv.valor)||0 : 0));
-          });
-          rows.push(subRow);
         });
 
-        // Subtotal categoría
-        const subtotRow = [mkStr(`Subtotal ${cat.nombre}`,'E8F4FD',true,'000000')];
-        let catTot=0;
-        dias.forEach(d => { catTot+=catDays[d]||0; subtotRow.push(mkNum(catDays[d]||0,{s:{fill:{fgColor:{rgb:'E8F4FD'}},font:{bold:true}}})); });
-        subtotRow.push(mkNum(catTot,{s:{fill:{fgColor:{rgb:'E8F4FD'}},font:{bold:true}}}));
-        (colsCfg||[]).forEach(()=>subtotRow.push(mkStr('','E8F4FD')));
-        rows.push(subtotRow);
-        rows.push(mkBlack(totalCols)); // separador negro entre categorías
-      });
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [{wch:35},...dias.map(()=>({wch:12})),{wch:14},...(colsCfg||[]).map(()=>({wch:14}))];
+        ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:totalCols-1}}];
+        return ws;
+      };
 
+      // Determinar rango de meses: Enero 2026 hasta mes/año seleccionado
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{ wch: 35 }, ...dias.map(()=>({ wch: 10 })), { wch: 14 }, ...(colsCfg||[]).map(()=>({ wch: 14 }))];
-      // Merge título
-      ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:totalCols-1} }];
+      toast('⏳ Generando Excel con todos los meses...','success');
+      let m=1, a=2026;
+      while(a<anioSel || (a===anioSel && m<=mesSel)) {
+        const ws = await generarHoja(m, a);
+        XLSX.utils.book_append_sheet(wb, ws, `${meses[m-1]} ${a}`);
+        m++; if(m>12){m=1;a++;}
+      }
 
-      XLSX.utils.book_append_sheet(wb, ws, `${meses[mes-1]} ${anio}`);
-      XLSX.writeFile(wb, `cashflow_${meses[mes-1].toLowerCase()}_${anio}.xlsx`);
-      toast('✓ Excel descargado', 'success');
+      XLSX.writeFile(wb, `cashflow_${anioSel}.xlsx`);
+      toast('✓ Excel descargado con todos los meses', 'success');
     } catch(e) {
       toast('Error al exportar: ' + e.message, 'error');
       console.error(e);
