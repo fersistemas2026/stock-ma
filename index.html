@@ -9834,7 +9834,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       };
 
       const fmt = n => { const v=parseFloat(n); return (!isNaN(v)&&v!==0)?v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):''; };
-      const CW = 64;
+      const CW = 110;
 
       const catDayTot = {};
       cats.forEach(cat => {
@@ -9845,10 +9845,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       let cfRowNum = 0;
       let html = `<table style="border-collapse:collapse;font-size:13px;min-width:max-content;table-layout:fixed;">
         <colgroup>
-          <col style="width:180px;min-width:180px;">
+          <col style="width:210px;min-width:210px;">
           ${dias.map(()=>`<col style="width:${CW}px;">`).join('')}
-          <col style="width:90px;">
-          ${(colsCfg||[]).map(()=>`<col style="width:90px;">`).join('')}
+          <col style="width:130px;">
+          ${(colsCfg||[]).map(()=>`<col style="width:130px;">`).join('')}
           <col style="width:40px;">
         </colgroup>
         <thead>
@@ -9861,7 +9861,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </tr>
           <tr style="background:var(--surface2);">
             <th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text-muted);border:1px solid var(--border);position:sticky;left:0;background:var(--surface2);z-index:3;">Categoría</th>
-            ${dias.map(d=>{const dow=new Date(anio,mes-1,d).getDay();const esFinde=dow===0||dow===6;return`<th style="padding:4px 2px;text-align:center;font-size:10px;min-width:${CW}px;border:1px solid var(--border);${esFinde?'color:#a78bfa;':'color:var(--text-muted);'}"><div style="font-size:9px;opacity:.6;">${diasSem[dow]}</div><div>${d}</div></th>`;}).join('')}
+            ${dias.map(d=>{const dow=new Date(anio,mes-1,d).getDay();const esFinde=dow===0||dow===6;return`<th style="padding:6px 3px;text-align:center;font-size:11px;min-width:${CW}px;border:1px solid var(--border);${esFinde?'color:#a78bfa;':'color:var(--text-muted);'}"><div style="font-size:9px;opacity:.6;">${diasSem[dow]}</div><div>${d}</div></th>`;}).join('')}
             <th style="padding:5px 8px;text-align:right;font-size:10px;color:var(--accent);border:1px solid var(--border);">TOTAL</th>
             ${(colsCfg||[]).map(col=>`<th style="padding:5px 6px;text-align:center;font-size:10px;color:#93c5fd;border:1px solid var(--border);">${col.nombre}</th>`).join('')}
             <th style="border:1px solid var(--border);width:40px;"></th>
@@ -9879,7 +9879,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           const catIds = expr.split(',').map(s=>s.trim()).filter(Boolean);
           let rowTotal = 0;
           html += `<tr style="background:rgba(200,240,74,.07);">
-            <td style="padding:6px 10px;font-weight:800;color:var(--accent);position:sticky;left:0;background:rgba(200,240,74,.07);z-index:1;border:1px solid var(--border);">
+            <td style="padding:10px 14px;font-weight:800;font-size:14px;color:var(--accent);position:sticky;left:0;background:rgba(200,240,74,.07);z-index:1;border:1px solid var(--border);">
               <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>${cat.nombre}
               <button onclick="window.editarFormulaCF('${cat.id}','${cat.formula||''}')" style="background:none;border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;color:var(--text-muted);cursor:pointer;margin-left:5px;">⚙️</button>
             </td>
@@ -9894,9 +9894,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               });
               rowTotal+=val;
               const esFinde2=new Date(anio,mes-1,d).getDay()===0||new Date(anio,mes-1,d).getDay()===6;
-              return`<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-weight:700;color:${val>0?'var(--accent)':val<0?'#ff5a5a':'var(--text-dim)'};border:1px solid var(--border);background:${esFinde2?'rgba(167,139,250,.05)':'transparent'};">${val?'$'+fmt(val):''}</td>`;
+              return`<td style="padding:8px 6px;text-align:right;font-family:var(--mono);font-size:14px;font-weight:800;color:${val>0?'var(--accent)':val<0?'#ff5a5a':'var(--text-dim)'};border:1px solid var(--border);background:${esFinde2?'rgba(167,139,250,.05)':'transparent'};">${val?'$'+fmt(val):''}</td>`;
             }).join('')}
-            <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:900;color:${rowTotal>=0?'var(--accent)':'#ff5a5a'};border:1px solid var(--border);">${rowTotal?'$'+fmt(rowTotal):''}</td>
+            <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:16px;font-weight:900;color:${rowTotal>=0?'var(--accent)':'#ff5a5a'};border:1px solid var(--border);">${rowTotal?'$'+fmt(rowTotal):''}</td>
             ${(colsCfg||[]).map(()=>'<td style="border:1px solid var(--border);"></td>').join('')}
             <td style="border:1px solid var(--border);text-align:center;"><button onclick="window.eliminarCategoriaCF('${cat.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:11px;">✕</button></td>
           </tr>`;
@@ -9920,7 +9920,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           cfRowNum++;
           let subTotal = 0;
           html += `<tr>
-            <td style="padding:5px 10px 5px 20px;color:var(--text);font-size:12px;position:sticky;left:0;background:var(--surface);z-index:1;border:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">
+            <td style="padding:8px 12px 8px 22px;color:var(--text);font-size:13px;position:sticky;left:0;background:var(--surface);z-index:1;border:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px;">
               <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:4px;">${cfRowNum}</span>${sub.nombre}
               <button onclick="window.eliminarSubcatCF('${sub.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:10px;margin-left:3px;">✕</button>
             </td>
@@ -9936,11 +9936,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               return`<td style="padding:2px 2px;border:1px solid var(--border);background:${esFinde?'rgba(167,139,250,.05)':'transparent'};">
                 <input type="number" step="any" value="${vEdit||''}" placeholder=""
                   onchange="window.guardarValCF('${sub.id}',${d},${mes},${anio},this.value)"
-                  style="width:100%;background:transparent;border:none;padding:5px 5px;font-size:12px;font-family:var(--mono);color:${v>0?'var(--accent)':'var(--text)'};text-align:right;outline:none;font-weight:${v>0?'600':'400'};"
+                  style="width:100%;background:transparent;border:none;padding:7px 6px;font-size:13px;font-family:var(--mono);color:${v>0?'var(--accent)':'var(--text)'};text-align:right;outline:none;font-weight:${v>0?'600':'400'};"
                   onfocus="this.style.background='rgba(200,240,74,.12)';this.style.color='var(--text)'" onblur="this.style.background='transparent'">
               </td>`;
             }).join('')}
-            <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:700;color:${subTotal>0?'var(--accent)':'var(--text)'};border:1px solid var(--border);">${subTotal?'$'+fmt(subTotal):''}</td>
+            <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-size:14px;font-weight:700;color:${subTotal>0?'var(--accent)':'var(--text)'};border:1px solid var(--border);">${subTotal?'$'+fmt(subTotal):''}</td>
             ${(colsCfg||[]).map(col=>{
               const cv=vals[sub.id+'_col_'+col.id];
               return`<td style="padding:2px 2px;border:1px solid var(--border);">
@@ -9957,10 +9957,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
         cfRowNum++;
         html += `<tr style="background:rgba(255,255,255,.03);">
-          <td style="padding:5px 10px;font-weight:700;font-size:11px;color:var(--text-muted);position:sticky;left:0;background:rgba(255,255,255,.03);z-index:1;border:1px solid var(--border);">
+          <td style="padding:7px 14px;font-weight:700;font-size:12px;color:var(--text-muted);position:sticky;left:0;background:rgba(255,255,255,.03);z-index:1;border:1px solid var(--border);">
             <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>Subtotal ${cat.nombre}
           </td>
-          ${dias.map(d=>{const esFinde=new Date(anio,mes-1,d).getDay()===0||new Date(anio,mes-1,d).getDay()===6;return`<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-muted);border:1px solid var(--border);background:${esFinde?'rgba(167,139,250,.05)':'transparent'};">${catDiaSums[d]?'$'+fmt(catDiaSums[d]):''}</td>`;}).join('')}
+          ${dias.map(d=>{const esFinde=new Date(anio,mes-1,d).getDay()===0||new Date(anio,mes-1,d).getDay()===6;return`<td style="padding:7px 6px;text-align:right;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-muted);border:1px solid var(--border);background:${esFinde?'rgba(167,139,250,.05)':'transparent'};">${catDiaSums[d]?'$'+fmt(catDiaSums[d]):''}</td>`;}).join('')}
           <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--text);border:1px solid var(--border);">${catTot?'$'+fmt(catTot):''}</td>
           ${(colsCfg||[]).map(()=>'<td style="border:1px solid var(--border);"></td>').join('')}
           <td style="border:1px solid var(--border);"></td>
