@@ -355,6 +355,9 @@
         <button class="neg-stab" onclick="switchNeg(&#39;informes&#39;)" id="neg-btn-informes" style="display:none">📈 Informes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;caja&#39;)" id="neg-btn-caja" style="display:none">💰 Caja</button>
         <button class="neg-stab" onclick="switchNeg(&#39;config&#39;)" id="neg-btn-config" style="display:none">⚙️ Configuración</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;cashflow&#39;)" id="neg-btn-cashflow" style="display:none">💹 Cashflow</button>
+
+        <button class="neg-stab" onclick="switchNeg(&#39;egresos-op&#39;)" id="neg-btn-egresos-op" style="display:none">📊 Egresos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;mensajes&#39;)" id="neg-btn-mensajes" style="display:none">💬 Mensajes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;desperdicios&#39;)" id="neg-btn-desperdicios" style="display:none">🗑️ Desperdicios</button>
         <button class="neg-stab" onclick="switchNeg(&#39;recuento&#39;)" id="neg-btn-recuento" style="display:none">🔢 Recuento</button>
@@ -473,6 +476,9 @@
               <option value="stock">📦 Elaboración / Stock</option>
               <option value="caja">💰 Caja</option>
               <option value="buzon">📬 Buzón</option>
+              <option value="informeZ">🖨️ Informe Z</option>
+              <option value="tarjetas">💳 Tarjetas</option>
+              <option value="cashflow">💹 Cashflow</option>
               <option value="gastos">💸 Gastos</option>
               <option value="pedidos">📋 Pedidos varios</option>
               <option value="pedidosInt">📦 Pedidos internos</option>
@@ -878,11 +884,10 @@
                 <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Nombre</th>
                 <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Teléfono</th>
                 <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Email</th>
-                <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Localidad</th>
-                <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Notas</th>
+                <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">PDV</th>
               </tr></thead>
               <tbody id="clientes-op-tbody">
-                <tr><td colspan="5" style="padding:32px;text-align:center;color:var(--text-dim);">Cargando...</td></tr>
+                <tr><td colspan="4" style="padding:32px;text-align:center;color:var(--text-dim);">Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -952,6 +957,8 @@
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📦 Pedido interno x op.</button>
           <button id="cfg-tab-btn-desp" onclick="switchCfgTab('desp')"
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">🗑️ Desperdicios</button>
+          <button id="cfg-tab-btn-egresos" onclick="switchCfgTab('egresos')"
+            style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📊 Egresos</button>
         </div>
 
         <!-- Tab Mensajes -->
@@ -1000,6 +1007,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div id="cfg-desp-prods" style="display:none;"></div>
         </div>
 
+        <!-- Tab Egresos -->
+        <div id="cfg-tab-egresos" style="display:none;max-width:720px;">
+          <div id="egresos-body-cfg"></div>
+        </div>
+
         <!-- Tab Efectivo -->
         <div id="cfg-tab-efectivo" style="display:none;max-width:720px;">
           <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Configurá el tope de efectivo y la cantidad de avisos antes de bloquear las ventas en cada punto de venta.</p>
@@ -1034,6 +1046,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
       <!-- EMPRESA -->
       <div id="neg-panels-wrap" style="flex:1;min-width:0;">
+      <!-- EGRESOS OPERADOR -->
+      <div id="neg-egresos-op" class="neg-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="form-title" style="margin-bottom:2px;">📊 Egresos</div>
+            <p style="font-size:13px;color:var(--text-muted);margin:0;">Registrá los egresos del día por categoría.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="date" id="egresos-op-fecha" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+            <button onclick="cargarEgresosOp()" style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;">📋 Cargar</button>
+          </div>
+        </div>
+        <div id="egresos-op-body"></div>
+      </div>
+
+      <!-- CASHFLOW -->
+      <div id="neg-cashflow" class="neg-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div class="form-title" style="margin-bottom:0;">💹 Cashflow</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <select id="cf-mes" onchange="window.renderCashflow()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;"></select>
+            <select id="cf-anio" onchange="window.renderCashflow()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;"></select>
+            <button onclick="window.agregarCategoriaCF()" style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">+ Categoría</button>
+            <button onclick="window.configurarColsCF()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:13px;color:var(--text);cursor:pointer;">⚙️ Columnas extra</button>
+          </div>
+        </div>
+        <div id="cf-tabla" style="overflow-x:auto;font-size:12px;"></div>
+      </div>
+
       <div id="neg-empresa" class="neg-panel" style="display:none">
         <div style="margin-bottom:28px;">
           <div class="form-title">Empresas</div>
@@ -3186,9 +3227,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     body.innerHTML=`<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Consultando caja...</p></div>`;
     try {
       const [caja, buzon, gastos, pdvs] = await Promise.all([
-        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=fecha,turno,tipo,efectivo,tarjetas,pedidos,reporte_z,pdv_id&order=fecha.asc`)||[],
-        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=fecha,pdv_id,monto`)||[],
-        sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=fecha,pdv_id,monto,descripcion`)||[],
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*&order=fecha.asc`)||[],
+        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`)||[],
+        sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`)||[],
         getPdv()
       ]);
       if (!caja.length) { body.innerHTML=`<div class="empty-state">💰<p>No hay datos de caja en ese período.</p></div>`; return; }
@@ -3197,7 +3238,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       // Group by PDV
       const pdvMap={};
       // Initialize ALL pdvs, not just those with caja data
-      pdvs.forEach(p=>{ pdvMap[String(p.id)]={nombre:p.nombre||p.name, ef_ini:0, ef_cie:0, tarj:0, ped:0, repZ:0, buzon:0, gastos:0}; });
+      pdvs.forEach(p=>{ pdvMap[String(p.id)]={nombre:p.nombre||p.name, ef_ini:0, ef_cie:0, tarj:0, ped:0, repZ:0, buzon:0, gastos:0, _caja:[], _buzon:[], _gastos:[]}; });
 
       caja.forEach(row=>{
         const pdvId=String(row.pdv_id||'sin-pdv');
@@ -3207,6 +3248,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           pdvMap[pdvId]={nombre:found?(found.nombre||found.name):`PDV ${pdvId.substring(0,8)}...`, ef_ini:0, ef_cie:0, tarj:0, ped:0, repZ:0, buzon:0, gastos:0};
         }
         const v=pdvMap[pdvId];
+        v._caja.push(row);
         if (row.tipo==='inicio') v.ef_ini+=parseFloat(row.efectivo||0);
         if (row.tipo==='cierre') {
           v.ef_cie+=parseFloat(row.efectivo||0);
@@ -3217,13 +3259,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       });
       buzon.forEach(row=>{
         const pdvId=String(row.pdv_id||'');
-        if (pdvMap[pdvId]) pdvMap[pdvId].buzon+=parseFloat(row.monto||0);
+        if (pdvMap[pdvId]) { pdvMap[pdvId].buzon+=parseFloat(row.monto||0); pdvMap[pdvId]._buzon.push(row); }
       });
       gastos.forEach(row=>{
         const pdvId=String(row.pdv_id||'');
-        if (pdvMap[pdvId]) pdvMap[pdvId].gastos+=parseFloat(row.monto||0);
+        if (pdvMap[pdvId]) { pdvMap[pdvId].gastos+=parseFloat(row.monto||0); pdvMap[pdvId]._gastos.push(row); }
       });
 
+      window._cajaInformesData = pdvMap;
       const activePdvs=Object.entries(pdvMap).filter(([id])=>pdvs.some(p=>String(p.id)===id));
       if (!activePdvs.length) { body.innerHTML=`<div class="empty-state">💰<p>No hay datos en ese período.</p></div>`; return; }
 
@@ -3245,7 +3288,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             ['💸 Gastos', -v.gastos],
           ];
           return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
-            <div style="background:var(--surface2);padding:12px 18px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;">🏪 ${v.nombre}</div>
+            <div style="background:var(--surface2);padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:14px;font-weight:700;">🏪 ${v.nombre}</span>
+              <button onclick="editarCajaPdv('${pdvId}')" style="background:none;border:1px solid var(--accent);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--accent);cursor:pointer;">✏️ Editar</button>
+            </div>
             <div style="padding:12px 18px;">
               ${rows.map(([label,val])=>`
               <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
@@ -3407,34 +3453,257 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const body=document.getElementById('inf-body');
     body.innerHTML=`<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Consultando buzón...</p></div>`;
     try {
-      const r=await sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=fecha.asc,created_at.asc&select=*`)||[];
+      const [r, pdvs] = await Promise.all([
+        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=fecha.asc,created_at.asc&select=*`) || [],
+        getPdv()
+      ]);
       if (!r.length) { body.innerHTML=`<div class="empty-state">📭<p>Sin registros de buzón en ese período.</p></div>`; return; }
       const fmt=n=>'$'+parseFloat(n).toLocaleString('es-AR',{minimumFractionDigits:2});
       const total=r.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-      // Group by date
-      const byFecha={};
-      r.forEach(x=>{ if(!byFecha[x.fecha]) byFecha[x.fecha]=[]; byFecha[x.fecha].push(x); });
+      const pdvMap={};
+      pdvs.forEach(p=>pdvMap[String(p.id)]=p.nombre||p.name);
+
+      // Agrupar por PDV
+      const byPdv={};
+      r.forEach(x=>{
+        const pdvNombre = pdvMap[String(x.pdv_id)] || x.pdv_id || 'Sin PDV';
+        if(!byPdv[pdvNombre]) byPdv[pdvNombre]=[];
+        byPdv[pdvNombre].push(x);
+      });
+
       body.innerHTML=`
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
           📅 ${desde===hasta?desde:`${desde} → ${hasta}`} &nbsp;·&nbsp; Total: <b style="color:var(--accent);font-family:var(--mono);">${fmt(total)}</b>
         </div>
-        ${Object.entries(byFecha).map(([fecha,items])=>{
-          const dTotal=items.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-          return `<div class="resumen-pdv-card" style="margin-bottom:12px;">
-            <div class="resumen-pdv-header"><span class="resumen-pdv-name">📅 ${fecha}</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(dTotal)}</span></div>
+        ${Object.entries(byPdv).map(([pdvNombre,items])=>{
+          const pTotal=items.reduce((s,x)=>s+parseFloat(x.monto||0),0);
+          return `<div class="resumen-pdv-card" style="margin-bottom:14px;">
+            <div class="resumen-pdv-header"><span class="resumen-pdv-name">🏪 ${pdvNombre}</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(pTotal)}</span></div>
             <table class="resumen-table">
-              <thead><tr><th>Operador</th><th>PDV</th><th>Turno</th><th>Hora</th><th class="right">Monto</th></tr></thead>
-              <tbody>${items.map(x=>`<tr>
-                <td>${x.display_name||x.username}</td>
-                <td style="color:var(--text-dim);font-size:12px;">${x.pdv_id}</td>
-                <td>${x.turno}</td>
-                <td style="font-family:var(--mono);font-size:12px;">${new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</td>
-                <td class="right" style="font-family:var(--mono);font-weight:700;color:var(--accent);">${fmt(x.monto)}</td>
-              </tr>`).join('')}</tbody>
+              <thead><tr><th>Fecha</th><th>Operador</th><th>Turno</th><th>Hora</th><th class="right">Monto</th><th></th></tr></thead>
+              <tbody>${items.map(x=>{
+                const hora = new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
+                return `<tr id="buzon-row-${x.id}">
+                  <td style="font-family:var(--mono);font-size:12px;">${x.fecha}</td>
+                  <td>${x.display_name||x.username}</td>
+                  <td>${x.turno}</td>
+                  <td style="font-family:var(--mono);font-size:12px;">${hora}</td>
+                  <td class="right" style="font-family:var(--mono);font-weight:700;color:var(--accent);" id="buzon-monto-td-${x.id}">${fmt(x.monto)}</td>
+                  <td style="text-align:center;">
+                    <button onclick="editarBuzonMonto('${x.id}','${x.monto}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--text-muted);cursor:pointer;">✏️</button>
+                  </td>
+                </tr>`;
+              }).join('')}</tbody>
             </table>
           </div>`;
         }).join('')}`;
     } catch(e) { body.innerHTML=`<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`; }
+  }
+
+  async function editarBuzonMonto(id, montoActual) {
+    const nuevo = prompt('Nuevo monto:', montoActual);
+    if (nuevo === null || nuevo.trim() === '') return;
+    const montoNum = parseFloat(nuevo.replace(',','.'));
+    if (isNaN(montoNum)) { toast('Monto inválido','error'); return; }
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/buzon_caja?id=eq.${id}`, { method:'PATCH', headers:H, body: JSON.stringify({ monto: montoNum }) });
+      const td = document.getElementById(`buzon-monto-td-${id}`);
+      if (td) td.textContent = '$'+montoNum.toLocaleString('es-AR',{minimumFractionDigits:2});
+      toast('✓ Monto actualizado','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  async function editarCajaPdv(pdvId) {
+    const data = window._cajaInformesData?.[pdvId];
+    if (!data) return;
+    const fmt = n => parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-editar-caja';
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+
+    const buildSection = (titulo, registros, campos, tabla_db) => {
+      if (!registros.length) return '';
+      return `<div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${titulo}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:var(--surface2);">
+            <th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text-muted);">Fecha</th>
+            <th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text-muted);">Turno</th>
+            ${campos.map(c=>`<th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--text-muted);">${c.label}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${registros.map(r => `<tr style="border-top:1px solid var(--border);">
+              <td style="padding:7px 10px;font-family:var(--mono);font-size:12px;">${r.fecha||'—'}</td>
+              <td style="padding:7px 10px;font-size:12px;">${r.turno||'—'}</td>
+              ${campos.map(c=>`<td style="padding:4px 6px;text-align:right;">
+                <input type="number" min="0" step="any" value="${parseFloat(r[c.field]||0)}"
+                  data-id="${r.id}" data-field="${c.field}" data-tabla="${tabla_db}"
+                  style="width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;font-family:var(--mono);color:var(--text);text-align:right;outline:none;"
+                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+              </td>`).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    };
+
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:700px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:15px;font-weight:800;">✏️ Editar caja — ${data.nombre}</div>
+        <button onclick="this.closest('[id=modal-editar-caja]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:18px;overflow-y:auto;flex:1;">
+        ${buildSection('💰 Registros de caja', data._caja, [
+          {label:'Efectivo', field:'efectivo'},
+          {label:'Tarjetas', field:'tarjetas'},
+          {label:'Pedidos', field:'pedidos'},
+          {label:'Informe Z', field:'reporte_z'}
+        ], 'caja')}
+        ${buildSection('📬 Buzón', data._buzon, [{label:'Monto', field:'monto'}], 'buzon_caja')}
+        ${buildSection('💸 Gastos', data._gastos, [{label:'Monto', field:'monto'}], 'gastos_caja')}
+      </div>
+      <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="document.getElementById('modal-editar-caja').remove()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 20px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+        <button onclick="guardarTodaCaja()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:800;cursor:pointer;">💾 Guardar todo</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+  }
+
+  async function guardarTodaCaja() {
+    const inputs = document.querySelectorAll('#modal-editar-caja input[data-id]');
+    if (!inputs.length) return;
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+    // Agrupar por id+tabla
+    const grupos = {};
+    inputs.forEach(inp => {
+      const key = inp.dataset.tabla + '_' + inp.dataset.id;
+      if (!grupos[key]) grupos[key] = { tabla: inp.dataset.tabla, id: inp.dataset.id, fields: {} };
+      grupos[key].fields[inp.dataset.field] = parseFloat(inp.value) || 0;
+    });
+    try {
+      await Promise.all(Object.values(grupos).map(g =>
+        fetch(`${SUPABASE_URL}/rest/v1/${g.tabla}?id=eq.${g.id}`, { method:'PATCH', headers:H, body: JSON.stringify(g.fields) })
+      ));
+      document.getElementById('modal-editar-caja')?.remove();
+      toast('✓ Cambios guardados','success');
+      // Recargar el informe
+      loadInformes();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  async function editarCamposCaja(id, tabla, campos) {
+    // Determinar tabla correcta
+    let tabla_db = 'caja';
+    if (tabla.includes('uzón') || tabla.includes('Buzón')) tabla_db = 'buzon_caja';
+    else if (tabla.includes('asto') || tabla.includes('Gasto')) tabla_db = 'gastos_caja';
+
+    // Crear modal de edición con inputs
+    const overlay = document.createElement('div');
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+
+    const inputsHtml = campos.map(c => {
+      const tdId = `cajaedit-${id}-${c.field}`;
+      const td = document.getElementById(tdId);
+      const actual = td ? parseFloat(td.textContent.replace(/[^0-9,.]/g,'').replace(',','.')) || 0 : 0;
+      return `<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">${c.label}</label>
+        <input type="number" id="cajaedit-input-${id}-${c.field}" value="${actual}" min="0" step="any"
+          style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 12px;font-size:16px;font-family:var(--mono);color:var(--text);outline:none;"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      </div>`;
+    }).join('');
+
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:400px;overflow:hidden;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14px;font-weight:800;">✏️ Editar ${tabla}</div>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px;">
+        ${inputsHtml}
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="guardarCamposCaja('${id}','${tabla_db}',${JSON.stringify(campos).replace(/"/g,"'")})" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Guardar</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+  }
+
+  async function guardarCamposCaja(id, tabla_db, campos) {
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      const body = {};
+      campos.forEach(c => {
+        const input = document.getElementById(`cajaedit-input-${id}-${c.field}`);
+        if (input) body[c.field] = parseFloat(input.value) || 0;
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/${tabla_db}?id=eq.${id}`, { method:'PATCH', headers:H, body: JSON.stringify(body) });
+      // Actualizar celdas en pantalla
+      campos.forEach(c => {
+        const td = document.getElementById(`cajaedit-${id}-${c.field}`);
+        if (td) td.textContent = '$'+(body[c.field]||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+      });
+      document.querySelector('[style*="position:fixed"][style*="z-index:99999"]')?.remove();
+      toast('✓ Guardado correctamente','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  async function editarBuzonPdv(pdvId, desde, hasta) {
+    const overlay = document.createElement('div');
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:600px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14px;font-weight:800;">✏️ Editar buzón</div>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div id="edit-buzon-body" style="padding:18px;overflow-y:auto;flex:1;">
+        <div style="text-align:center;padding:32px;"><span class="spin"></span></div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+
+    try {
+      const r = await sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=gte.${desde}&fecha=lte.${hasta}&order=fecha.asc,created_at.asc&select=*`) || [];
+      const body = document.getElementById('edit-buzon-body');
+      if (!body) return;
+      if (!r.length) { body.innerHTML = '<div class="empty-state">📭<p>Sin registros de buzón.</p></div>'; return; }
+      const fmt = n => parseFloat(n).toLocaleString('es-AR',{minimumFractionDigits:2});
+      body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+        '<thead><tr style="background:var(--surface2);"><th style="padding:8px 12px;text-align:left;">Fecha</th><th style="padding:8px 12px;text-align:left;">Operador</th><th style="padding:8px 12px;text-align:left;">Turno</th><th style="padding:8px 12px;text-align:right;">Monto</th><th style="padding:8px 8px;"></th></tr></thead><tbody>' +
+        r.map(x => `<tr style="border-top:1px solid var(--border);" id="caja-buzon-row-${x.id}">
+          <td style="padding:8px 12px;font-family:var(--mono);font-size:12px;">${x.fecha}</td>
+          <td style="padding:8px 12px;">${x.display_name||x.username}</td>
+          <td style="padding:8px 12px;">${x.turno}</td>
+          <td style="padding:8px 12px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--accent);" id="caja-buzon-monto-${x.id}">$${fmt(x.monto)}</td>
+          <td style="padding:8px 8px;text-align:center;">
+            <button onclick="editarMontoInline('${x.id}','${x.monto}','caja-buzon-monto-${x.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--text-muted);cursor:pointer;">✏️</button>
+          </td>
+        </tr>`).join('') +
+        '</tbody></table>';
+    } catch(e) {
+      const body = document.getElementById('edit-buzon-body');
+      if (body) body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+  async function editarMontoInline(id, montoActual, tdId) {
+    const nuevo = prompt('Nuevo monto:', montoActual);
+    if (nuevo === null || nuevo.trim() === '') return;
+    const montoNum = parseFloat(nuevo.replace(',','.'));
+    if (isNaN(montoNum)) { toast('Monto inválido','error'); return; }
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/buzon_caja?id=eq.${id}`, { method:'PATCH', headers:H, body: JSON.stringify({ monto: montoNum }) });
+      const td = document.getElementById(tdId);
+      if (td) td.textContent = '$'+montoNum.toLocaleString('es-AR',{minimumFractionDigits:2});
+      toast('✓ Monto actualizado','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
   async function loadInformesGastos(range) {
@@ -3523,6 +3792,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='desperdicios') { await loadInformesDesperdicios(range); return; }
     if (seccion==='ventas')       { await loadInformesVentas(range); return; }
     if (seccion==='clientes')     { await loadInformesClientes(); return; }
+    if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
+    if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
+    if (seccion==='tarjetas')     { await loadInformesTarjetas(range.desde, range.hasta); return; }
+    if (seccion==='cashflow')     { await loadInformesCashflow(range.desde, range.hasta); return; }
     if (seccion==='pedidos') { await loadInformesPedidos(range); return; }
     const {desde,hasta}=range;
     const body=document.getElementById('inf-body');
@@ -3932,6 +4205,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             </label>
             <label class="pdv-check-item ${perms.desperdicios?'checked':''}" id="perm-lbl-${u.username}-desperdicios">
               <input type="checkbox" ${perms.desperdicios?'checked':''} onchange="togglePerm('${u.username}','desperdicios',this.checked)" />🗑️ Desperdicios
+            </label>
+            <label class="pdv-check-item ${perms.egresos?'checked':''}" id="perm-lbl-${u.username}-egresos">
+              <input type="checkbox" ${perms.egresos?'checked':''} onchange="togglePerm('${u.username}','egresos',this.checked)" />📊 Egresos
             </label>
             <label class="pdv-check-item ${perms.recuento?'checked':''}" id="perm-lbl-${u.username}-recuento">
               <input type="checkbox" ${perms.recuento?'checked':''} onchange="togglePerm('${u.username}','recuento',this.checked)" />🔢 Recuento
@@ -4683,6 +4959,25 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   // ── CLIENTES SOLO LECTURA PARA OPERADOR ─────────────────────────────────
   let _clientesOpData = [];
+  function imprimirDetalleCliente(nombre) {
+    const body = document.getElementById('detalle-cliente-op-body');
+    if (!body) return;
+    const empresaNombre = document.getElementById('header-empresa-name')?.textContent || '';
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Cliente: ${nombre}</title>
+      <style>body{font-family:Arial,sans-serif;font-size:13px;color:#000;padding:20px;}
+      table{width:100%;border-collapse:collapse;}td,th{border:1px solid #ccc;padding:6px 10px;}
+      th{background:#f5f5f5;font-size:11px;text-transform:uppercase;}
+      h2{margin-bottom:4px;}h3{margin:14px 0 6px;}
+      .total{font-weight:700;color:#2563eb;}</style></head><body>
+      <h2>${empresaNombre}</h2>
+      <h3>👤 ${nombre}</h3>
+      ${body.innerHTML}
+      </body></html>`);
+    win.document.close();
+    win.print();
+  }
+
   async function cargarClientesOp() {
     const tbody = document.getElementById('clientes-op-tbody');
     if (!tbody) return;
@@ -4714,7 +5009,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <td style="padding:9px 12px;font-weight:600;color:var(--text);">${c.nombre||'—'}</td>
         <td style="padding:9px 12px;font-family:var(--mono);font-size:13px;color:#25D366;">${c.telefono||'—'}</td>
         <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.email||'—'}</td>
-        <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.localidad||'—'}</td>
+        <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.pdv_nombre||c.pdv_id||'—'}</td>
       </tr>`).join('');
   }
 
@@ -4730,9 +5025,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;">
         <div>
           <div style="font-size:15px;font-weight:800;">👤 ${c.nombre||c.telefono||'Cliente'}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-family:var(--mono);">📱 ${c.telefono||'—'}${c.email?' &nbsp;·&nbsp; '+c.email:''}${c.localidad?' &nbsp;·&nbsp; '+c.localidad:''}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;font-family:var(--mono);">📱 ${c.telefono||'—'}${c.email?' &nbsp;·&nbsp; '+c.email:''}${c.pdv_nombre?' &nbsp;·&nbsp; 🏪 '+c.pdv_nombre:''}</div>
         </div>
-        <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${telNorm ? `<button onclick="window.open('https://wa.me/${telNorm}','_blank')" style="background:none;border:1px solid #25D366;border-radius:7px;padding:6px 12px;font-size:13px;color:#25D366;cursor:pointer;">📱 WA</button>` : ''}
+          <button onclick="imprimirDetalleCliente('${c.nombre||c.telefono||'Cliente'}')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:13px;color:var(--text);cursor:pointer;">🖨️</button>
+          <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+        </div>
       </div>
       <div id="detalle-cliente-op-body" style="padding:18px;overflow-y:auto;flex:1;">
         <div style="text-align:center;padding:32px;"><span class="spin"></span></div>
@@ -4828,6 +5127,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='pedido-suc')  loadPedidoSuc();
     if (sub==='pedido-recibido') loadPedidoRecibido();
     if (sub==='config')          initConfig();
+    if (sub==='cashflow')        initCashflow();
+    if (sub==='egresos')         initEgresos();
+    if (sub==='egresos-op')      initEgresosOp();
+
     if (sub==='mensajes')        initChat();
     if (sub==='desperdicios')    initDesperdicios();
     if (sub==='recuento')        initRecuento();
@@ -6192,6 +6495,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!pdvId) { toast('Seleccioná un PDV','error'); return; }
     if (!fecha || fecha === 'undefined') { toast('Seleccioná una fecha','error'); return; }
 
+    // Guardar datos del cliente antes de abrir modal (para que no se pierdan)
+    if (!window._vueltoConfirmed && !window._tarjetaConfirmed) {
+      window._ventasClienteTelGuardar = (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
+      window._ventasClienteNombreGuardar = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    }
+
     // Modal según método de pago
     const esEfectivo = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1';
     const esTarjeta = document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1';
@@ -6206,12 +6515,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
     window._vueltoConfirmed = false;
     window._tarjetaConfirmed = false;
+    window._ventasClienteTelGuardar = '';
+    window._ventasClienteNombreGuardar = '';
 
     const pdvs = await getPdv();
     const metodoPago = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1' ? 'efectivo' :
                        document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1' ? 'tarjeta' : 'efectivo';
-    const clienteTelVenta = (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
-    const clienteNombreVenta = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
+    const clienteTelVenta = window._ventasClienteTelGuardar || (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
+    const clienteNombreVenta = window._ventasClienteNombreGuardar || document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
     const rows = _ventasItems.map(item => ({
       empresa_id: String(empresaActual),
       pdv_id: String(pdvId),
@@ -7358,6 +7669,310 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
 
   // ── INFORME CLIENTES ──────────────────────────────────────────────────
+  async function loadInformesCashflow(desde, hasta) {
+    const cont = document.getElementById('inf-body');
+    cont.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando Cashflow...</p></div>';
+    try {
+      const desdeDate = new Date(desde+'T00:00:00');
+      const hastaDate = new Date(hasta+'T00:00:00');
+      const mes = desdeDate.getMonth()+1;
+      const anio = desdeDate.getFullYear();
+      const diaDesde = desdeDate.getDate();
+      const diaHasta = hastaDate.getDate();
+      const dias = [];
+      for (let d = diaDesde; d <= diaHasta; d++) dias.push(d);
+
+      const [cats, subcats, valsData] = await Promise.all([
+        sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || [],
+        sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || [],
+        sbApi(`cashflow_vals?empresa_id=eq.${empresaActual}&mes=eq.${mes}&anio=eq.${anio}&dia=gte.${diaDesde}&dia=lte.${diaHasta}&select=*`) || []
+      ]);
+
+      const cfFiltrosInf = getCfCatsFiltro();
+      const catsFiltradas = cats.filter(c => cfFiltrosInf[c.id] !== false);
+      if (!catsFiltradas.length) {
+        cont.innerHTML = '<div class="empty-state">💹<p>No hay categorias visibles. Activalas en la sección Egresos.</p></div>';
+        return;
+      }
+
+      const vals = {};
+      (valsData||[]).forEach(v => { if (v.dia) vals[v.subcat_id+'_'+v.dia] = v.valor; });
+
+      const fmt = n => { const v=parseFloat(n); return (!isNaN(v)&&v!==0)?v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):''; };
+      // getVal suma todos los PDVs para ese subcat/día
+      const getVal = (sid,d) => {
+        return (valsData||[])
+          .filter(v => String(v.subcat_id) === String(sid) && parseInt(v.dia) === parseInt(d))
+          .reduce((s,v) => s + (parseFloat(v.valor)||0), 0);
+      };
+      const diasSem = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+
+      // Si es un solo día mostrar columna simple, si es rango mostrar varios días
+      const esDia = diaDesde === diaHasta;
+
+      let html = `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+        💹 Cashflow — ${esDia ? desde : desde+' → '+hasta}
+      </div>
+      <div style="overflow-x:auto;">
+      <table style="border-collapse:collapse;font-size:13px;min-width:max-content;">
+        <thead><tr style="background:var(--surface2);">
+          <th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--text-muted);border:1px solid var(--border);position:sticky;left:0;background:var(--surface2);z-index:2;min-width:200px;">Categoría / Subcategoría</th>
+          ${dias.map(d => {
+            const dow = new Date(anio,mes-1,d).getDay();
+            const esFinde = dow===0||dow===6;
+            return `<th style="padding:6px 8px;text-align:center;font-size:11px;border:1px solid var(--border);min-width:100px;${esFinde?'color:#a78bfa;':'color:var(--text-muted);'}">
+              <div style="font-size:9px;opacity:.7;">${diasSem[dow]}</div>
+              <div>${d}/${mes}</div>
+            </th>`;
+          }).join('')}
+          <th style="padding:6px 10px;text-align:right;font-size:11px;color:var(--accent);border:1px solid var(--border);min-width:90px;">TOTAL</th>
+        </tr></thead>
+        <tbody>`;
+
+      catsFiltradas.forEach(cat => {
+        const mySubs = subcats.filter(s => s.cat_id === cat.id);
+        const isTotal = cat.tipo === 'total';
+
+        if (isTotal) {
+          const expr = cat.formula||'';
+          const catIds = expr.split(',').map(s=>s.trim()).filter(Boolean);
+          const catDayTot = {};
+          catsFiltradas.filter(c=>c.tipo!=='total').forEach(c => {
+            const cs = subcats.filter(s=>s.cat_id===c.id);
+            dias.forEach(d => { catDayTot[c.id+'_'+d] = cs.reduce((s,sub)=>s+getVal(sub.id,d),0); });
+          });
+          let rowTotal = 0;
+          html += `<tr style="background:rgba(200,240,74,.07);">
+            <td style="padding:7px 14px;font-weight:800;color:var(--accent);position:sticky;left:0;background:rgba(200,240,74,.07);z-index:1;border:1px solid var(--border);">${cat.nombre}</td>
+            ${dias.map(d => {
+              let val = 0;
+              catIds.forEach(sid => {
+                const op = sid.match(/^[+\-*\/%]/)?.[0]||'+';
+                const cleanId = sid.replace(/^[+\-*\/%]/,'');
+                const cv = catDayTot[cleanId+'_'+d]||0;
+                if(op==='+')val+=cv; else if(op==='-')val-=cv; else if(op==='*')val*=cv;
+                else if(op==='/')val=cv?val/cv:0; else if(op==='%')val=val*cv/100;
+              });
+              rowTotal += val;
+              return `<td style="padding:7px 8px;text-align:right;font-family:var(--mono);font-weight:700;color:${val>0?'var(--accent)':val<0?'#ff5a5a':'var(--text-dim)'};border:1px solid var(--border);">${fmt(val)}</td>`;
+            }).join('')}
+            <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:900;color:${rowTotal>=0?'var(--accent)':'#ff5a5a'};border:1px solid var(--border);">${fmt(rowTotal)}</td>
+          </tr>`;
+          return;
+        }
+
+        if (!mySubs.length) return;
+
+        html += `<tr style="background:var(--surface2);">
+          <td colspan="${dias.length+2}" style="padding:7px 14px;font-weight:800;font-size:12px;border:1px solid var(--border);position:sticky;left:0;background:var(--surface2);z-index:1;">📁 ${cat.nombre}</td>
+        </tr>`;
+
+        let catTot = 0;
+        mySubs.forEach(sub => {
+          let subTotal = 0;
+          html += `<tr>
+            <td style="padding:6px 14px 6px 24px;font-size:12px;border:1px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:1;">— ${sub.nombre}</td>
+            ${dias.map(d => {
+              const v = vals[sub.id+'_'+d];
+              subTotal += parseFloat(v)||0;
+              return `<td style="padding:2px 3px;border:1px solid var(--border);">
+                <input type="number" step="any" value="${v||''}" placeholder=""
+                  onchange="window.guardarValCF('${sub.id}',${d},${mes},${anio},this.value)"
+                  style="width:100%;background:transparent;border:none;padding:5px 6px;font-size:12px;font-family:var(--mono);color:var(--text);text-align:right;outline:none;"
+                  onfocus="this.style.background='rgba(200,240,74,.1)'" onblur="this.style.background='transparent'">
+              </td>`;
+            }).join('')}
+            <td style="padding:6px 10px;text-align:right;font-family:var(--mono);font-weight:600;border:1px solid var(--border);">${fmt(subTotal)}</td>
+          </tr>`;
+          catTot += subTotal;
+        });
+
+        html += `<tr style="background:rgba(255,255,255,.03);">
+          <td style="padding:5px 14px;font-weight:700;font-size:11px;color:var(--text-muted);border:1px solid var(--border);position:sticky;left:0;background:rgba(255,255,255,.03);z-index:1;">Subtotal ${cat.nombre}</td>
+          ${dias.map(d => {
+            const dTot = mySubs.reduce((s,sub)=>s+getVal(sub.id,d),0);
+            return `<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-muted);border:1px solid var(--border);">${dTot?fmt(dTot):''}</td>`;
+          }).join('')}
+          <td style="padding:5px 10px;text-align:right;font-family:var(--mono);font-weight:700;border:1px solid var(--border);">${fmt(catTot)}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      cont.innerHTML = html;
+    } catch(e) {
+      cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+
+  async function loadInformesTarjetas(desde, hasta) {
+    const cont = document.getElementById('inf-body');
+    cont.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando tarjetas...</p></div>';
+    try {
+      const [cajas, pdvs] = await Promise.all([
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&tipo=eq.cierre&select=*&order=fecha.asc`) || [],
+        getPdv()
+      ]);
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre||p.name);
+
+      if (!cajas.length) { cont.innerHTML = '<div class="empty-state">💳<p>Sin registros de tarjetas en ese período.</p></div>'; return; }
+
+      const fmt = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+      const total = cajas.reduce((s,x) => s+parseFloat(x.tarjetas||0), 0);
+
+      // Agrupar por PDV
+      const byPdv = {};
+      cajas.forEach(x => {
+        const pdvNombre = pdvMap[String(x.pdv_id)] || x.pdv_id || 'Sin PDV';
+        if (!byPdv[pdvNombre]) byPdv[pdvNombre] = { nombre: pdvNombre, items: [], total: 0 };
+        byPdv[pdvNombre].items.push(x);
+        byPdv[pdvNombre].total += parseFloat(x.tarjetas||0);
+      });
+
+      cont.innerHTML = `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+          📅 ${desde===hasta?desde:`${desde} → ${hasta}`} &nbsp;·&nbsp; Total tarjetas: <b style="color:var(--accent);font-family:var(--mono);">${fmt(total)}</b>
+        </div>
+        ${Object.values(byPdv).map(pdv => `
+          <div class="resumen-pdv-card" style="margin-bottom:14px;">
+            <div class="resumen-pdv-header">
+              <span class="resumen-pdv-name">🏪 ${pdv.nombre}</span>
+              <span style="font-family:var(--mono);color:var(--accent);">${fmt(pdv.total)}</span>
+            </div>
+            <table class="resumen-table">
+              <thead><tr>
+                <th>Fecha</th><th>Turno</th><th>Operador</th>
+                <th class="right">Efectivo</th><th class="right">Tarjetas</th><th class="right">Informe Z</th>
+                <th></th>
+              </tr></thead>
+              <tbody>${pdv.items.map(x => `<tr>
+                <td style="font-family:var(--mono);font-size:12px;">${x.fecha}</td>
+                <td>${x.turno||'—'}</td>
+                <td>${x.display_name||x.username||'—'}</td>
+                <td class="right" style="font-family:var(--mono);">${fmt(x.efectivo)}</td>
+                <td class="right" style="font-family:var(--mono);font-weight:700;color:#93c5fd;" id="tarj-val-${x.id}">${fmt(x.tarjetas)}</td>
+                <td class="right" style="font-family:var(--mono);">${fmt(x.reporte_z)}</td>
+                <td style="text-align:center;">
+                  <button onclick="editarTarjetaRow('${x.id}','${x.tarjetas||0}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--text-muted);cursor:pointer;">✏️</button>
+                </td>
+              </tr>`).join('')}</tbody>
+            </table>
+          </div>`).join('')}`;
+    } catch(e) { cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`; }
+  }
+
+  async function editarTarjetaRow(id, actual) {
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-editar-tarjeta';
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:380px;overflow:hidden;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14px;font-weight:800;">💳 Editar tarjetas</div>
+        <button onclick="document.getElementById('modal-editar-tarjeta').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px;">
+        <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Monto tarjetas</label>
+        <input type="number" id="tarj-edit-input" value="${parseFloat(actual)||0}" min="0" step="any"
+          style="width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:12px;font-size:18px;font-family:var(--mono);color:var(--text);outline:none;box-sizing:border-box;text-align:right;"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button onclick="document.getElementById('modal-editar-tarjeta').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="guardarTarjetaRow('${id}')" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Guardar</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('tarj-edit-input')?.focus(), 100);
+  }
+
+  async function guardarTarjetaRow(id) {
+    const val = parseFloat(document.getElementById('tarj-edit-input')?.value) || 0;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/caja?id=eq.${id}`, { method:'PATCH', headers:H, body: JSON.stringify({ tarjetas: val }) });
+      const td = document.getElementById(`tarj-val-${id}`);
+      if (td) td.textContent = '$'+val.toLocaleString('es-AR',{minimumFractionDigits:2});
+      document.getElementById('modal-editar-tarjeta')?.remove();
+      toast('✓ Tarjetas actualizadas','success');
+      loadInformes();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  async function loadInformesInformeZ(desde, hasta) {
+    const cont = document.getElementById('inf-body');
+    cont.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando informe Z...</p></div>';
+    try {
+      const [cajas, pdvs] = await Promise.all([
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*&order=fecha.asc,created_at.asc`) || [],
+        getPdv()
+      ]);
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre||p.name);
+
+      if (!cajas.length) { cont.innerHTML = '<div class="empty-state">🖨️<p>Sin registros de Informe Z en ese período.</p></div>'; return; }
+
+      const fmt = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+      const total = cajas.reduce((s,x) => s+parseFloat(x.reporte_z||0), 0);
+
+      // Agrupar por PDV
+      const byPdv = {};
+      cajas.forEach(x => {
+        const pdvNombre = pdvMap[String(x.pdv_id)] || x.pdv_id || 'Sin PDV';
+        if (!byPdv[pdvNombre]) byPdv[pdvNombre] = [];
+        byPdv[pdvNombre].push(x);
+      });
+
+      cont.innerHTML = `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+          📅 ${desde===hasta?desde:`${desde} → ${hasta}`} &nbsp;·&nbsp; Total Z: <b style="color:var(--accent);font-family:var(--mono);">${fmt(total)}</b>
+        </div>
+        ${Object.entries(byPdv).map(([pdvNombre,items]) => {
+          const pTotal = items.reduce((s,x) => s+parseFloat(x.reporte_z||0), 0);
+          return `<div class="resumen-pdv-card" style="margin-bottom:14px;">
+            <div class="resumen-pdv-header">
+              <span class="resumen-pdv-name">🏪 ${pdvNombre}</span>
+              <span style="font-family:var(--mono);color:var(--accent);">${fmt(pTotal)}</span>
+            </div>
+            <table class="resumen-table">
+              <thead><tr>
+                <th>Fecha</th><th>Turno</th><th>Operador</th>
+                <th class="right">Efectivo</th><th class="right">Tarjetas</th>
+                <th class="right">Informe Z</th><th></th>
+              </tr></thead>
+              <tbody>${items.map(x => `<tr id="infz-row-${x.id}">
+                <td style="font-family:var(--mono);font-size:12px;">${x.fecha}</td>
+                <td>${x.turno||'—'}</td>
+                <td>${x.display_name||x.username||'—'}</td>
+                <td class="right" style="font-family:var(--mono);">${fmt(x.efectivo)}</td>
+                <td class="right" style="font-family:var(--mono);">${fmt(x.tarjetas)}</td>
+                <td class="right" style="font-family:var(--mono);font-weight:700;color:var(--accent);" id="infz-val-${x.id}">${fmt(x.reporte_z)}</td>
+                <td style="text-align:center;">
+                  <button onclick="editarInformeZ('${x.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--text-muted);cursor:pointer;">✏️</button>
+                </td>
+              </tr>`).join('')}</tbody>
+            </table>
+          </div>`;
+        }).join('')}`;
+    } catch(e) { cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`; }
+  }
+
+  async function editarInformeZ(id) {
+    const td = document.getElementById(`infz-val-${id}`);
+    const actual = td ? parseFloat(td.textContent.replace('$','').replace(/\./g,'').replace(',','.')) : 0;
+    const nuevo = prompt('Nuevo valor Informe Z:', actual);
+    if (nuevo === null || nuevo.trim() === '') return;
+    const val = parseFloat(nuevo.replace(',','.'));
+    if (isNaN(val)) { toast('Valor inválido','error'); return; }
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/caja?id=eq.${id}`, { method:'PATCH', headers:H, body: JSON.stringify({ reporte_z: val }) });
+      if (td) td.textContent = '$'+val.toLocaleString('es-AR',{minimumFractionDigits:2});
+      toast('✓ Informe Z actualizado','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
   async function loadInformesPedidosInt(desde, hasta) {
     const cont = document.getElementById('inf-body') || document.getElementById('inf-resultado');
     if (!cont) return;
@@ -7395,16 +8010,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando clientes...</p></div>';
 
     try {
+      const pdvs = await getPdv();
       const [clientes, vouchers] = await Promise.all([
         sbApi(`clientes?empresa_id=eq.${empresaActual}&select=*&order=created_at.desc`) || [],
         sbApi(`vouchers?empresa_id=eq.${empresaActual}&select=*&order=created_at.desc`) || []
       ]);
+      window._clientesPdvs = pdvs;
       window._vouchersData = vouchers || [];
       // Precargar ventas del mes para conteo de visitas
       try {
         const hoy = new Date();
         const desde = hoy.getFullYear()+'-'+(String(hoy.getMonth()+1).padStart(2,'0'))+'-01';
-        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&select=cliente_tel,fecha`) || [];
+        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&select=cliente_tel,fecha&order=fecha.desc&limit=5000`) || [];
         window._ventasClientesCache = ventasMes;
       } catch(e) { window._ventasClientesCache = []; }
 
@@ -7426,6 +8043,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <option value="presupuestos">📋 Con presupuesto</option>
             <option value="recibos">🧾 Con recibo</option>
           </select>
+          <select id="clientes-filtro-pdv" onchange="filtrarClientes()"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;cursor:pointer;">
+            <option value="">🏪 Todos los PDVs</option>
+            ${(window._clientesPdvs||[]).map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('')}
+          </select>
+
+          <button id="clientes-btn-ranking" onclick="window.toggleRanking()" title="Ranking por visitas"
+            style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);cursor:pointer;">🏆 Ranking</button>
           <button onclick="exportarClientesExcel()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📊 Excel</button>
           <button onclick="exportarClientesWA()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📱 WhatsApp</button>
         </div>
@@ -7439,6 +8064,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">PDV</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Fecha</th>
             <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Visitas mes</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Última visita</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Tipo</th>
             <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;"></th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:#ffb432;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">🎟️ Vouchers</th>
@@ -7464,25 +8090,37 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <td style="padding:9px 14px;font-size:13px;font-weight:600;color:var(--text);">${c.nombre||'—'}</td>
         <td style="padding:9px 12px;font-size:13px;">${telLink}</td>
         <td style="padding:9px 12px;font-size:13px;">${emailLink}</td>
-        <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.pdv_nombre||'—'}</td>
+        <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.pdv_nombre||c.pdv_id||'—'}</td>
         <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">${fecha}</td>
         <td style="padding:9px 12px;text-align:center;">
           ${(() => {
+            // Si ya calculado por ranking, usar ese valor
+            if (c._visitas !== undefined) {
+              return c._visitas > 0
+                ? '<span style="background:rgba(200,240,74,.15);color:var(--accent);font-size:12px;font-weight:700;padding:2px 10px;border-radius:12px;">'+c._visitas+'</span>'
+                : '<span style="color:var(--text-dim);">0</span>';
+            }
             const tel = (c.telefono||'').replace(/[^0-9]/g,'');
-            if (!tel) return '<span style="color:var(--text-dim);">—</span>';
+            const nombre = (c.nombre||'').toLowerCase().trim();
             const hoy = new Date();
             const mes = hoy.getMonth();
             const anio = hoy.getFullYear();
-            const ventas = (window._ventasClientesCache||[]).filter(v => {
-              if (!v.cliente_tel || v.cliente_tel.replace(/[^0-9]/g,'') !== tel) return false;
+            const cache = window._ventasClientesCache||[];
+            const ventas = cache.filter(v => {
               const f = new Date(v.fecha+'T00:00:00');
-              return f.getMonth() === mes && f.getFullYear() === anio;
+              if (f.getMonth() !== mes || f.getFullYear() !== anio) return false;
+              if (tel && v.cliente_tel && v.cliente_tel.replace(/[^0-9]/g,'') === tel) return true;
+              if (nombre && v.cliente_nombre && v.cliente_nombre.toLowerCase().trim() === nombre) return true;
+              return false;
             });
             const visitas = [...new Set(ventas.map(v => v.fecha))].length;
             return visitas > 0
               ? '<span style="background:rgba(200,240,74,.15);color:var(--accent);font-size:12px;font-weight:700;padding:2px 10px;border-radius:12px;">'+visitas+'</span>'
               : '<span style="color:var(--text-dim);">0</span>';
           })()}
+        </td>
+        <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">
+          ${c._ultimaVisita ? new Date(c._ultimaVisita+'T00:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—'}
         </td>
         <td style="padding:9px 12px;">
           ${(() => {
@@ -7534,17 +8172,77 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
+  window._clientesRankingOn = false;
+
+  window.toggleRanking = async function() {
+    window._clientesRankingOn = !window._clientesRankingOn;
+    const btn = document.getElementById('clientes-btn-ranking');
+    if (btn) {
+      btn.style.background = window._clientesRankingOn ? 'var(--accent)' : 'var(--surface)';
+      btn.style.color = window._clientesRankingOn ? '#000' : 'var(--text)';
+      btn.textContent = window._clientesRankingOn ? '🏆 Ranking ON' : '🏆 Ranking';
+    }
+    if (window._clientesRankingOn) {
+      try {
+        const hoy = new Date();
+        const desde = hoy.getFullYear()+'-'+(String(hoy.getMonth()+1).padStart(2,'0'))+'-01';
+        // Buscar ventas con cliente_tel O cruzar por nombre
+        const v = await sbApi('ventas?empresa_id=eq.'+empresaActual+'&fecha=gte.'+desde+'&select=cliente_tel,cliente_nombre,fecha&limit=5000') || [];
+        window._ventasClientesCache = v;
+        console.log('Ventas mes:', v.length, 'con tel:', v.filter(x=>x.cliente_tel).length, 'con nombre:', v.filter(x=>x.cliente_nombre).length);
+      } catch(e) { console.error(e); }
+    }
+    filtrarClientes();
+  };
+
   function filtrarClientes() {
-    const q = document.getElementById('clientes-search')?.value?.toLowerCase()||'';
+    const q = (document.getElementById('clientes-search')?.value || '').toLowerCase();
+    const tipo = document.getElementById('clientes-filtro-tipo')?.value || 'todos';
+    const pdvFiltro = document.getElementById('clientes-filtro-pdv')?.value || '';
     const tbody = document.getElementById('clientes-tbody');
     if (!tbody || !window._clientesData) return;
-    const filtrados = q ? window._clientesData.filter(c =>
+
+    let clientes = [...window._clientesData];
+
+    // Filtro búsqueda
+    if (q) clientes = clientes.filter(c =>
       (c.nombre||'').toLowerCase().includes(q) ||
-      (c.email||'').toLowerCase().includes(q) ||
       (c.telefono||'').includes(q) ||
-      (c.pdv_nombre||'').toLowerCase().includes(q)
-    ) : window._clientesData;
-    tbody.innerHTML = renderClientesFilas(filtrados);
+      (c.email||'').toLowerCase().includes(q)
+    );
+
+    // Filtro PDV
+    if (pdvFiltro) clientes = clientes.filter(c => String(c.pdv_id) === String(pdvFiltro));
+
+    // Filtro tipo
+    clientes = clientes.filter(c => {
+      const notas = (c.notas||'').toUpperCase();
+      if (tipo === 'presupuestos') return notas.includes('[PRESUPUESTO');
+      if (tipo === 'recibos') return notas.includes('[RECIBO');
+      return true;
+    });
+
+    // Ranking: calcular visitas y ordenar
+    if (window._clientesRankingOn) {
+      const hoy = new Date();
+      const mes = hoy.getMonth();
+      const anio = hoy.getFullYear();
+      const cache = window._ventasClientesCache || [];
+      clientes = clientes.map(c => {
+        const tel = (c.telefono||'').replace(/[^0-9]/g,'');
+        const ventasMes = cache.filter(v => {
+          if (!v.cliente_tel || !tel) return false;
+          if (v.cliente_tel.replace(/[^0-9]/g,'') !== tel) return false;
+          const f = new Date(v.fecha+'T00:00:00');
+          return f.getMonth()===mes && f.getFullYear()===anio;
+        });
+        const visitas = [...new Set(ventasMes.map(v => v.fecha))].length;
+        const todasFechas = cache.filter(v => v.cliente_tel && tel && v.cliente_tel.replace(/[^0-9]/g,'')===tel).map(v=>v.fecha).sort().reverse();
+        return { ...c, _visitas: visitas, _ultimaVisita: todasFechas[0]||null };
+      }).sort((a,b) => b._visitas - a._visitas);
+    }
+
+    tbody.innerHTML = renderClientesFilas(clientes);
   }
 
   function exportarClientesExcel() {
@@ -8462,8 +9160,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       show('neg-btn-stock'); show('neg-btn-pedido'); show('neg-btn-pedido-suc');
       show('neg-btn-productos'); show('neg-btn-empresa');
       show('neg-btn-elaboracion'); show('neg-btn-informes'); show('neg-btn-caja');
-      show('neg-btn-config'); hide('neg-btn-pedido-recibido');
-      if (perms.mensajes !== false) show('neg-btn-mensajes'); else hide('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); hide('neg-btn-ventas-op');
+      show('neg-btn-config'); show('neg-btn-cashflow'); hide('neg-btn-egresos-op'); hide('neg-btn-pedido-recibido');
+      if (perms.mensajes !== false) show('neg-btn-mensajes'); else hide('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); show('neg-btn-egresos-op'); hide('neg-btn-egresos'); hide('neg-btn-ventas-op');
       show('neg-btn-envio-pedido'); show('neg-btn-recibo-pedido');
       setupNegLayout(true);
       const tabAgAdmin = document.getElementById('tab-btn-agregar');
@@ -8491,6 +9189,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.config)        show('neg-btn-config');       else hide('neg-btn-config');
       show('neg-btn-mensajes');
       if (perms.desperdicios)  show('neg-btn-desperdicios'); else hide('neg-btn-desperdicios');
+      if (perms.egresos)       show('neg-btn-egresos-op');  else hide('neg-btn-egresos-op');
       if (perms.recuento)      show('neg-btn-recuento');     else hide('neg-btn-recuento');
       if (perms.listaPrecios) show('neg-btn-lista-precios-op'); else hide('neg-btn-lista-precios-op');
       if (perms.listaProd) show('neg-btn-lista-prod'); else hide('neg-btn-lista-prod');
@@ -8510,6 +9209,685 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.pedidoRecibido) show('neg-btn-pedido-recibido'); else hide('neg-btn-pedido-recibido');
     }
   }
+
+  // ── EGRESOS OPERADOR ──────────────────────────────────────────────────
+
+  async function initEgresosOp() {
+    // Setear fecha de hoy
+    const fechaEl = document.getElementById('egresos-op-fecha');
+    if (fechaEl && !fechaEl.value) fechaEl.value = fechaHoyAR();
+    await cargarEgresosOp();
+  }
+
+  async function cargarEgresosOp() {
+    const body = document.getElementById('egresos-op-body');
+    if (!body) return;
+    const fecha = document.getElementById('egresos-op-fecha')?.value || fechaHoyAR();
+    const fechaDate = new Date(fecha+'T00:00:00');
+    const dia = fechaDate.getDate();
+    const mes = fechaDate.getMonth()+1;
+    const anio = fechaDate.getFullYear();
+
+    body.innerHTML = '<div style="text-align:center;padding:32px;"><span class="spin"></span></div>';
+
+    try {
+      // Obtener PDV del operador
+      const pdvs = await getPdv();
+      const myPdvIds = (currentUser?.role==='admin') ? pdvs.map(p=>String(p.id)) : (currentUser?.pdvs||[]).map(String);
+      const pdvId = myPdvIds[0] || '';
+      const pdvNombreActual = pdvs.find(p=>String(p.id)===pdvId)?.nombre || pdvId || '—';
+      const [cats, subcats, valsData] = await Promise.all([
+        sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&order=orden.asc,created_at.asc&select=*`) || [],
+        sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || [],
+        sbApi(`cashflow_vals?empresa_id=eq.${empresaActual}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=eq.${pdvId}&select=*`) || []
+      ]);
+
+      // Cargar config de egresos
+      const egCfgKeyOp2 = `egresos_cats_cfg_${empresaActual}`;
+      let egresosCatsCfg2 = {};
+      try { egresosCatsCfg2 = JSON.parse(localStorage.getItem(egCfgKeyOp2)||'{}'); } catch(e) {}
+      const catsVisibles2 = cats.filter(c => egresosCatsCfg2['cat_'+c.id] !== false);
+
+      if (!catsVisibles2.length) {
+        body.innerHTML = '<div class="empty-state">📊<p>No hay categorías habilitadas. Configurá desde Admin → Egresos.</p></div>';
+        return;
+      }
+
+      const vals = {};
+      (valsData||[]).forEach(v => { vals[v.subcat_id] = v.valor; });
+
+      const fmt = n => parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+
+      let html = `<div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;padding:8px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+        📅 ${fecha} &nbsp;·&nbsp; PDV: <b>${pdvNombreActual}</b>
+      </div>`;
+
+      catsVisibles2.forEach(cat => {
+        const mySubs = subcats.filter(s => s.cat_id === cat.id && egresosCatsCfg2['sub_'+s.id] !== false);
+        if (!mySubs.length) return;
+
+        html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;">
+          <div style="padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:13px;font-weight:800;">📁 ${cat.nombre}</div>
+          <div style="padding:12px 16px;">
+            ${mySubs.map(sub => {
+              const v = vals[sub.id]||'';
+              return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                <span style="font-size:13px;color:var(--text);">— ${sub.nombre}</span>
+                <input type="number" step="any" value="${v}" placeholder="0,00" id="egrop-${sub.id}"
+                  style="width:140px;background:var(--surface2);border:2px solid var(--border);border-radius:7px;padding:7px 10px;font-size:14px;font-family:var(--mono);color:var(--text);text-align:right;outline:none;"
+                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      });
+
+      html += `<div style="margin-top:6px;">
+        <button onclick="guardarEgresosOp('${pdvId}',${dia},${mes},${anio})"
+          style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:800;cursor:pointer;width:100%;">
+          💾 Guardar egresos del día
+        </button>
+      </div>`;
+
+      body.innerHTML = html;
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+  async function guardarEgresosOp(pdvId, dia, mes, anio) {
+    const selPdv = document.getElementById('egresos-pdv-sel');
+    if (selPdv) pdvId = selPdv.value;
+    const subcats = await sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&select=*`) || [];
+    const inputs = subcats.map(s => ({
+      id: s.id,
+      input: document.getElementById(`egrop-${s.id}`)
+    })).filter(x => x.input);
+
+    if (!inputs.length) return;
+
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' };
+
+    try {
+      // Primero borrar valores existentes de este PDV/día
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?empresa_id=eq.${empresaActual}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=eq.${pdvId}`, { method:'DELETE', headers:H });
+
+      // Insertar valores con pdv_id
+      const rows = inputs
+        .filter(x => x.input.value !== '' && !isNaN(parseFloat(x.input.value)))
+        .map(x => ({
+          empresa_id: String(empresaActual),
+          subcat_id: x.id,
+          pdv_id: pdvId,
+          dia, mes, anio,
+          valor: parseFloat(x.input.value)
+        }));
+
+      if (rows.length) {
+        await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals`, { method:'POST', headers:H, body: JSON.stringify(rows) });
+      }
+
+      toast('✓ Egresos guardados', 'success');
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  // ── EGRESOS ───────────────────────────────────────────────────────────
+
+  async function initEgresos() {
+    const body = document.getElementById('egresos-body');
+    if (!body) return;
+    body.innerHTML = '<div style="text-align:center;padding:32px;"><span class="spin"></span></div>';
+    try {
+      const [cats, subcats] = await Promise.all([
+        sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&order=orden.asc,created_at.asc&select=*`) || [],
+        sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || []
+      ]);
+      if (!cats.length) {
+        body.innerHTML = '<div class="empty-state">📊<p>No hay categorías en Cashflow todavía. Creá categorías primero en la sección 💹 Cashflow.</p></div>';
+        return;
+      }
+
+      const egCfgKey = `egresos_cats_cfg_${empresaActual}`;
+      let filtros = {};
+      try { filtros = JSON.parse(localStorage.getItem(egCfgKey)||'{}'); } catch(e) {}
+
+      window._egresosCats = cats;
+      window._egresosSubcats = subcats;
+
+      const toggleHtml = (id, activo) => `
+        <div onclick="toggleEgreso('${id}')" style="width:40px;height:22px;border-radius:11px;background:${activo?'var(--accent)':'var(--surface2)'};border:1px solid ${activo?'var(--accent)':'var(--border)'};position:relative;cursor:pointer;transition:all .2s;flex-shrink:0;" id="egreso-toggle-${id}">
+          <div style="position:absolute;top:3px;${activo?'right:3px':'left:3px'};width:14px;height:14px;border-radius:50%;background:${activo?'#000':'var(--text-muted)'};transition:all .2s;" id="egreso-knob-${id}"></div>
+        </div>`;
+
+      let html = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+        ✅ Activo = el operador puede ingresar ese egreso &nbsp;·&nbsp; ❌ Inactivo = no aparece
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button onclick="activarTodosEgresos()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">✅ Activar todos</button>
+        <button onclick="desactivarTodosEgresos()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">❌ Desactivar todos</button>
+      </div>
+      <div style="max-width:600px;display:flex;flex-direction:column;gap:10px;">`;
+
+      cats.forEach(cat => {
+        const mySubs = subcats.filter(s => s.cat_id === cat.id);
+        const catActivo = filtros['cat_'+cat.id] !== false;
+        html += `<div style="background:var(--surface);border:2px solid ${catActivo?'var(--accent)':'var(--border)'};border-radius:12px;overflow:hidden;" id="egreso-card-cat_${cat.id}">
+          <div style="padding:10px 16px;background:var(--surface2);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:13px;font-weight:800;color:${catActivo?'var(--text)':'var(--text-dim)'};">📁 ${cat.nombre}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:11px;color:${catActivo?'var(--accent)':'var(--text-dim)'};" id="egreso-label-cat_${cat.id}">${catActivo?'Activa':'Inactiva'}</span>
+              ${toggleHtml('cat_'+cat.id, catActivo)}
+            </div>
+          </div>
+          ${mySubs.length ? `<div style="padding:8px 16px;">
+            ${mySubs.map(sub => {
+              const subActivo = filtros['sub_'+sub.id] !== false;
+              return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);" id="egreso-card-sub_${sub.id}">
+                <span style="font-size:12px;color:${subActivo?'var(--text)':'var(--text-dim)'};">— ${sub.nombre}</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:11px;color:${subActivo?'var(--accent)':'var(--text-dim)'};" id="egreso-label-sub_${sub.id}">${subActivo?'Activa':'Inactiva'}</span>
+                  ${toggleHtml('sub_'+sub.id, subActivo)}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>` : ''}
+        </div>`;
+      });
+
+      html += '</div>';
+      body.innerHTML = html;
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+  function toggleEgreso(id) {
+    const egCfgKey = `egresos_cats_cfg_${empresaActual}`;
+    let filtros = {};
+    try { filtros = JSON.parse(localStorage.getItem(egCfgKey)||'{}'); } catch(e) {}
+    filtros[id] = filtros[id] === false ? true : false;
+    localStorage.setItem(egCfgKey, JSON.stringify(filtros));
+    const activo = filtros[id] !== false;
+    const card = document.getElementById(`egreso-card-${id}`);
+    const toggle = document.getElementById(`egreso-toggle-${id}`);
+    const knob = document.getElementById(`egreso-knob-${id}`);
+    const label = document.getElementById(`egreso-label-${id}`);
+    const isCat = id.startsWith('cat_');
+    if (card) card.style.borderColor = activo?'var(--accent)':'var(--border)';
+    if (toggle) { toggle.style.background = activo?'var(--accent)':'var(--surface2)'; toggle.style.borderColor = activo?'var(--accent)':'var(--border)'; }
+    if (knob) { knob.style.right = activo?'3px':''; knob.style.left = activo?'':'3px'; knob.style.background = activo?'#000':'var(--text-muted)'; }
+    if (label) { label.textContent = activo?'Activa':'Inactiva'; label.style.color = activo?'var(--accent)':'var(--text-dim)'; }
+  }
+
+  function activarTodosEgresos() {
+    const egCfgKey = `egresos_cats_cfg_${empresaActual}`;
+    const filtros = {};
+    (window._egresosCats||[]).forEach(c => { filtros['cat_'+c.id] = true; });
+    (window._egresosSubcats||[]).forEach(s => { filtros['sub_'+s.id] = true; });
+    localStorage.setItem(egCfgKey, JSON.stringify(filtros));
+    initEgresos();
+  }
+
+  function desactivarTodosEgresos() {
+    const egCfgKey = `egresos_cats_cfg_${empresaActual}`;
+    const filtros = {};
+    (window._egresosCats||[]).forEach(c => { filtros['cat_'+c.id] = false; });
+    (window._egresosSubcats||[]).forEach(s => { filtros['sub_'+s.id] = false; });
+    localStorage.setItem(egCfgKey, JSON.stringify(filtros));
+    initEgresos();
+  }
+
+  function getCfCatsFiltro() {
+    // This is for cashflow section filter (all cats visible by default)
+    return {};
+  }
+
+  // ── CASHFLOW ──────────────────────────────────────────────────────────
+
+  async function initCashflow() {
+    const selMes = document.getElementById('cf-mes');
+    const selAnio = document.getElementById('cf-anio');
+    const hoy = new Date();
+    if (selMes && !selMes.options.length) {
+      const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      selMes.innerHTML = meses.map((m,i) => `<option value="${i+1}" ${i===hoy.getMonth()?'selected':''}>${m}</option>`).join('');
+    }
+    if (selAnio && !selAnio.options.length) {
+      for (let y = hoy.getFullYear()-1; y <= hoy.getFullYear()+2; y++) {
+        selAnio.innerHTML += `<option value="${y}" ${y===hoy.getFullYear()?'selected':''}>${y}</option>`;
+      }
+    }
+    await renderCashflow();
+  }
+
+  window.renderCashflow = async function renderCashflow() {
+    const cont = document.getElementById('cf-tabla');
+    if (!cont) return;
+    cont.innerHTML = '<div style="text-align:center;padding:32px;"><span class="spin"></span></div>';
+    const mes = parseInt(document.getElementById('cf-mes')?.value) || new Date().getMonth()+1;
+    const anio = parseInt(document.getElementById('cf-anio')?.value) || new Date().getFullYear();
+    const diasEnMes = new Date(anio, mes, 0).getDate();
+    const dias = Array.from({length: diasEnMes}, (_,i) => i+1);
+    const diasSem = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+
+    try {
+      const [cats, subcats, valsData, colsCfg] = await Promise.all([
+        sbApi('cashflow_cats?empresa_id=eq.'+empresaActual+'&order=orden.asc,created_at.asc&select=*') || [],
+        sbApi('cashflow_subcats?empresa_id=eq.'+empresaActual+'&order=orden.asc,created_at.asc&select=*') || [],
+        sbApi('cashflow_vals?empresa_id=eq.'+empresaActual+'&mes=eq.'+mes+'&anio=eq.'+anio+'&select=*') || [],
+        sbApi('cashflow_cols?empresa_id=eq.'+empresaActual+'&order=orden.asc&select=*') || []
+      ]);
+
+      // Build vals map: subcat_id_dia -> valor, subcat_id_col_id -> valor extra
+      const vals = {};
+      (valsData||[]).forEach(v => {
+        // Para columnas extra (col_id), guardar el valor
+        if (v.col_id) vals[v.subcat_id+'_col_'+v.col_id] = v.formula || v.valor;
+      });
+
+      window._cfCats = cats;
+      window._cfSubcats = subcats;
+      window._cfVals = vals;
+      window._cfDias = dias;
+      window._cfMes = mes;
+      window._cfAnio = anio;
+      window._cfCols = colsCfg || [];
+
+      if (!cats.length) {
+        cont.innerHTML = '<div class="empty-state">💹<p>No hay categorias. Hace clic en "+ Categoria" para empezar.</p></div>';
+        return;
+      }
+
+      const fmt = n => {
+        const v = parseFloat(n);
+        if (isNaN(v) || v===0) return '';
+        return v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      };
+
+      // Helper: evaluate formula for a subcat on a day or col
+      const evalFormula = (formula, subcatId, dia) => {
+        if (!formula || formula === '') return '';
+        // If it's just a number, return it
+        const num = parseFloat(formula);
+        if (!isNaN(num) && formula.trim() === String(num)) return num;
+        // Try to evaluate expression with cell references
+        // Refs: =SUM, =D5-D6, plain math with other subcats
+        try {
+          // Simple: replace any text references with 0 and eval
+          let expr = formula.replace(/[^0-9+\-*/().,%]/g, '');
+          return eval(expr) || 0;
+        } catch(e) { return 0; }
+      };
+
+      const getVal = (subcatId, d) => parseFloat(vals[subcatId+'_'+d]) || 0;
+      const getColVal = (subcatId, colId) => {
+        const v = vals[subcatId+'_col_'+colId];
+        if (!v && v!==0) return null;
+        return v;
+      };
+
+      // Calculate subcat total for a day (used by formula rows)
+      const subcatDayTotal = {};
+      subcats.forEach(s => {
+        dias.forEach(d => {
+          subcatDayTotal[s.id+'_'+d] = getVal(s.id, d);
+        });
+      });
+
+      // Cat subtotals per day
+      const catDayTot = {};
+      cats.forEach(cat => {
+        const mySubs = subcats.filter(s => s.cat_id === cat.id);
+        dias.forEach(d => {
+          catDayTot[cat.id+'_'+d] = mySubs.reduce((s,sub) => s + getVal(sub.id, d), 0);
+        });
+      });
+
+      // Extra cols eval per subcat
+      const evalColFormula = (formula, subcatId) => {
+        if (!formula) return null;
+        const n = parseFloat(formula);
+        if (!isNaN(n)) return n;
+        // Replace $TOTAL with row total
+        const rowTotal = dias.reduce((s,d) => s + getVal(subcatId, d), 0);
+        let expr = formula.replace(/\$TOTAL/g, rowTotal);
+        // Replace $D1..$D31 with day values
+        expr = expr.replace(/\$D(\d+)/g, (_, d) => getVal(subcatId, parseInt(d)));
+        try { return eval(expr); } catch(e) { return null; }
+      };
+
+      // Cell width
+      const CW = 64;
+      const TH = `<th style="padding:5px 4px;text-align:center;font-size:10px;color:var(--text-muted);font-family:var(--mono);min-width:${CW}px;border:1px solid var(--border);">`;
+
+      let html = `<table style="border-collapse:collapse;font-size:12px;min-width:max-content;table-layout:fixed;">
+        <colgroup>
+          <col style="width:180px;min-width:180px;">
+          ${dias.map(() => `<col style="width:${CW}px;">`).join('')}
+          <col style="width:90px;">
+          ${(colsCfg||[]).map(() => `<col style="width:90px;">`).join('')}
+          <col style="width:40px;">
+        </colgroup>
+        <thead>
+          <!-- Fila de letras de columna -->
+          <tr style="background:#1a1a2e;">
+            <th style="padding:3px 10px;font-size:10px;color:rgba(255,255,255,.3);border:1px solid var(--border);position:sticky;left:0;background:#1a1a2e;z-index:3;"></th>
+            ${dias.map((d,i) => '<th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);border:1px solid var(--border);">' + String.fromCharCode(65+i) + '</th>').join('')}
+            <th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);border:1px solid var(--border);">${String.fromCharCode(65+diasEnMes)}</th>
+            ${(colsCfg||[]).map((_,i) => '<th style="padding:3px 4px;text-align:center;font-size:10px;color:rgba(147,197,253,.5);font-family:var(--mono);border:1px solid var(--border);">' + String.fromCharCode(65+diasEnMes+1+i) + '</th>').join('')}
+            <th style="border:1px solid var(--border);background:#1a1a2e;"></th>
+          </tr>
+          <tr style="background:var(--surface2);">
+            <th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--text-muted);border:1px solid var(--border);position:sticky;left:0;background:var(--surface2);z-index:3;">Categoría</th>
+            ${dias.map(d => {
+              const dow = new Date(anio, mes-1, d).getDay();
+              const esFinde = dow===0||dow===6;
+              return TH + `<div style="font-size:9px;opacity:.6;">${diasSem[dow]}</div><div style="${esFinde?'color:#a78bfa;font-weight:700;':''}">${d}</div></th>`;
+            }).join('')}
+            <th style="padding:5px 8px;text-align:right;font-size:10px;color:var(--accent);font-family:var(--mono);border:1px solid var(--border);min-width:90px;">TOTAL</th>
+            ${(colsCfg||[]).map(col => `<th style="padding:5px 6px;text-align:center;font-size:10px;color:#93c5fd;border:1px solid var(--border);min-width:90px;">${col.nombre}</th>`).join('')}
+            <th style="border:1px solid var(--border);width:40px;"></th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+      // Aplicar filtro de egresos
+      const cfFiltros = getCfCatsFiltro();
+      const catsFiltradas = cats.filter(cat => cfFiltros[cat.id] !== false);
+      let cfRowNum = 0;
+      catsFiltradas.forEach(cat => {
+        const mySubs = subcats.filter(s => s.cat_id === cat.id);
+        const isTotal = cat.tipo === 'total';
+
+        if (isTotal) {
+          const expr = cat.formula || '';
+          const catIds = expr.split(',').map(s=>s.trim()).filter(Boolean);
+          let rowTotal = 0;
+          html += `<tr style="background:rgba(200,240,74,.07);">
+            <td style="padding:6px 10px;font-weight:800;color:var(--accent);position:sticky;left:0;background:rgba(200,240,74,.07);z-index:1;border:1px solid var(--border);">
+              ${cat.nombre}
+              <button onclick="window.editarFormulaCF('${cat.id}','${cat.formula||''}')" style="background:none;border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:9px;color:var(--text-muted);cursor:pointer;margin-left:5px;">⚙️</button>
+            </td>
+            ${dias.map(d => {
+              let val = 0;
+              catIds.forEach(sid => {
+                const op = sid.match(/^[+\-*\/\%]/)?.[0] || '+';
+                const cleanId = sid.replace(/^[+\-*\/\%]/, '');
+                const catVal = catDayTot[cleanId+'_'+d] || 0;
+                if (op==='+') val+=catVal; else if (op==='-') val-=catVal;
+                else if (op==='*') val*=catVal; else if (op==='/') val=catVal?val/catVal:0;
+                else if (op==='%') val=val*catVal/100;
+              });
+              rowTotal += val;
+              return `<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-weight:700;color:${val>0?'var(--accent)':val<0?'#ff5a5a':'var(--text-dim)'};border:1px solid var(--border);">${fmt(val)}</td>`;
+            }).join('')}
+            <td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-weight:900;color:${rowTotal>=0?'var(--accent)':'#ff5a5a'};border:1px solid var(--border);">${fmt(rowTotal)}</td>
+            ${(colsCfg||[]).map(() => '<td style="border:1px solid var(--border);"></td>').join('')}
+            <td style="border:1px solid var(--border);text-align:center;"><button onclick="window.eliminarCategoriaCF('${cat.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:11px;">✕</button></td>
+          </tr>`;
+          return;
+        }
+
+        // Category header row
+        cfRowNum++;
+        html += `<tr style="background:var(--surface2);">
+          <td colspan="${diasEnMes+2+(colsCfg||[]).length+1}" style="padding:7px 10px;font-weight:800;font-size:12px;color:var(--text);position:sticky;left:0;background:var(--surface2);z-index:1;border:1px solid var(--border);">
+            <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>
+            📁 ${cat.nombre}
+            <button onclick="window.agregarSubcatCF('${cat.id}')" style="background:none;border:1px solid var(--border);border-radius:3px;padding:1px 7px;font-size:10px;color:var(--text-muted);cursor:pointer;margin-left:6px;">+ Sub</button>
+            <button onclick="window.eliminarCategoriaCF('${cat.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:11px;margin-left:3px;">✕</button>
+          </td>
+        </tr>`;
+
+        let catTot = 0;
+        const catDiaSums = {};
+        dias.forEach(d => catDiaSums[d] = 0);
+
+        mySubs.forEach(sub => {
+          let subTotal = 0;
+          cfRowNum++;
+          html += `<tr>
+            <td style="padding:5px 10px 5px 20px;color:var(--text);font-size:12px;position:sticky;left:0;background:var(--surface);z-index:1;border:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">
+              <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:4px;">${cfRowNum}</span>${sub.nombre}
+              <button onclick="window.eliminarSubcatCF('${sub.id}')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:10px;margin-left:3px;">✕</button>
+            </td>
+            ${dias.map(d => {
+              const v = vals[sub.id+'_'+d];
+              subTotal += parseFloat(v)||0;
+              catDiaSums[d] += parseFloat(v)||0;
+              return `<td style="padding:2px 2px;border:1px solid var(--border);">
+                <input type="number" step="any" value="${v||''}" placeholder=""
+                  onchange="window.guardarValCF('${sub.id}',${d},${mes},${anio},this.value)"
+                  style="width:100%;background:transparent;border:none;padding:4px 5px;font-size:11px;font-family:var(--mono);color:var(--text);text-align:right;outline:none;"
+                  onfocus="this.style.background='rgba(200,240,74,.1)'" onblur="this.style.background='transparent'">
+              </td>`;
+            }).join('')}
+            <td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-weight:600;color:var(--text);border:1px solid var(--border);">${fmt(subTotal)}</td>
+            ${(colsCfg||[]).map(col => {
+              const colVal = getColVal(sub.id, col.id);
+              const fmtColVal = colVal !== null ? evalColFormula(String(colVal), sub.id) : null;
+              return `<td style="padding:2px 2px;border:1px solid var(--border);">
+                <input type="text" value="${colVal!==null?colVal:''}" placeholder=""
+                  onchange="window.guardarColValCF('${sub.id}','${col.id}',${mes},${anio},this.value)"
+                  style="width:100%;background:transparent;border:none;padding:4px 5px;font-size:11px;font-family:var(--mono);color:#93c5fd;text-align:right;outline:none;"
+                  onfocus="this.style.background='rgba(147,197,253,.1)'" onblur="this.style.background='transparent'">
+              </td>`;
+            }).join('')}
+            <td style="border:1px solid var(--border);"></td>
+          </tr>`;
+          catTot += subTotal;
+        });
+
+        // Subtotal row
+        cfRowNum++;
+        html += `<tr style="background:rgba(255,255,255,.03);">
+          <td style="padding:5px 10px;font-weight:700;font-size:11px;color:var(--text-muted);position:sticky;left:0;background:rgba(255,255,255,.03);z-index:1;border:1px solid var(--border);">
+            <span style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--mono);margin-right:6px;">${cfRowNum}</span>Subtotal ${cat.nombre}</td>
+          ${dias.map(d => `<td style="padding:5px 4px;text-align:right;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-muted);border:1px solid var(--border);">${catDiaSums[d]?fmt(catDiaSums[d]):''}</td>`).join('')}
+          <td style="padding:5px 6px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--text);border:1px solid var(--border);">${fmt(catTot)}</td>
+          ${(colsCfg||[]).map(() => '<td style="border:1px solid var(--border);"></td>').join('')}
+          <td style="border:1px solid var(--border);"></td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+      cont.innerHTML = html;
+    } catch(e) {
+      cont.innerHTML = '<div class="empty-state">Error: '+e.message+'</div>';
+      console.error(e);
+    }
+  };
+
+
+  window.guardarValCF = async function guardarValCF(subcatId, dia, mes, anio, valor) {
+    const val = parseFloat(valor);
+    try {
+      const HD = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+      const HI = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      // Borrar registro existente sin pdv_id
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?empresa_id=eq.${empresaActual}&subcat_id=eq.${subcatId}&dia=eq.${dia}&mes=eq.${mes}&anio=eq.${anio}&pdv_id=is.null`, { method:'DELETE', headers:HD });
+      if (!isNaN(val) && valor !== '') {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals`, { method:'POST', headers:HI,
+          body: JSON.stringify({ empresa_id: String(empresaActual), subcat_id: String(subcatId), dia: parseInt(dia), mes: parseInt(mes), anio: parseInt(anio), valor: val, pdv_id: null }) });
+        if (!res.ok) { const err = await res.text(); console.error('guardarValCF error:', res.status, err); toast('Error al guardar: '+res.status,'error'); return; }
+      }
+      // Recargar ambas secciones si están visibles
+      const cfPanel = document.getElementById('neg-cashflow');
+      const infPanel = document.getElementById('neg-informes');
+      if (cfPanel && cfPanel.style.display !== 'none') renderCashflow();
+      if (infPanel && infPanel.style.display !== 'none') loadInformes();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  window.agregarCategoriaCF = async function agregarCategoriaCF() {
+    const nombre = prompt('Nombre de la categoría:');
+    if (!nombre?.trim()) return;
+    const tipo = confirm('Es una fila de TOTAL? Aceptar=Total / Cancelar=Normal') ? 'total' : 'normal';
+
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_cats`, { method:'POST', headers:H,
+        body: JSON.stringify({ empresa_id: String(empresaActual), nombre: nombre.trim(), tipo, orden: Date.now(), formula: '' }) });
+      renderCashflow();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  window.agregarSubcatCF = async function agregarSubcatCF(catId) {
+    const nombre = prompt('Nombre de la subcategoría:');
+    if (!nombre?.trim()) return;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_subcats`, { method:'POST', headers:H,
+        body: JSON.stringify({ empresa_id: String(empresaActual), cat_id: catId, nombre: nombre.trim(), orden: Date.now() }) });
+      renderCashflow();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  window.eliminarCategoriaCF = async function eliminarCategoriaCF(catId) {
+    if (!confirm('¿Eliminar esta categoría y todos sus datos?')) return;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+      const subs = await sbApi(`cashflow_subcats?cat_id=eq.${catId}&select=id`) || [];
+      for (const s of subs) {
+        await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?subcat_id=eq.${s.id}`, { method:'DELETE', headers:H });
+      }
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_subcats?cat_id=eq.${catId}`, { method:'DELETE', headers:H });
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_cats?id=eq.${catId}`, { method:'DELETE', headers:H });
+      renderCashflow();
+      toast('Eliminado','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  window.eliminarSubcatCF = async function eliminarSubcatCF(subcatId) {
+    if (!confirm('¿Eliminar esta subcategoría?')) return;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_vals?subcat_id=eq.${subcatId}`, { method:'DELETE', headers:H });
+      await fetch(`${SUPABASE_URL}/rest/v1/cashflow_subcats?id=eq.${subcatId}`, { method:'DELETE', headers:H });
+      renderCashflow();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+
+
+
+  window.editarFormulaCF = async function(catId, actual) {
+    const cats = await sbApi('cashflow_cats?empresa_id=eq.'+empresaActual+'&tipo=eq.normal&select=id,nombre') || [];
+    if (!cats.length) { toast('No hay categorias normales','error'); return; }
+    const activos = (actual||'').split(',').map(s=>s.trim()).filter(Boolean);
+    document.getElementById('modal-formula-cf')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-formula-cf';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    let rows = cats.map(c => {
+      const estado = activos.find(a => a.replace(/^-/,'') === c.id);
+      return '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:8px;">' +
+        '<span style="font-size:13px;font-weight:600;">' + c.nombre + '</span>' +
+        '<select id="cf-form-' + c.id + '" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;color:var(--text);outline:none;">' +
+          '<option value="" ' + (!estado?'selected':'') + '>No incluir</option>' +
+          '<option value="' + c.id + '" ' + (estado===c.id?'selected':'') + '>+ Sumar</option>' +
+          '<option value="-' + c.id + '" ' + (estado===('-'+c.id)?'selected':'') + '>− Restar</option>' +
+          '<option value="*' + c.id + '" ' + (estado===('*'+c.id)?'selected':'') + '>× Multiplicar</option>' +
+          '<option value="/' + c.id + '" ' + (estado===('/'+c.id)?'selected':'') + '>÷ Dividir</option>' +
+          '<option value="%' + c.id + '" ' + (estado===('%'+c.id)?'selected':'') + '>% Porcentaje</option>' +
+        '</select>' +
+      '</div>';
+    }).join('');
+    overlay.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:420px;overflow:hidden;">' +
+      '<div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">' +
+        '<div style="font-size:14px;font-weight:800;">⚙️ Configurar Total</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Elegí que categorias suma o resta este total</div>' +
+      '</div>' +
+      '<div style="padding:18px;">' + rows +
+        '<div style="display:flex;gap:8px;margin-top:8px;">' +
+          '<button onclick="window.cerrarModalFormula()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>' +
+          '<button id="btn-guardar-formula" data-catid="' + catId + '" onclick="window.guardarFormulaCF(this.dataset.catid)" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">Guardar</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.cerrarColsCF = function() { document.getElementById('modal-cf-cols')?.remove(); window.renderCashflow(); };
+
+    window.guardarColValCF = async function(subcatId, colId, mes, anio, valor) {
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer '+SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' };
+      if (!valor || valor.trim() === '') {
+        await fetch(SUPABASE_URL+'/rest/v1/cashflow_vals?empresa_id=eq.'+empresaActual+'&subcat_id=eq.'+subcatId+'&col_id=eq.'+colId+'&mes=eq.'+mes+'&anio=eq.'+anio, { method:'DELETE', headers:H });
+      } else {
+        await fetch(SUPABASE_URL+'/rest/v1/cashflow_vals', { method:'POST', headers:H,
+          body: JSON.stringify({ empresa_id: String(empresaActual), subcat_id: subcatId, col_id: colId, dia: null, mes, anio, formula: valor, valor: parseFloat(valor)||0 })
+        });
+      }
+      window.renderCashflow();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
+
+  window.configurarColsCF = async function() {
+    const cols = await sbApi('cashflow_cols?empresa_id=eq.'+empresaActual+'&order=orden.asc&select=*') || [];
+    document.getElementById('modal-cf-cols')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-cf-cols';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    const colRows = cols.map(c =>
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+        '<input type="text" value="'+c.nombre+'" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">' +
+        '<button data-colid="'+c.id+'" onclick="window.eliminarColCF(this.dataset.colid)" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:14px;">✕</button>' +
+      '</div>'
+    ).join('');
+    overlay.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:400px;overflow:hidden;">' +
+      '<div style="padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:14px;font-weight:800;">⚙️ Columnas extra</div>' +
+      '<div style="padding:18px;">' +
+        colRows +
+        '<div style="display:flex;gap:8px;margin-top:8px;">' +
+          '<input id="nueva-col-cf" type="text" placeholder="Nombre de la columna..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">' +
+          '<button onclick="window.agregarColCF()" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;">+ Agregar</button>' +
+        '</div>' +
+        '<div style="margin-top:12px;text-align:right;">' +
+          '<button onclick="window.cerrarColsCF()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 18px;font-size:13px;color:var(--text);cursor:pointer;">Cerrar</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(overlay);
+  };
+
+  window.agregarColCF = async function() {
+    const nombre = document.getElementById('nueva-col-cf')?.value?.trim();
+    if (!nombre) return;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer '+SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(SUPABASE_URL+'/rest/v1/cashflow_cols', { method:'POST', headers:H,
+        body: JSON.stringify({ empresa_id: String(empresaActual), nombre, orden: Date.now() }) });
+      document.getElementById('modal-cf-cols')?.remove();
+      window.configurarColsCF();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
+
+  window.eliminarColCF = async function(colId) {
+    if (!confirm('Eliminar esta columna?')) return;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer '+SUPABASE_KEY };
+      await fetch(SUPABASE_URL+'/rest/v1/cashflow_vals?col_id=eq.'+colId, { method:'DELETE', headers:H });
+      await fetch(SUPABASE_URL+'/rest/v1/cashflow_cols?id=eq.'+colId, { method:'DELETE', headers:H });
+      document.getElementById('modal-cf-cols')?.remove();
+      window.configurarColsCF();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
+
+  window.cerrarModalFormula = function() { document.getElementById('modal-formula-cf')?.remove(); };
+
+    window.guardarFormulaCF = async function(catId) {
+    const selects = document.querySelectorAll('[id^="cf-form-"]');
+    const formula = [...selects].map(s => s.value).filter(Boolean).join(',');
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer '+SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(SUPABASE_URL+'/rest/v1/cashflow_cats?id=eq.'+catId, { method:'PATCH', headers:H, body: JSON.stringify({ formula }) });
+      document.getElementById('modal-formula-cf')?.remove();
+      window.renderCashflow();
+      toast('Total configurado','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
 
   // ── LOGO ──────────────────────────────────────────────────────────────
   function getLogo() {
@@ -9400,8 +10778,73 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     } catch(e) { toast('Error: '+e.message, 'error'); }
   }
 
+  async function renderCfgEgresos() {
+    // Reusar la lógica de initEgresos pero en el div de configuración
+    const body = document.getElementById('egresos-body-cfg');
+    if (!body) return;
+    body.innerHTML = '<div style="text-align:center;padding:32px;"><span class="spin"></span></div>';
+    try {
+      const [cats, subcats] = await Promise.all([
+        sbApi(`cashflow_cats?empresa_id=eq.${empresaActual}&tipo=eq.normal&order=orden.asc,created_at.asc&select=*`) || [],
+        sbApi(`cashflow_subcats?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || []
+      ]);
+      if (!cats.length) {
+        body.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:12px 0;">No hay categorías en Cashflow todavía.</div>';
+        return;
+      }
+      const egCfgKey = `egresos_cats_cfg_${empresaActual}`;
+      let filtros = {};
+      try { filtros = JSON.parse(localStorage.getItem(egCfgKey)||'{}'); } catch(e) {}
+      window._egresosCats = cats;
+      window._egresosSubcats = subcats;
+
+      const toggleHtml = (id, activo) =>
+        `<div onclick="toggleEgreso('${id}');renderCfgEgresos();" style="width:40px;height:22px;border-radius:11px;background:${activo?'var(--accent)':'var(--surface2)'};border:1px solid ${activo?'var(--accent)':'var(--border)'};position:relative;cursor:pointer;flex-shrink:0;">
+          <div style="position:absolute;top:3px;${activo?'right:3px':'left:3px'};width:14px;height:14px;border-radius:50%;background:${activo?'#000':'var(--text-muted)'};" ></div>
+        </div>`;
+
+      let html = `<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Activá las categorías y subcategorías que el operador puede ingresar en Egresos.</p>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button onclick="activarTodosEgresos();renderCfgEgresos();" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;">✅ Todos</button>
+          <button onclick="desactivarTodosEgresos();renderCfgEgresos();" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;">❌ Ninguno</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">`;
+
+      cats.forEach(cat => {
+        const mySubs = subcats.filter(s => s.cat_id === cat.id);
+        const catActivo = filtros['cat_'+cat.id] !== false;
+        html += `<div style="background:var(--surface2);border:1px solid ${catActivo?'var(--accent)':'var(--border)'};border-radius:10px;overflow:hidden;">
+          <div style="padding:9px 14px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:13px;font-weight:700;color:${catActivo?'var(--text)':'var(--text-dim)'};">📁 ${cat.nombre}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:11px;color:${catActivo?'var(--accent)':'var(--text-dim)'};">${catActivo?'Activa':'Inactiva'}</span>
+              ${toggleHtml('cat_'+cat.id, catActivo)}
+            </div>
+          </div>
+          ${mySubs.length ? `<div style="padding:6px 14px 10px 28px;border-top:1px solid var(--border);">
+            ${mySubs.map(sub => {
+              const subActivo = filtros['sub_'+sub.id] !== false;
+              return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+                <span style="font-size:12px;color:${subActivo?'var(--text-muted)':'var(--text-dim)'};">— ${sub.nombre}</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:10px;color:${subActivo?'var(--accent)':'var(--text-dim)'};">${subActivo?'✓':'✗'}</span>
+                  ${toggleHtml('sub_'+sub.id, subActivo)}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>` : ''}
+        </div>`;
+      });
+
+      html += '</div>';
+      body.innerHTML = html;
+    } catch(e) {
+      body.innerHTML = `<div style="color:#ff5a5a;font-size:13px;">Error: ${e.message}</div>`;
+    }
+  }
+
   function switchCfgTab(tab) {
-    ['mensajes','efectivo','prodop','prodint','desp'].forEach(t => {
+    ['mensajes','efectivo','prodop','prodint','desp','egresos'].forEach(t => {
       const btn = document.getElementById(`cfg-tab-btn-${t}`);
       const panel = document.getElementById(`cfg-tab-${t}`);
       const active = t === tab;
@@ -9412,6 +10855,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (tab === 'prodop') renderProdOpConfig();
     if (tab === 'prodint') renderProdIntConfig();
     if (tab === 'desp')    renderCfgDesp();
+    if (tab === 'egresos') renderCfgEgresos();
   }
 
   async function renderControlEfectivo() {
