@@ -7695,16 +7695,23 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         return;
       }
 
-      const vals = {};
-      (valsData||[]).forEach(v => { if (v.dia) vals[v.subcat_id+'_'+v.dia] = v.valor; });
-
       const fmt = n => { const v=parseFloat(n); return (!isNaN(v)&&v!==0)?v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}):''; };
-      // getVal suma todos los PDVs para ese subcat/día
+      // getVal: misma lógica que renderCashflow — si hay valores de operador (pdv_id) los suma, sino usa el manual
       const getVal = (sid,d) => {
-        return (valsData||[])
-          .filter(v => String(v.subcat_id) === String(sid) && parseInt(v.dia) === parseInt(d))
-          .reduce((s,v) => s + (parseFloat(v.valor)||0), 0);
+        const all = (valsData||[]).filter(v => String(v.subcat_id)===String(sid) && parseInt(v.dia)===parseInt(d) && !v.col_id);
+        const opVals = all.filter(v => v.pdv_id);
+        const manualVal = all.find(v => !v.pdv_id);
+        return opVals.length > 0
+          ? opVals.reduce((s,v) => s+(parseFloat(v.valor)||0), 0)
+          : (manualVal ? parseFloat(manualVal.valor)||0 : 0);
       };
+      // vals para mostrar en inputs: mismo criterio
+      const vals = {};
+      dias.forEach(d => {
+        subcats.forEach(sub => {
+          vals[sub.id+'_'+d] = getVal(sub.id, d) || '';
+        });
+      });
       const diasSem = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
 
       // Si es un solo día mostrar columna simple, si es rango mostrar varios días
