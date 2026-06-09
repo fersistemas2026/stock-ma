@@ -3946,6 +3946,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     let desde,hasta;
     if (p==='diario') {
       desde=hasta=document.getElementById('inf-fecha').value;
+      if (!desde) return null;
     } else if (p==='semanal') {
       const w=document.getElementById('inf-semana').value; // "2024-W12"
       if (!w) return null;
@@ -3995,7 +3996,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     // Fetch elaboracion for range
     let elabRecs=[];
-    try { elabRecs=await sbApi(`elaboracion?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=prod_id,gusto_id,cantidad`)||[]; } catch(e){}
+    try { 
+      elabRecs=await sbApi(`elaboracion?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=prod_id,gusto_id,cantidad,fecha`)||[]; 
+      // Filtrar por si acaso el backend no respeta el filtro
+      elabRecs = elabRecs.filter(r => r.fecha >= desde && r.fecha <= hasta);
+    } catch(e){ console.error('elab error', e); }
 
     // Fetch current stock
     const allStock=await getAllStock();
