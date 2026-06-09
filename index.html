@@ -3997,9 +3997,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // Fetch elaboracion for range
     let elabRecs=[];
     try { 
+      console.log('Elaboracion query desde:', desde, 'hasta:', hasta);
       elabRecs=await sbApi(`elaboracion?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=prod_id,gusto_id,cantidad,fecha`)||[]; 
+      console.log('Elaboracion records:', elabRecs.length, elabRecs.slice(0,3));
       // Filtrar por si acaso el backend no respeta el filtro
       elabRecs = elabRecs.filter(r => r.fecha >= desde && r.fecha <= hasta);
+      console.log('Elaboracion filtrados:', elabRecs.length);
     } catch(e){ console.error('elab error', e); }
 
     // Fetch current stock
