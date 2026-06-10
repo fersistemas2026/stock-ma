@@ -349,7 +349,7 @@
       <div style="display:block;" id="neg-layout">
       <div style="display:flex;gap:2px;margin-bottom:20px;background:var(--surface2);border-radius:var(--radius);padding:4px;width:fit-content;flex-wrap:wrap;" id="neg-subtabs">
         <button class="neg-stab active" onclick="switchNeg(&#39;empresa&#39;)" id="neg-btn-empresa" style="display:none">🏢 Empresa</button>
-        <button class="neg-stab" onclick="switchNeg(&#39;pdv&#39;)">🏪 Puntos de venta</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;pdv&#39;)">🏪 Gestión de stock</button>
         <button class="neg-stab" onclick="switchNeg(&#39;productos&#39;)" id="neg-btn-productos" style="display:none">📦 Productos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;stock&#39;)" id="neg-btn-stock" style="display:none">📊 Stock</button>
         <button class="neg-stab" onclick="switchNeg(&#39;pedido&#39;)" id="neg-btn-pedido" style="display:none">📋 Orden de pedido</button>
@@ -358,6 +358,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;informes&#39;)" id="neg-btn-informes" style="display:none">📈 Informes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;caja&#39;)" id="neg-btn-caja" style="display:none">💰 Caja</button>
         <button class="neg-stab" onclick="switchNeg(&#39;config&#39;)" id="neg-btn-config" style="display:none">⚙️ Configuración</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;avisos&#39;)" id="neg-btn-avisos" style="display:none">🔔 Avisos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;ingresos&#39;)" id="neg-btn-ingresos" style="display:none">💵 Ingresos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;cashflow&#39;)" id="neg-btn-cashflow" style="display:none">💹 Cashflow</button>
 
@@ -379,7 +380,7 @@
       <!-- PDV -->
       <div id="neg-pdv" class="neg-panel active">
         <div class="neg-header">
-          <div><div class="form-title" style="margin-bottom:4px">Puntos de venta</div>
+          <div><div class="form-title" style="margin-bottom:4px">Gestión de stock</div>
           <p style="font-size:13px;color:var(--text-muted)" id="negocios-sub"></p></div>
           <span class="neg-counter"><b id="pdv-count">0</b> / 20</span>
         </div>
@@ -951,6 +952,75 @@
               <input type="text" id="chat-input" placeholder="Escribí un mensaje..." maxlength="500" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:var(--font);color:var(--text);outline:none;" onkeydown="if(event.key===&#39;Enter&#39;)enviarMensaje()">
               <button class="btn-primary" style="padding:9px 16px;" onclick="enviarMensaje()">➤</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AVISOS -->
+      <div id="neg-avisos" class="neg-panel" style="display:none">
+        <div class="form-title" style="margin-bottom:4px">🔔 Avisos</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">Creá avisos que aparecen como cartel a los operadores en las secciones que elijas.</p>
+        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:flex-start;">
+          <button onclick="abrirModalAviso(null)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">+ Nuevo aviso</button>
+        </div>
+        <div id="avisos-lista"><div class="empty-state"><span class="spin"></span></div></div>
+      </div>
+
+      <!-- MODAL AVISO -->
+      <div id="modal-aviso-overlay" onclick="if(event.target===this)cerrarModalAviso()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:18px;" id="modal-aviso-titulo-h">🔔 Nuevo aviso</div>
+
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Título</label>
+              <input type="text" id="aviso-form-titulo" maxlength="80" placeholder="Ej: Cambio de precio"
+                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;color:var(--text);outline:none;box-sizing:border-box;" />
+            </div>
+            <div>
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Nota</label>
+              <textarea id="aviso-form-nota" rows="3" maxlength="500" placeholder="Mensaje que verán los operadores..."
+                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;box-sizing:border-box;resize:vertical;font-family:var(--font);"></textarea>
+            </div>
+            <div>
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Cada cuántas operaciones mostrar</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" id="aviso-form-cada" min="1" max="9999" value="1" placeholder="1"
+                  style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 10px;font-size:14px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;" />
+                <span style="font-size:13px;color:var(--text-muted);">operaciones</span>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Secciones donde aparece</label>
+              <div id="aviso-form-secciones" style="display:flex;flex-wrap:wrap;gap:8px;">
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="ventas" style="accent-color:var(--accent);"> 🛒 Ventas</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="caja" style="accent-color:var(--accent);"> 💰 Caja</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="desperdicios" style="accent-color:var(--accent);"> 🗑️ Desperdicios</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="recuento" style="accent-color:var(--accent);"> 🔢 Recuento</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="elaboracion" style="accent-color:var(--accent);"> 🧪 Elaboración</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="mensajes" style="accent-color:var(--accent);"> 💬 Mensajes</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="stock" style="accent-color:var(--accent);"> 📊 Stock</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="pedido" style="accent-color:var(--accent);"> 📋 Pedido</label>
+                <label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-sec-check" value="envio-pedido" style="accent-color:var(--accent);"> 📦 Envío pedido</label>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Destinatarios</label>
+              <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="aviso-dest-tipo" value="todos" id="aviso-dest-todos" checked onchange="toggleAvisoDestinatarios()" style="accent-color:var(--accent);"> Todos los operadores
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="aviso-dest-tipo" value="especificos" id="aviso-dest-esp" onchange="toggleAvisoDestinatarios()" style="accent-color:var(--accent);"> Específicos
+                </label>
+              </div>
+              <div id="aviso-dest-lista" style="display:none;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end;">
+            <button onclick="cerrarModalAviso()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 20px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+            <button onclick="guardarAviso()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;">💾 Guardar</button>
           </div>
         </div>
       </div>
@@ -1905,11 +1975,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const [myPdvs, allPdvs, prods, asigs] = await Promise.all([getMyPdvs(), getPdv(), getProd(), getAsig()]);
     document.getElementById('pdv-count').textContent=allPdvs.length;
     const sub=document.getElementById('negocios-sub');
-    if (sub) sub.textContent=isAdmin?'Hacé clic en un PDV para ver y gestionar su stock.':'Tus puntos de venta asignados. Hacé clic para gestionar el stock.';
+    if (sub) sub.textContent=isAdmin?'Hacé clic en un PDV para ver y gestionar su stock.':'Tus puntos de venta asignados. Hacé clic para gestionar el stock.'; if (!isAdmin && document.querySelector('#neg-pdv .form-title')) document.querySelector('#neg-pdv .form-title').textContent = 'Gestión de stock';
     const addRow=document.getElementById('neg-add-row');
     if (addRow) addRow.style.display=isAdmin?'flex':'none';
     const grid=document.getElementById('pdv-grid');
-    if (!myPdvs.length) { grid.innerHTML=`<div class="pdv-empty">🏪<p>${isAdmin?'No hay puntos de venta. Agregá el primero.':'No tenés puntos de venta asignados. Contactá al administrador.'}</p></div>`; updateHeaderPdv(''); return; }
+    if (!myPdvs.length) { grid.innerHTML=`<div class="pdv-empty">🏪<p>${isAdmin?'No hay puntos de venta. Agregá el primero.':'No tenés PDVs asignados. Contactá al administrador.'}</p></div>`; updateHeaderPdv(''); return; }
     // Show PDV name in header for non-admin with single PDV
     if (!isAdmin && myPdvs.length===1) updateHeaderPdv(myPdvs[0].nombre||myPdvs[0].name);
     else updateHeaderPdv('');
@@ -3416,6 +3486,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       });
       if (!res.ok) throw new Error(await res.text());
       toast('Elaboración guardada correctamente','success');
+      checkAvisosSeccion('elaboracion');
       await loadElaboracion();
     } catch(e) { toast('Error: '+e.message,'error'); }
   }
@@ -5370,6 +5441,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='desperdicios')    initDesperdicios();
     if (sub==='recuento')        initRecuento();
     if (sub==='lista-prod')      initListaProd();
+    if (sub==='avisos')          initAvisos();
     if (sub==='ventas')          initVentas();
     if (sub==='monitor')         initMonitor();
     if (sub==='lista-precios-op') initListaPreciosOp();
@@ -5514,6 +5586,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       btn.textContent='✓ Guardado'; btn.style.background='rgba(200,240,74,.3)';
       setTimeout(()=>{btn.textContent=origText;btn.style.background='';btn.disabled=false;},2000);
       toast('✓ Desperdicios guardados','success');
+      checkAvisosSeccion('desperdicios');
     } catch(e) { btn.textContent=origText; btn.disabled=false; toast('Error: '+e.message,'error'); }
   }
 
@@ -5710,6 +5783,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       btn.textContent = '✓ Guardado'; btn.style.background = 'rgba(200,240,74,.3)';
       setTimeout(() => { btn.textContent = origText; btn.style.background = ''; btn.disabled = false; }, 2000);
       toast('✓ Recuento guardado', 'success');
+      checkAvisosSeccion('recuento');
     } catch(e) {
       btn.textContent = origText; btn.disabled = false;
       toast('Error al guardar: ' + e.message, 'error');
@@ -5887,6 +5961,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               style="width:52px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:13px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;" />
             <span style="font-size:11px;color:var(--text-muted);">%</span>
           </div>
+          <button onclick="copiarPrecioBaseATodos('${prod.id}')" title="Tomar precio actual de L1 y aplicarlo a todos los sabores"
+            style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;white-space:nowrap;">📋 Precio L1 → todos</button>
+          <div style="display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 8px;">
+            <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;">± $</span>
+            <input type="number" id="centenas-prod-${prod.id}" placeholder="100"
+              style="width:62px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:13px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;"
+              onkeydown="if(event.key==='Enter') ajustarCentenasProd('${prod.id}')" />
+            <button onclick="ajustarCentenasProd('${prod.id}')" title="Sumar o restar este monto a todos los precios L1 del producto"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:12px;color:var(--text);cursor:pointer;">OK</button>
+          </div>
           <button onclick="guardarListaProd('${prod.id}')" id="save-lista-${prod.id}"
             style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">💾 Guardar</button>
         </div>
@@ -5960,6 +6044,44 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (l3) l3.innerHTML = precioListaHtml(p1adj, pct3, 'var(--accent)', '#ff9944');
     });
   }
+
+  window.copiarPrecioBaseATodos = function(prodId) {
+    // Busca el primer input de precio L1 con valor cargado y lo copia a todos
+    const inputs = [...document.querySelectorAll(`[data-pid="${prodId}"][data-field="precio"]`)];
+    const primero = inputs.find(inp => inp.value.trim() !== '');
+    if (!primero) { toast('No hay precio base cargado en ningún sabor', 'error'); return; }
+    const valorBase = primero.value.trim();
+    let cambiados = 0;
+    inputs.forEach(inp => {
+      if (inp.value.trim() === '') {
+        inp.value = valorBase;
+        const gustoId = inp.dataset.gid;
+        recalcListas(prodId, gustoId);
+        cambiados++;
+      }
+    });
+    if (cambiados === 0) toast('Todos los sabores ya tienen precio', 'info');
+    else toast(`Precio aplicado a ${cambiados} sabor${cambiados!==1?'es':''}`, 'ok');
+  };
+
+  window.ajustarCentenasProd = function(prodId) {
+    const delta = parseFloat(document.getElementById(`centenas-prod-${prodId}`)?.value);
+    if (isNaN(delta) || delta === 0) { toast('Ingresá un monto a sumar o restar (ej: 100 o -50)', 'error'); return; }
+    const inputs = [...document.querySelectorAll(`[data-pid="${prodId}"][data-field="precio"]`)];
+    let cambiados = 0;
+    inputs.forEach(inp => {
+      const v = parsePrecioAR(inp.value.trim());
+      if (v) {
+        const nuevo = Math.max(0, v + delta);
+        inp.value = nuevo.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+        recalcListas(prodId, inp.dataset.gid);
+        cambiados++;
+      }
+    });
+    if (cambiados === 0) toast('No hay precios cargados para ajustar', 'error');
+    else toast(`${delta > 0 ? '+' : ''}$${delta.toLocaleString('es-AR')} aplicado a ${cambiados} sabor${cambiados!==1?'es':''}`, 'ok');
+    document.getElementById(`centenas-prod-${prodId}`).value = '';
+  };
 
   function recalcListas(prodId, gustoId) {
     const pct2 = parseFloat(document.getElementById('lista-pct2').value)||0;
@@ -6852,6 +6974,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         })();
       }
       toast('✓ Venta guardada correctamente','success');
+      checkAvisosSeccion('ventas');
 
       // ── Control de efectivo ──
       if (metodoPago === 'efectivo') {
@@ -7741,16 +7864,23 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     try {
       _monitorVentas = [];
-      const [ventas, pdvs, usuarios] = await Promise.all([
+      const [ventas, pdvs, usuarios, buzonRows] = await Promise.all([
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&select=*&order=created_at.desc`) || [],
         getPdv(),
-        sbApi(`usuarios?role=eq.operador&select=username,display_name`) || []
+        sbApi(`usuarios?role=eq.operador&select=username,display_name`) || [],
+        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&select=pdv_id,monto`) || []
       ]);
 
       const pdvMap = {};
       pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre||p.name);
       const userMap = {};
       (usuarios||[]).forEach(u => userMap[u.username] = u.display_name||u.username);
+      const buzonMap = {};
+      (buzonRows||[]).forEach(b => {
+        const pid = String(b.pdv_id);
+        if (!buzonMap[pid]) buzonMap[pid] = 0;
+        buzonMap[pid] += parseFloat(b.monto||0);
+      });
       _monitorVentas = ventas;
       _monitorPdvMap = pdvMap;
       _monitorUserMap = userMap;
@@ -7783,8 +7913,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
       // Totales globales
       const grandTotal = ventas.reduce((s,v)=>(s+(v.precio||0)*(v.cantidad||0)),0);
-      const totalEf = ventas.filter(v=>v.metodo_pago!=='tarjeta').reduce((s,v)=>(s+(v.precio||0)*(v.cantidad||0)),0);
-      const totalTj = ventas.filter(v=>v.metodo_pago==='tarjeta').reduce((s,v)=>(s+(v.precio||0)*(v.cantidad||0)),0);
+      const totalTj = ventas.filter(v=>(v.metodo_pago||'').includes('tarjeta')||v.metodo_pago==='transferencia').reduce((s,v)=>(s+(v.precio||0)*(v.cantidad||0)),0);
+      const totalEf = grandTotal - totalTj;
 
       // Agrupar por ticket (minuto+operador) para contar transacciones
       const tickets = new Set(ventas.map(v=>{
@@ -7826,17 +7956,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const ticketsMap = {};
         data.ventas.forEach(v => {
           const ts = new Date(v.created_at);
-          const hora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+          const hora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false});
           const key = (v.username||'')+'_'+hora;
-          if (!ticketsMap[key]) ticketsMap[key] = { hora, op: userMap[v.username]||v.username||'—', metodo: v.metodo_pago, total: 0, items: [] };
+          if (!ticketsMap[key]) ticketsMap[key] = { hora, ts: ts.getTime(), op: userMap[v.username]||v.username||'—', metodo: v.metodo_pago, total: 0, items: [] };
           ticketsMap[key].total += (v.precio||0)*(v.cantidad||1);
           ticketsMap[key].items.push(v.prod_nombre||'');
         });
-        const tickets = Object.values(ticketsMap).sort((a,b) => b.hora.localeCompare(a.hora));
+        const tickets = Object.values(ticketsMap).sort((a,b) => b.ts - a.ts);
 
         html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
           <div style="background:var(--surface2);padding:12px 16px;border-bottom:2px solid var(--accent);display:flex;align-items:center;justify-content:space-between;">
             <span style="font-size:15px;font-weight:800;color:var(--text);">🏪 ${data.nombre}</span>
+            <span style="font-size:10px;color:var(--text-muted);font-family:var(--mono);background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 7px;">📬 $${(buzonMap[pdvId]||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             <span style="font-size:16px;font-weight:900;font-family:var(--mono);color:var(--accent);">$${data.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
           </div>
           <div style="display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;font-family:var(--mono);">
@@ -7857,27 +7988,25 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
       html += '</div>';
 
-      // Últimas ventas (timeline)
-      const ultimas = ventas.slice(0, 10);
-      html += `<div style="margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
-        <div style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--text);">🕐 Últimas ventas</div>`;
-      ultimas.forEach(v => {
-        const ts = new Date(v.created_at);
-        const hora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
-        const imp = (v.precio||0)*(v.cantidad||0);
-        const op = userMap[v.username]||v.username||'—';
-        const pdv = pdvMap[String(v.pdv_id)]||'—';
-        const ticketKey2 = `${v.username||''}_${hora}`;
-        html += `<div onclick="verDetalleVenta('${ticketKey2}')" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background=''">
-          <span style="font-family:var(--mono);color:var(--text-muted);min-width:42px;">${hora}</span>
-          <span style="font-weight:600;color:var(--text);flex:1;">${op}</span>
-          <span style="color:var(--text-muted);font-size:12px;">${pdv}</span>
-          <span style="font-size:11px;padding:2px 7px;border-radius:4px;background:${v.metodo_pago==='tarjeta'?'rgba(147,197,253,.15)':'rgba(110,231,183,.15)'};color:${v.metodo_pago==='tarjeta'?'#93c5fd':'#6ee7b7'};">${v.metodo_pago==='tarjeta'?'💳':'💵'}</span>
-          <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">$${imp.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-          <span style="font-size:11px;color:var(--text-muted);">›</span>
-        </div>`;
+      // Resumen de productos del día
+      const prodResumen = {};
+      ventas.forEach(v => {
+        const nombre = v.prod_nombre || 'Sin nombre';
+        if (!prodResumen[nombre]) prodResumen[nombre] = { cantidad: 0 };
+        prodResumen[nombre].cantidad += (v.cantidad || 1);
       });
-      html += '</div>';
+      const prodOrdenados = Object.entries(prodResumen).sort((a,b) => b[1].cantidad - a[1].cantidad);
+      html += `<div style="margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <div style="background:var(--surface2);padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--text);">📦 Productos vendidos hoy</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">
+          ${prodOrdenados.map(([nombre, d]) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);font-size:13px;">
+              <span style="flex:1;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nombre}</span>
+              <span style="font-family:var(--mono);font-size:14px;font-weight:900;color:var(--accent);min-width:28px;text-align:right;">${d.cantidad}</span>
+              <span style="font-size:11px;color:var(--text-muted);">u.</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
 
       body.innerHTML = html;
     } catch(e) {
@@ -7899,7 +8028,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     
     const items = _monitorVentas.filter(v => {
       const ts = new Date(v.created_at);
-      const vHora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+      const vHora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false});
       return (v.username||'') === username && vHora === hora;
     });
     
@@ -9494,6 +9623,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       show('neg-btn-config'); show('neg-btn-ingresos'); show('neg-btn-cashflow'); hide('neg-btn-egresos-op'); hide('neg-btn-pedido-recibido');
       if (perms.mensajes !== false) show('neg-btn-mensajes'); else hide('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); show('neg-btn-egresos-op'); hide('neg-btn-egresos'); hide('neg-btn-ventas-op');
       show('neg-btn-envio-pedido'); show('neg-btn-recibo-pedido');
+      show('neg-btn-avisos');
       setupNegLayout(true);
       const tabAgAdmin = document.getElementById('tab-btn-agregar');
       if (tabAgAdmin) tabAgAdmin.textContent = '+ Agregar';
@@ -9503,12 +9633,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       hide('neg-btn-pedido-suc');
       hide('neg-btn-productos'); hide('neg-btn-empresa');
       hide('neg-btn-elaboracion'); hide('neg-btn-informes'); hide('neg-btn-caja');
+      hide('neg-btn-avisos');
     } else if (isViewer) {
       if (perms.productos)  show('neg-btn-productos');   else hide('neg-btn-productos');
       if (perms.stock)      show('neg-btn-stock');        else hide('neg-btn-stock');
       if (perms.pedido)     show('neg-btn-pedido');       else hide('neg-btn-pedido');
       if (perms.pedidoSuc)  show('neg-btn-pedido-suc');  else hide('neg-btn-pedido-suc');
       hide('neg-btn-empresa'); hide('neg-btn-elaboracion'); hide('neg-btn-informes'); hide('neg-btn-caja');
+      hide('neg-btn-avisos');
     } else {
       // Operador
       if (perms.stock)      show('neg-btn-stock');       else hide('neg-btn-stock');
@@ -9538,6 +9670,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.caja) show('neg-btn-caja'); else hide('neg-btn-caja');
       if (perms.config) show('neg-btn-config'); else hide('neg-btn-config');
       if (perms.pedidoRecibido) show('neg-btn-pedido-recibido'); else hide('neg-btn-pedido-recibido');
+      hide('neg-btn-avisos');
     }
   }
 
@@ -11138,6 +11271,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       });
       if (!res.ok) throw new Error(await res.text());
       toast(`✓ ${tipo==='inicio'?'Inicio':'Cierre'} guardado correctamente`,'success');
+      checkAvisosSeccion('caja');
       // Reload keeping pdvId
       const pdvs = await getPdv();
       const pdv = pdvs.find(p=>String(p.id)===String(pdvId));
@@ -11175,8 +11309,62 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     getPdv().then(pdvs=>{
       const sel=document.getElementById('caja-pdv-admin');
       if (!sel||!pdvs.length) return;
-      sel.innerHTML=pdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+      sel.innerHTML=`<option value="todos">📋 Todos los PDVs</option>`+pdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
     });
+  }
+
+  function _buildCajaCard(r, buzon, gastos, pNombre, fmt) {
+    const buzonTotal = buzon.reduce((s,x)=>s+parseFloat(x.monto||0),0);
+    return ['mañana','tarde'].map(turno=>{
+      const ini = r.find(x=>x.turno===turno&&x.tipo==='inicio');
+      const cie = r.find(x=>x.turno===turno&&x.tipo==='cierre');
+      if (!ini&&!cie) return '';
+      const icon = turno==='mañana'?'🌅':'🌆';
+      const ef_ini = parseFloat(ini?.efectivo||0);
+      const ef_cie = parseFloat(cie?.efectivo||0);
+      const tarj   = parseFloat(cie?.tarjetas||0);
+      const ped    = parseFloat(cie?.pedidos||0);
+      const repZ   = parseFloat(cie?.reporte_z||0);
+      const buzonTurno = buzon.filter(x=>x.turno===turno);
+      const buzonTurnoTotal = buzonTurno.reduce((s,x)=>s+parseFloat(x.monto||0),0);
+      const gastosTurno = gastos.filter(x=>x.turno===turno);
+      const gastosTurnoTotal = gastosTurno.reduce((s,x)=>s+parseFloat(x.monto||0),0);
+      const subtotal1 = ef_ini + ef_cie + buzonTurnoTotal;
+      const subtotal2 = subtotal1 + tarj + ped;
+      const totalFinal = subtotal2 - gastosTurnoTotal;
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;max-width:420px;margin-bottom:16px;">
+        <div style="background:var(--surface2);padding:12px 18px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;">${icon} Turno ${turno}</div>
+        <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;"><span style="color:var(--text-muted);">📥 Inicio efectivo</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ef_ini)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📤 Cierre efectivo</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ef_cie)}</span></div>
+          ${buzonTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-dim);">📬 #${i+1} ${x.display_name||x.username} · ${new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</span><span style="font-family:var(--mono);color:var(--text-muted);">${fmt(x.monto)}</span></div>`).join('')}
+          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;"><span style="color:var(--text);">Subtotal</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal1)}</span></div>
+        </div>
+        <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">💳 Tarjetas</span><span style="font-family:var(--mono);color:var(--text);">${fmt(tarj)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📦 Pedidos</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ped)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;"><span style="color:var(--text);">Subtotal</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal2)}</span></div>
+        </div>
+        <div style="padding:12px 18px;">
+          ${gastosTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-dim);">💸 #${i+1} ${x.display_name||x.username} · ${x.descripcion}</span><span style="font-family:var(--mono);color:#ff5a5a;">- ${fmt(x.monto)}</span></div>`).join('')}
+          ${gastosTurno.length?`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Total gastos</span><span style="font-family:var(--mono);color:#ff5a5a;">- ${fmt(gastosTurnoTotal)}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;border-bottom:2px solid var(--border);">
+            <span style="color:var(--text);">Subtotal</span>
+            <span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal2 - gastosTurnoTotal)}</span>
+          </div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px;">📊 Análisis Z</div>
+          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Informe Z</span><span style="font-family:var(--mono);color:var(--text);">${fmt(repZ)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--text-dim);border-bottom:1px solid var(--border);">
+            <span>Cierre ef. + Buzón + Tarj. + Ped. - Gastos</span>
+            <span style="font-family:var(--mono);font-weight:600;color:var(--text);">${fmt(ef_cie + buzonTurnoTotal + tarj + ped - gastosTurnoTotal)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:15px;font-weight:800;">
+            <span style="color:var(--text);">TOTAL</span>
+            <span style="font-family:var(--mono);font-size:17px;color:${totalFinal>=0?'var(--accent)':'#ff5a5a'};">${fmt(totalFinal)}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   async function loadCajaAdmin() {
@@ -11185,85 +11373,44 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!fecha||!pdvId) { toast('Seleccioná fecha y PDV','error'); return; }
     const result = document.getElementById('caja-admin-result');
     result.innerHTML=`<div class="empty-state"><span class="spin"></span></div>`;
+    const fmt = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
     try {
+      const pdvs = await getPdv();
+
+      // ── TODOS LOS PDVs ──
+      if (pdvId === 'todos') {
+        const [rAll, buzonAll, gastosAll] = await Promise.all([
+          sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&select=pdv_id,turno,tipo,efectivo,tarjetas,pedidos,reporte_z`) || [],
+          sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&order=created_at.asc&select=pdv_id,turno,monto,display_name,created_at`) || [],
+          sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&order=created_at.asc&select=pdv_id,turno,monto,descripcion,display_name,created_at`) || []
+        ]);
+        if (!rAll.length && !buzonAll.length && !gastosAll.length) {
+          result.innerHTML=`<div class="empty-state">📭<p>No hay datos de caja para el ${fecha}.</p></div>`; return;
+        }
+        const pdvIds = [...new Set([...rAll.map(x=>String(x.pdv_id)), ...buzonAll.map(x=>String(x.pdv_id)), ...gastosAll.map(x=>String(x.pdv_id))])];
+        result.innerHTML = pdvIds.map(pid => {
+          const pdv = pdvs.find(p=>String(p.id)===pid);
+          const pNombre = pdv?(pdv.nombre||pdv.name):`PDV ${pid.substring(0,6)}`;
+          const r = rAll.filter(x=>String(x.pdv_id)===pid);
+          const buzon = buzonAll.filter(x=>String(x.pdv_id)===pid);
+          const gastos = gastosAll.filter(x=>String(x.pdv_id)===pid);
+          return `<div style="margin-bottom:24px;">
+            <div style="font-size:13px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-family:var(--mono);">🏪 ${pNombre}</div>
+            ${_buildCajaCard(r, buzon, gastos, pNombre, fmt) || `<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Sin datos</div>`}
+          </div>`;
+        }).join('');
+        return;
+      }
+
+      // ── UN SOLO PDV ──
       const r = await sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&select=turno,tipo,efectivo,tarjetas,pedidos,reporte_z`) || [];
       // Also load buzon
       const buzon = await sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&order=created_at.asc&select=turno,monto,display_name,created_at`) || [];
       const gastos = await sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&order=created_at.asc&select=turno,monto,descripcion,display_name,created_at`) || [];
-      const pdvs = await getPdv();
       const pdv = pdvs.find(p=>String(p.id)===String(pdvId));
       const pNombre = pdv?(pdv.nombre||pdv.name):'PDV';
-      const fmt = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
       if (!r.length && !buzon.length && !gastos.length) { result.innerHTML=`<div class="empty-state">📭<p>No hay datos de caja para ${pNombre} el ${fecha}.</p></div>`; return; }
-      const buzonTotal = buzon.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-      const gastosTotal = gastos.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-      result.innerHTML = ['mañana','tarde'].map(turno=>{
-        const ini = r.find(x=>x.turno===turno&&x.tipo==='inicio');
-        const cie = r.find(x=>x.turno===turno&&x.tipo==='cierre');
-        if (!ini&&!cie) return '';
-        const icon = turno==='mañana'?'🌅':'🌆';
-        const ef_ini = parseFloat(ini?.efectivo||0);
-        const ef_cie = parseFloat(cie?.efectivo||0);
-        const tarj   = parseFloat(cie?.tarjetas||0);
-        const ped    = parseFloat(cie?.pedidos||0);
-        const repZ   = parseFloat(cie?.reporte_z||0);
-        const total  = ef_ini + ef_cie + tarj + ped + repZ;
-        const rows = [
-          ['📥 Inicio efectivo', ef_ini],
-          ['📤 Cierre efectivo', ef_cie],
-          ['💳 Tarjetas', tarj],
-          ['📦 Pedidos', ped],
-          ['📊 Informe Z', repZ],
-        ];
-        // Buzon for this turno
-        const buzonTurno = buzon.filter(x=>x.turno===turno);
-        const buzonTurnoTotal = buzonTurno.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-        // Gastos for this turno
-        const gastosTurno = gastos.filter(x=>x.turno===turno);
-        const gastosTurnoTotal = gastosTurno.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-
-        const subtotal1 = ef_ini + ef_cie + buzonTurnoTotal;
-        const subtotal2 = subtotal1 + tarj + ped;
-        const totalFinal = subtotal2 - gastosTurnoTotal;
-
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;max-width:420px;margin-bottom:16px;">
-          <div style="background:var(--surface2);padding:12px 18px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;">${icon} Turno ${turno}</div>
-          <!-- Bloque 1: Efectivo + Buzón -->
-          <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;"><span style="color:var(--text-muted);">📥 Inicio efectivo</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ef_ini)}</span></div>
-            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📤 Cierre efectivo</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ef_cie)}</span></div>
-            ${buzonTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-dim);">📬 #${i+1} ${x.display_name||x.username} · ${new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</span><span style="font-family:var(--mono);color:var(--text-muted);">${fmt(x.monto)}</span></div>`).join('')}
-            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;"><span style="color:var(--text);">Subtotal</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal1)}</span></div>
-          </div>
-          <!-- Bloque 2: Tarjetas + Pedidos -->
-          <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
-            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">💳 Tarjetas</span><span style="font-family:var(--mono);color:var(--text);">${fmt(tarj)}</span></div>
-            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📦 Pedidos</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ped)}</span></div>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;"><span style="color:var(--text);">Subtotal</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal2)}</span></div>
-          </div>
-          <!-- Bloque 3: Gastos + Total -->
-          <div style="padding:12px 18px;">
-            ${gastosTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-dim);">💸 #${i+1} ${x.display_name||x.username} · ${x.descripcion}</span><span style="font-family:var(--mono);color:#ff5a5a;">- ${fmt(x.monto)}</span></div>`).join('')}
-            ${gastosTurno.length?`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Total gastos</span><span style="font-family:var(--mono);color:#ff5a5a;">- ${fmt(gastosTurnoTotal)}</span></div>`:''}
-            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;border-bottom:2px solid var(--border);">
-              <span style="color:var(--text);">Subtotal</span>
-              <span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal2 - gastosTurnoTotal)}</span>
-            </div>
-            <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px;">📊 Análisis Z</div>
-            <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Informe Z</span><span style="font-family:var(--mono);color:var(--text);">${fmt(repZ)}</span></div>
-            <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--text-dim);border-bottom:1px solid var(--border);">
-              <span>Cierre ef. + Buzón + Tarj. + Ped. - Gastos</span>
-              <span style="font-family:var(--mono);font-weight:600;color:var(--text);">${fmt(ef_cie + buzonTurnoTotal + tarj + ped - gastosTurnoTotal)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:15px;font-weight:800;">
-              <span style="color:var(--text);">TOTAL</span>
-              <span style="font-family:var(--mono);font-size:17px;color:${totalFinal>=0?'var(--accent)':'#ff5a5a'};">${fmt(totalFinal)}</span>
-            </div>
-          </div>
-        </div>`;
-      }).join('') +
-      // Buzon and gastos added below
-      '';
+      result.innerHTML = _buildCajaCard(r, buzon, gastos, pNombre, fmt) || `<div class="empty-state">📭<p>Sin datos de caja.</p></div>`;
     } catch(e) { result.innerHTML=`<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`; }
   }
 
@@ -11828,6 +11975,213 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     renderEmpresa();
     if (currentUser.role==='admin') { initEmpresaSelector(); updateHeaderEmpresa(); }
   }
+
+
+  // ── AVISOS ──────────────────────────────────────────────────────────────
+  let _avisosData = [];
+  let _avisoEditId = null;
+  // Contador de operaciones por sección para el operador actual (en memoria)
+  let _avisoContadores = {}; // { seccion: count }
+  let _avisosCache = null;   // avisos vigentes para el operador logueado
+
+  async function initAvisos() {
+    await loadAvisos();
+  }
+
+  async function loadAvisos() {
+    const body = document.getElementById('avisos-lista');
+    if (!body) return;
+    body.innerHTML = '<div class="empty-state"><span class="spin"></span></div>';
+    try {
+      _avisosData = await sbApi(`avisos?empresa_id=eq.${empresaActual}&order=created_at.desc&select=*`) || [];
+      if (!_avisosData.length) {
+        body.innerHTML = '<div class="empty-state">🔔<p>No hay avisos creados aún.</p></div>'; return;
+      }
+      const usuarios = await sbApi(`usuarios?role=eq.operador&select=username,display_name`) || [];
+      const userMap = {};
+      usuarios.forEach(u => userMap[u.username] = u.display_name || u.username);
+
+      body.innerHTML = _avisosData.map(av => {
+        const secs = (av.secciones || []).join(', ') || '—';
+        const dest = av.destinatarios === 'todos' ? 'Todos los operadores'
+          : (av.destinatarios_lista || []).map(u => userMap[u] || u).join(', ') || '—';
+        const activo = av.activo !== false;
+        return `<div style="background:var(--surface);border:1px solid ${activo?'var(--border)':'rgba(255,255,255,.06)'};border-radius:12px;padding:14px 18px;margin-bottom:10px;opacity:${activo?1:.5};">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;">${av.titulo || '(sin título)'}</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;white-space:pre-line;">${av.nota || ''}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;font-family:var(--mono);">
+                <span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">⚡ Cada ${av.cada || 1} op.</span>
+                <span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">📍 ${secs}</span>
+                <span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">👤 ${dest}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button onclick="toggleActivoAviso('${av.id}',${!activo})" title="${activo?'Desactivar':'Activar'}"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);">${activo?'⏸ Desactivar':'▶ Activar'}</button>
+              <button onclick="abrirModalAviso('${av.id}')"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);">✏️ Editar</button>
+              <button onclick="eliminarAviso('${av.id}')"
+                style="background:none;border:1px solid rgba(255,90,90,.3);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:#ff5a5a;">🗑</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+  async function abrirModalAviso(id) {
+    _avisoEditId = id || null;
+    const overlay = document.getElementById('modal-aviso-overlay');
+    overlay.style.display = 'flex';
+    document.getElementById('modal-aviso-titulo-h').textContent = id ? '✏️ Editar aviso' : '🔔 Nuevo aviso';
+    // Limpiar form
+    document.getElementById('aviso-form-titulo').value = '';
+    document.getElementById('aviso-form-nota').value = '';
+    document.getElementById('aviso-form-cada').value = '1';
+    document.querySelectorAll('.aviso-sec-check').forEach(c => c.checked = false);
+    document.getElementById('aviso-dest-todos').checked = true;
+    document.getElementById('aviso-dest-lista').style.display = 'none';
+    // Cargar operadores en lista destinatarios
+    const destLista = document.getElementById('aviso-dest-lista');
+    const usuarios = await sbApi(`usuarios?role=eq.operador&select=username,display_name`) || [];
+    destLista.innerHTML = usuarios.map(u =>
+      `<label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" class="aviso-user-check" value="${u.username}" style="accent-color:var(--accent);"> ${u.display_name||u.username}
+      </label>`).join('');
+    // Si es edición, cargar datos
+    if (id) {
+      const av = _avisosData.find(a => String(a.id) === String(id));
+      if (av) {
+        document.getElementById('aviso-form-titulo').value = av.titulo || '';
+        document.getElementById('aviso-form-nota').value = av.nota || '';
+        document.getElementById('aviso-form-cada').value = av.cada || 1;
+        (av.secciones || []).forEach(s => {
+          const el = document.querySelector(`.aviso-sec-check[value="${s}"]`);
+          if (el) el.checked = true;
+        });
+        if (av.destinatarios === 'especificos') {
+          document.getElementById('aviso-dest-esp').checked = true;
+          destLista.style.display = 'flex';
+          (av.destinatarios_lista || []).forEach(u => {
+            const el = document.querySelector(`.aviso-user-check[value="${u}"]`);
+            if (el) el.checked = true;
+          });
+        }
+      }
+    }
+  }
+
+  window.toggleAvisoDestinatarios = function() {
+    const esp = document.getElementById('aviso-dest-esp').checked;
+    document.getElementById('aviso-dest-lista').style.display = esp ? 'flex' : 'none';
+  };
+
+  function cerrarModalAviso() {
+    document.getElementById('modal-aviso-overlay').style.display = 'none';
+  }
+
+  async function guardarAviso() {
+    const titulo = document.getElementById('aviso-form-titulo').value.trim();
+    const nota = document.getElementById('aviso-form-nota').value.trim();
+    const cada = parseInt(document.getElementById('aviso-form-cada').value) || 1;
+    const secciones = [...document.querySelectorAll('.aviso-sec-check:checked')].map(c => c.value);
+    const destTipo = document.querySelector('input[name="aviso-dest-tipo"]:checked')?.value || 'todos';
+    const destLista = destTipo === 'especificos'
+      ? [...document.querySelectorAll('.aviso-user-check:checked')].map(c => c.value)
+      : [];
+
+    if (!titulo) { toast('El título es obligatorio', 'error'); return; }
+    if (!secciones.length) { toast('Seleccioná al menos una sección', 'error'); return; }
+
+    const payload = {
+      empresa_id: String(empresaActual),
+      titulo, nota, cada,
+      secciones,
+      destinatarios: destTipo,
+      destinatarios_lista: destLista,
+      activo: true
+    };
+
+    try {
+      if (_avisoEditId) {
+        await sbApi(`avisos?id=eq.${_avisoEditId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        toast('Aviso actualizado', 'success');
+      } else {
+        await sbApi('avisos', { method: 'POST', body: JSON.stringify(payload) });
+        toast('Aviso creado', 'success');
+      }
+      cerrarModalAviso();
+      invalidarCacheAvisos();
+      await loadAvisos();
+    } catch(e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function eliminarAviso(id) {
+    if (!confirm('¿Eliminar este aviso?')) return;
+    await sbApi(`avisos?id=eq.${id}`, { method: 'DELETE' });
+    toast('Aviso eliminado');
+    invalidarCacheAvisos();
+    await loadAvisos();
+  }
+
+  async function toggleActivoAviso(id, nuevoValor) {
+    await sbApi(`avisos?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ activo: nuevoValor }) });
+    await loadAvisos();
+  }
+
+  // ── MOSTRAR AVISO A OPERADORES ────────────────────────────────────────
+  // Llamar esta función cada vez que el operador realiza una operación en una sección
+  async function checkAvisosSeccion(seccion) {
+    if (!currentUser || currentUser.role === 'admin') return;
+    // Cargar avisos si no están en caché
+    if (!_avisosCache) {
+      try {
+        _avisosCache = await sbApi(`avisos?empresa_id=eq.${empresaActual}&activo=eq.true&select=*`) || [];
+      } catch(e) { return; }
+    }
+    const username = currentUser.username;
+    // Filtrar avisos aplicables a esta sección y este usuario
+    const aplicables = _avisosCache.filter(av => {
+      if (!av.activo) return false;
+      if (!(av.secciones || []).includes(seccion)) return false;
+      if (av.destinatarios === 'especificos' && !(av.destinatarios_lista || []).includes(username)) return false;
+      return true;
+    });
+    if (!aplicables.length) return;
+    // Incrementar contador de esta sección
+    if (!_avisoContadores[seccion]) _avisoContadores[seccion] = 0;
+    _avisoContadores[seccion]++;
+    const count = _avisoContadores[seccion];
+    // Ver si algún aviso debe mostrarse
+    const aMostrar = aplicables.filter(av => count % (av.cada || 1) === 0);
+    if (!aMostrar.length) return;
+    // Mostrar uno a la vez (el primero que aplique)
+    mostrarCartelAviso(aMostrar[0]);
+  }
+
+  function mostrarCartelAviso(av) {
+    const existe = document.getElementById('cartel-aviso-overlay');
+    if (existe) existe.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'cartel-aviso-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border:2px solid var(--accent);border-radius:16px;padding:28px 32px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center;animation:fadeInUp .25s ease;">
+        <div style="font-size:36px;margin-bottom:12px;">🔔</div>
+        <div style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:12px;">${av.titulo || ''}</div>
+        ${av.nota ? `<div style="font-size:14px;color:var(--text-muted);line-height:1.6;white-space:pre-line;margin-bottom:20px;">${av.nota}</div>` : ''}
+        <button onclick="document.getElementById('cartel-aviso-overlay').remove()"
+          style="background:var(--accent);color:#000;border:none;border-radius:9px;padding:11px 36px;font-size:15px;font-weight:800;cursor:pointer;">✓ Entendido</button>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+
+  // Invalidar caché de avisos cuando el admin los modifique
+  function invalidarCacheAvisos() { _avisosCache = null; }
 
   function toast(msg, type='success') {
     const t = document.getElementById('toast');
