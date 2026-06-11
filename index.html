@@ -5853,6 +5853,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   // ── LISTA DE PRODUCTOS ─────────────────────────────────────────────────
   let _listaProdData = null;
   let _listaSavedData = {}; // prodId → {datos, updated_at}
+  let _listaSchedData = {}; // prodId → {datos, pct, activar_fecha}
 
   async function initListaProd() {
     window._listaProdModoOp = false;
@@ -5874,6 +5875,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         if (r.datos?.pct3 !== undefined) document.getElementById('lista-pct3').value = r.datos.pct3;
         if (r.datos?.pct4 !== undefined && document.getElementById('lista-pct4')) document.getElementById('lista-pct4').value = r.datos.pct4;
         if (r.datos?.titulo) document.getElementById('lista-titulo').value = r.datos.titulo;
+      } else if (String(r.prod_id).startsWith('SCHED_')) {
+        // Cambio programado
+        const pid = String(r.prod_id).replace('SCHED_','');
+        _listaSchedData[pid] = { datos: r.datos?.gustos||[], pct: r.datos?.pct||0, activar_fecha: r.datos?.activar_fecha||null, updated_at: r.updated_at };
       } else {
         // Soportar formato nuevo {gustos:[...], pct:N} y viejo (array directo)
         const d = r.datos;
@@ -5886,12 +5891,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       }
     });
 
+    // Aplicar programaciones vencidas automáticamente
+    await aplicarProgramacionesVencidas();
+
     const checks = document.getElementById('lista-prod-checks');
     checks.innerHTML = prods.map(p => {
       const nombre = p.nombre || p.name;
       const hasSaved = !!_listaSavedData[String(p.id)];
-      return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:var(--surface2);padding:7px 12px;border-radius:7px;border:1px solid ${hasSaved?'var(--accent)':'var(--border)'};">
-        <input type="checkbox" class="lista-prod-check" value="${p.id}" onchange="renderListaProd()"> ${nombre}${hasSaved?'<span style="font-size:10px;color:var(--accent);margin-left:4px;">●</span>':''}
+      const hasSched = !!_listaSchedData[String(p.id)];
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:var(--surface2);padding:7px 12px;border-radius:7px;border:1px solid ${hasSched?'#f59e0b':hasSaved?'var(--accent)':'var(--border)'};">
+        <input type="checkbox" class="lista-prod-check" value="${p.id}" onchange="renderListaProd()"> ${nombre}${hasSaved?'<span style="font-size:10px;color:var(--accent);margin-left:4px;">●</span>':''}${hasSched?'<span style="font-size:10px;color:#f59e0b;margin-left:2px;" title="Cambio programado pendiente">⏰</span>':''}
       </label>`;
     }).join('');
     document.getElementById('lista-prod-preview').innerHTML = '';
@@ -5947,6 +5956,160 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       setTimeout(()=>renderListaProd(), 2100);
     } catch(e) { btn.textContent=origText; btn.disabled=false; toast('Error: '+e.message,'error'); }
   }
+
+
+  // ── PRECIOS PROGRAMADOS ──────────────────────────────────────────────────
+
+  async function aplicarProgramacionesVencidas() {
+    const ahora = new Date();
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+    const aplicados = [];
+    for (const [pid, sched] of Object.entries(_listaSchedData)) {
+      if (!sched.activar_fecha) continue;
+      const fechaActivar = new Date(sched.activar_fecha);
+      if (ahora < fechaActivar) continue;
+      try {
+        const delSched = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.SCHED_${pid}`, { method: 'DELETE', headers: H });
+        if (!delSched.ok) { console.warn('No se pudo borrar programación', pid); continue; }
+        // Guardar como datos activos (upsert para evitar error 23505)
+        const ins = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos`, {
+          method: 'POST',
+          headers: { ...H, 'Prefer': 'resolution=merge-duplicates,return=minimal', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ empresa_id: String(empresaActual), prod_id: String(pid), datos: { gustos: sched.datos, pct: sched.pct }, updated_at: new Date().toISOString() })
+        });
+        if (!ins.ok) throw new Error(await ins.text());
+        _listaSavedData[pid] = { datos: sched.datos, pct: sched.pct, updated_at: new Date().toISOString() };
+        delete _listaSchedData[pid];
+        const prodNombre = (_listaProdData||[]).find(p => String(p.id)===String(pid))?.nombre || pid;
+        aplicados.push(prodNombre);
+      } catch(e) { console.warn('Error aplicando programación:', pid, e); }
+    }
+    if (aplicados.length) {
+      toast(`✅ Precios actualizados: ${aplicados.join(', ')}`, 'success');
+    }
+  }
+
+  window.abrirProgramarPrecio = function abrirProgramarPrecio(prodId) {
+    const prod = (_listaProdData||[]).find(p => String(p.id) === String(prodId));
+    if (!prod) return;
+
+    // Leer precios actuales del formulario
+    const pct = parseFloat(document.getElementById(`pct-prod-${prodId}`)?.value)||0;
+    const datos = (prod.gustos||[]).map(g => {
+      const precioEl = document.querySelector(`[data-pid="${prodId}"][data-gid="${g.id}"][data-field="precio"]`);
+      const precio4El = document.querySelector(`[data-pid="${prodId}"][data-gid="${g.id}"][data-field="precio4"]`);
+      const descEl = document.querySelector(`[data-pid="${prodId}"][data-gid="${g.id}"][data-field="desc"]`);
+      return { gid: String(g.id), nombre: g.nombre||g.name, precio: precioEl?.value?.trim()||'', precio4: precio4El?.value?.trim()||'', desc: descEl?.value?.trim()||'' };
+    });
+
+    const sched = _listaSchedData[String(prodId)];
+    const defaultFecha = sched?.activar_fecha
+      ? sched.activar_fecha.slice(0,16)
+      : (() => { const d = new Date(); d.setDate(d.getDate()+1); d.setHours(8,0,0,0); return d.toISOString().slice(0,16); })();
+
+    const overlay = document.createElement('div');
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:480px;overflow:hidden;">
+        <div style="background:var(--surface2);padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:800;">⏰ Programar cambio de precios</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">📦 ${prod.nombre||prod.name}</div>
+          </div>
+          <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+
+          <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:12px 16px;font-size:13px;color:#f59e0b;line-height:1.5;">
+            ⏰ Los precios que ves ahora en el formulario se guardarán como <b>programados</b>.<br>
+            Se aplicarán automáticamente al entrar a esta sección después de la fecha elegida.
+          </div>
+
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">📅 Fecha y hora de activación</label>
+            <input type="datetime-local" id="sched-fecha-input" value="${defaultFecha}"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;color:var(--text);font-family:var(--mono);outline:none;box-sizing:border-box;" />
+          </div>
+
+          <!-- Preview de precios que se programarán -->
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Precios que se van a programar</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                ${datos.filter(d=>d.precio).map(d=>`
+                  <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:7px 12px;color:var(--text);">${d.nombre}</td>
+                    <td style="padding:7px 12px;text-align:right;font-family:var(--mono);color:var(--accent);">$${d.precio}</td>
+                  </tr>`).join('')}
+                ${!datos.filter(d=>d.precio).length ? '<tr><td colspan="2" style="padding:10px 12px;color:var(--text-dim);text-align:center;">Sin precios cargados</td></tr>' : ''}
+              </table>
+            </div>
+            ${pct!==0?`<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">% ajuste L1: <b style="color:var(--accent);">${pct>=0?'+':''}${pct}%</b></div>`:''}
+          </div>
+
+          ${sched ? `<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="font-size:12px;color:#f59e0b;">⚠️ Ya hay un cambio programado para <b>${new Date(sched.activar_fecha).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</b></div>
+            <button onclick="cancelarProgramacion('${prodId}',this.closest('[style*=fixed]'))" style="background:none;border:1px solid #ff5a5a;border-radius:6px;padding:4px 10px;font-size:11px;color:#ff5a5a;cursor:pointer;white-space:nowrap;">🗑️ Cancelar</button>
+          </div>` : ''}
+
+          <div style="display:flex;gap:8px;">
+            <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+            <button onclick="confirmarProgramacion(this.closest('[style*=fixed]'))"
+              style="flex:1;background:#f59e0b;color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">⏰ Confirmar programación</button>
+          </div>
+        </div>
+      </div>`;
+    overlay.dataset.prodId = String(prodId);
+    document.body.appendChild(overlay);
+  };
+
+  window.confirmarProgramacion = async function confirmarProgramacion(overlay) {
+    const prodId = overlay?.dataset?.prodId;
+    if (!prodId) { toast('Error: no se encontró el producto', 'error'); return; }
+
+    const fechaInput = document.getElementById('sched-fecha-input')?.value;
+    if (!fechaInput) { toast('Elegí una fecha', 'error'); return; }
+    const fechaISO = new Date(fechaInput).toISOString();
+
+    // Leer precios actuales del formulario
+    const prod = (_listaProdData||[]).find(p => String(p.id) === String(prodId));
+    if (!prod) { toast('Producto no encontrado', 'error'); return; }
+    const pct = parseFloat(document.getElementById(`pct-prod-${prodId}`)?.value)||0;
+    const datos = (prod.gustos||[]).map(g => {
+      const precioEl = document.querySelector(`[data-pid="${prodId}"][data-gid="${g.id}"][data-field="precio"]`);
+      const precio4El = document.querySelector(`[data-pid="${prodId}"][data-gid="${g.id}"][data-field="precio4"]`);
+      const descEl = document.querySelector(`[data-pid="${prodId}"][data-gid="${g.id}"][data-field="desc"]`);
+      return { gid: String(g.id), nombre: g.nombre||g.name, precio: precioEl?.value?.trim()||'', precio4: precio4El?.value?.trim()||'', desc: descEl?.value?.trim()||'' };
+    });
+
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.SCHED_${prodId}`, { method: 'DELETE', headers: H });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos`, {
+        method: 'POST',
+        headers: { ...H, 'Prefer': 'resolution=merge-duplicates,return=minimal', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa_id: String(empresaActual), prod_id: `SCHED_${prodId}`, datos: { gustos: datos, pct, activar_fecha: fechaISO }, updated_at: new Date().toISOString() })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      _listaSchedData[String(prodId)] = { datos, pct, activar_fecha: fechaISO };
+      const fechaFmt = new Date(fechaISO).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      toast(`⏰ Cambio programado para el ${fechaFmt}`, 'success');
+      overlay?.remove();
+      renderListaProd();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  };
+
+  window.cancelarProgramacion = async function cancelarProgramacion(prodId, overlay) {
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.SCHED_${prodId}`, { method: 'DELETE', headers: H });
+      delete _listaSchedData[String(prodId)];
+      toast('🗑️ Programación cancelada', 'success');
+      overlay?.remove();
+      renderListaProd();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  };
 
   function selAllListaProd(val) {
     document.querySelectorAll('.lista-prod-check').forEach(c => c.checked = val);
@@ -6032,6 +6195,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </div>
           <button onclick="guardarListaProd('${prod.id}')" id="save-lista-${prod.id}"
             style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">💾 Guardar</button>
+          <button onclick="abrirProgramarPrecio('${prod.id}')" id="sched-lista-${prod.id}"
+            title="Programar cambio de precios para una fecha"
+            style="background:${_listaSchedData[String(prod.id)]?'rgba(245,158,11,.18)':'var(--surface)'};color:${_listaSchedData[String(prod.id)]?'#f59e0b':'var(--text-muted)'};border:1px solid ${_listaSchedData[String(prod.id)]?'#f59e0b':'var(--border)'};border-radius:7px;padding:7px 12px;font-size:12px;cursor:pointer;">⏰${_listaSchedData[String(prod.id)]?' '+new Date(_listaSchedData[String(prod.id)].activar_fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):''} Programar</button>
         </div>
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr style="background:var(--surface2);">
@@ -6613,6 +6779,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   let _ventasConfig = { pct2: 0, pct3: 0 };
   let _ventasItems = []; // [{prod, gusto, prodId, gustoId, cant, precio}]
 
+  async function _aplicarSchedVentas(savedMap, pctMap) {
+    if (!window._listaSchedData || !Object.keys(_listaSchedData).length) return;
+    const ahora = new Date();
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+    const aplicados = [];
+    for (const [pid, sched] of Object.entries(_listaSchedData)) {
+      if (!sched.activar_fecha) continue;
+      if (ahora < new Date(sched.activar_fecha)) continue;
+      try {
+        const delSched = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.SCHED_${pid}`, { method: 'DELETE', headers: H });
+        if (!delSched.ok) continue;
+        const ins = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos`, {
+          method: 'POST',
+          headers: { ...H, 'Prefer': 'resolution=merge-duplicates,return=minimal', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ empresa_id: String(empresaActual), prod_id: String(pid), datos: { gustos: sched.datos, pct: sched.pct }, updated_at: new Date().toISOString() })
+        });
+        if (!ins.ok) continue;
+        // Actualizar en memoria para que ventas use los nuevos precios en esta misma sesión
+        savedMap[pid] = sched.datos;
+        pctMap[pid] = sched.pct;
+        if (window._listaSavedData) _listaSavedData[pid] = { datos: sched.datos, pct: sched.pct, updated_at: new Date().toISOString() };
+        delete _listaSchedData[pid];
+        const prodNombre = (_listaProdData||[]).find(p => String(p.id)===String(pid))?.nombre || pid;
+        aplicados.push(prodNombre);
+      } catch(e) { console.warn('[SCHED] Error:', pid, e); }
+    }
+    if (aplicados.length) toast(`✅ Precios actualizados: ${aplicados.join(', ')}`, 'success');
+  }
+
   async function initVentas() {
     const [prods, saved] = await Promise.all([
       getProd(),
@@ -6627,12 +6822,22 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         _ventasConfig = { pct2: r.datos?.pct2||0, pct3: r.datos?.pct3||0, pct4: r.datos?.pct4||0 };
       } else {
         // Soportar formato nuevo {gustos:[...], pct:N} y viejo (array)
-        const dv = r.datos;
-        const gustosVta = (dv && !Array.isArray(dv) && dv.gustos) ? dv.gustos : (dv||[]);
-        _ventasSavedMap[String(r.prod_id)] = gustosVta;
-        if (dv && !Array.isArray(dv) && dv.pct !== undefined) _ventasPctMap[String(r.prod_id)] = dv.pct||0;
+        if (String(r.prod_id).startsWith('SCHED_')) {
+          // Programación pendiente — guardar para verificar
+          const pid = String(r.prod_id).replace('SCHED_','');
+          if (!_listaSchedData) window._listaSchedData = {};
+          _listaSchedData[pid] = { datos: r.datos?.gustos||[], pct: r.datos?.pct||0, activar_fecha: r.datos?.activar_fecha||null };
+        } else {
+          const dv = r.datos;
+          const gustosVta = (dv && !Array.isArray(dv) && dv.gustos) ? dv.gustos : (dv||[]);
+          _ventasSavedMap[String(r.prod_id)] = gustosVta;
+          if (dv && !Array.isArray(dv) && dv.pct !== undefined) _ventasPctMap[String(r.prod_id)] = dv.pct||0;
+        }
       }
     });
+
+    // Aplicar programaciones de precios vencidas
+    await _aplicarSchedVentas(_ventasSavedMap, _ventasPctMap);
 
     // Actualizar label de listas
     const sel = document.getElementById('ventas-lista-sel');
