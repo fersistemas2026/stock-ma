@@ -416,6 +416,7 @@
           <p style="font-size:13px;color:var(--text-muted)">Total de stock por sabor en todos los puntos de venta.</p></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn-outline" onclick="loadPedido()">↺ Actualizar</button>
+            <button class="btn-outline" style="color:#25D366;border-color:#25D366;" onclick="enviarPedidoWA()">📱 Enviar por WA</button>
             <button class="btn-outline" style="color:#4a90e2;border-color:#4a90e2;" onclick="enviarPedidoEmail()">✉️ Enviar por mail</button>
             <button class="btn-outline" onclick="exportPedidoExcel()">↓ Exportar Excel</button>
             <button onclick="openResumenDia()" style="background:var(--accent);color:#0f0f0f;border:none;padding:10px 22px;border-radius:8px;font-size:15px;font-weight:700;font-family:var(--font);cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .15s;" onmouseover="this.style.background=&#39;var(--accent-dim)&#39;" onmouseout="this.style.background=&#39;var(--accent)&#39;">
@@ -4738,6 +4739,64 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     abrirMailCon(`Orden de Pedido ${fecha}`, texto);
   }
 
+  async function enviarPedidoWA() {
+    if (!resumenData || !resumenData.length) {
+      toast('Cargando datos...','success');
+      await loadStockCombinado();
+      await new Promise(r=>setTimeout(r,1000));
+    }
+    if (!resumenData || !resumenData.length) { toast('No hay datos de stock disponibles','error'); return; }
+
+    const fecha = new Date().toLocaleDateString('es-AR');
+    const empresaNombre = document.getElementById('header-empresa-name')?.textContent || '';
+
+    const totales = {};
+    resumenData.forEach(({rows}) => {
+      rows.forEach(r => {
+        const key = r.prod + '|||' + r.gusto;
+        if (!totales[key]) totales[key] = {prod:r.prod, gusto:r.gusto, orden:0, sobra:0};
+        if (r.cfg) {
+          totales[key].orden += Math.max(0, r.cfg.ref - r.cantidad);
+          totales[key].sobra += Math.max(0, r.cantidad - r.cfg.max);
+        }
+      });
+    });
+
+    const byProd = {};
+    Object.values(totales).forEach(function(item) {
+      var prod=item.prod, gusto=item.gusto, orden=item.orden, sobra=item.sobra;
+      if (!orden && !sobra) return;
+      if (!byProd[prod]) byProd[prod] = [];
+      byProd[prod].push({gusto, orden, sobra});
+    });
+
+    var msg = '\uD83D\uDCE6 *ORDEN DE PEDIDO*' + (empresaNombre ? ' \u2014 ' + empresaNombre : '') + '\n';
+    msg += '\uD83D\uDCC5 ' + fecha + '\n';
+    msg += '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n';
+
+    if (!Object.keys(byProd).length) {
+      msg += '\u2705 Sin productos que ordenar ni con sobrestock.\n';
+    } else {
+      Object.entries(byProd).forEach(function(entry) {
+        var prod=entry[0], gustos=entry[1];
+        msg += '*' + prod + '*\n';
+        gustos.forEach(function(g) {
+          var linea = '  \u2022 ' + g.gusto + ':';
+          if (g.orden > 0) linea += ' \u26A0\uFE0F +' + g.orden;
+          if (g.sobra > 0) linea += ' \uD83D\uDCE6 sobra +' + g.sobra;
+          msg += linea + '\n';
+        });
+        msg += '\n';
+      });
+    }
+
+    msg += '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n_Generado: ' + new Date().toLocaleString('es-AR') + '_';
+
+    var url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+    window.open(url, '_blank');
+  }
+
+
 
   async function enviarPedidoSucEmail() {
     if (!resumenData || !resumenData.length) {
@@ -5395,7 +5454,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               <span style="font-size:13px;font-weight:700;color:#a78bfa;">Visita ${visitas.length - vi}</span>
               <span style="font-size:12px;color:var(--text-muted);">${fechaFmt}</span>
               <span style="font-size:11px;background:rgba(139,180,248,.15);color:#8ab4f8;padding:2px 8px;border-radius:5px;font-family:var(--mono);">🏪 ${v.pdvNombre}</span>
-              <span style="font-size:11px;color:var(--text-dim);">${v.metodo==='tarjeta'?'💳 Tarjeta':'💵 Efectivo'}</span>
+              <span style="font-size:11px;color:var(--text-dim);">${(v.metodo||'').includes('tarjeta')?'💳 Tarjeta':'💵 Efectivo'}</span>
             </div>
             <span style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);">$${v.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
           </div>
@@ -8767,7 +8826,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   // ── VOUCHER ───────────────────────────────────────────────────────────
-  function abrirVoucher(cid) {
+  window.abrirVoucher = function abrirVoucher(cid) {
     const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     if (!c) return;
 
@@ -8834,8 +8893,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
 
         <div style="display:flex;gap:8px;">
-          <button onclick="previsualizarVoucher(${idx})" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">👁️ Vista previa</button>
-          <button onclick="enviarVoucherWA(${idx})" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">📱 Enviar por WA</button>
+          <button onclick="previsualizarVoucher('${cid}')" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">👁️ Vista previa</button>
+          <button onclick="enviarVoucherWA('${cid}')" style="flex:1;background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">📱 Enviar por WA</button>
         </div>
         <div id="voucher-preview"></div>
       </div>
@@ -8856,8 +8915,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._voucherTipo = tipo;
   }
 
-  function getVoucherData(idx) {
-    const c = (window._clientesData||[])[idx];
+  window.setVoucherTipo = setVoucherTipo;
+  function getVoucherData(cid) {
+    const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     const tipo = window._voucherTipo || 'pct';
     const pct = tipo === 'pct' ? (document.getElementById('voucher-pct')?.value || '10') : '0';
     const monto = tipo === 'monto' ? (document.getElementById('voucher-monto')?.value || '0') : '0';
@@ -8871,8 +8931,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     return { c, tipo, pct, monto, regaloDesc, desc, vence, venceFmt, codigo };
   }
 
-  function previsualizarVoucher(idx) {
-    const { c, tipo, pct, monto, regaloDesc, desc, venceFmt, codigo } = getVoucherData(idx);
+  window.previsualizarVoucher = function previsualizarVoucher(cid) {
+    const { c, tipo, pct, monto, regaloDesc, desc, venceFmt, codigo } = getVoucherData(cid);
     const empresaNombre = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || 'Nuestra empresa';
     const logoUrlV = getLogo();
     const preview = document.getElementById('voucher-preview');
@@ -8907,8 +8967,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>`;
   }
 
-  async function enviarVoucherWA(idx) {
-    const { c, tipo, pct, monto, regaloDesc, desc, vence, venceFmt, codigo } = getVoucherData(idx);
+  window.enviarVoucherWA = async function enviarVoucherWA(cid) {
+    const { c, tipo, pct, monto, regaloDesc, desc, vence, venceFmt, codigo } = getVoucherData(cid);
     const empresaNombre = ( document.getElementById('empresa-nombre-badge')?.textContent || document.getElementById('header-empresa-name')?.textContent || '' ) || 'Nuestra empresa';
     const tel = c.telefono?.replace(/[^0-9]/g,'');
     if (!tel) { toast('Este cliente no tiene teléfono registrado','error'); return; }
@@ -8954,7 +9014,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
 
   // ── HISTORIAL DE COMPRAS POR CLIENTE ────────────────────────────────────
-  async function verHistorialCliente(cid) {
+  window.verHistorialCliente = async function verHistorialCliente(cid) {
     const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     if (!c || !c.telefono) return;
     const telNorm = c.telefono.replace(/[^0-9]/g,'');
@@ -9032,7 +9092,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               <span style="font-size:12px;color:var(--text-muted);margin-left:10px;">${fechaFmt}</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
-              ${v.metodo==='tarjeta'?'<span style="font-size:11px;color:#8ab4f8;">💳 Tarjeta</span>':'<span style="font-size:11px;color:#6ee7b7;">💵 Efectivo</span>'}
+              ${(v.metodo||'').includes('tarjeta')?'<span style="font-size:11px;color:#8ab4f8;">💳 Tarjeta</span>':'<span style="font-size:11px;color:#6ee7b7;">💵 Efectivo</span>'}
               <span style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);">$${v.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             </div>
           </div>
@@ -9062,7 +9122,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   // ── SALUDO A CLIENTES ────────────────────────────────────────────────────
-  function abrirSaludo(cid) {
+  window.abrirSaludo = function abrirSaludo(cid) {
     const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     if (!c) return;
 
@@ -9127,7 +9187,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <!-- Vista previa del mensaje -->
         <div id="saludo-preview" style="display:none;background:rgba(138,180,248,.07);border:1px solid rgba(138,180,248,.2);border-radius:8px;padding:12px;font-size:13px;color:#8ab4f8;line-height:1.6;white-space:pre-wrap;font-family:var(--font);"></div>
 
-        <button onclick="enviarSaludoWA(${idx})"
+        <button onclick="enviarSaludoWA('${cid}')"
           style="width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;">📱 Enviar por WhatsApp</button>
       </div>
     </div>`;
@@ -9137,7 +9197,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._saludoArchivoFile = null;
   }
 
-  function selSaludoRapido(n) {
+  window.selSaludoRapido = function selSaludoRapido(n) {
     window._saludoOpcion = n;
     [1,2,3].forEach(i => {
       const btn = document.getElementById('saludo-opt-'+i);
@@ -9167,8 +9227,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (nom) nom.textContent = file ? '📄 ' + file.name : '';
   }
 
-  function enviarSaludoWA(idx) {
-    const c = (window._clientesData||[])[idx];
+  window.enviarSaludoWA = function enviarSaludoWA(cid) {
+    const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
     if (!c) return;
     const tel = c.telefono?.replace(/[^0-9]/g,'');
     if (!tel) { toast('Este cliente no tiene teléfono','error'); return; }
