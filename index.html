@@ -265,6 +265,17 @@
     <div class="login-group"><label for="l-user">Usuario</label><input type="text" id="l-user" placeholder="Ej: operador1" autocomplete="username"></div>
     <div class="login-group"><label for="l-pass">Contraseña</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key===&#39;Enter&#39;) doLogin()"></div>
     <div style="margin-top:20px"><button class="btn-primary" id="login-btn" style="width:100%;justify-content:center" onclick="doLogin()">Ingresar</button></div>
+    <!-- Desbloqueo por buzón (visible solo si hay PDV bloqueado) -->
+    <div id="login-buzon-block" style="display:none;margin-top:20px;border-top:1px solid rgba(255,90,90,.3);padding-top:18px;">
+      <div style="font-size:13px;font-weight:800;color:#ff5a5a;margin-bottom:6px;">🔒 PDV bloqueado por buzón</div>
+      <div id="login-buzon-block-msg" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;"></div>
+      <div class="login-group" style="margin-bottom:10px;">
+        <label>Palabra clave de operador</label>
+        <input type="password" id="login-clave-operador" placeholder="Ingresá la clave de desbloqueo" onkeydown="if(event.key==='Enter') window.intentarDesbloqueoLogin()">
+      </div>
+      <button onclick="window.intentarDesbloqueoLogin()" style="width:100%;background:#ff5a5a;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">🔓 Desbloquear y continuar</button>
+      <div id="login-clave-error" style="font-size:12px;color:#ff5a5a;margin-top:8px;display:none;">Clave incorrecta</div>
+    </div>
   </div>
 </div>
 
@@ -1546,6 +1557,30 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       return;
     }
 
+    // Verificar si hay PDV bloqueado por buzón (bloquea inicio de sesión para operadores)
+    const bloqBuzonInfo = (() => {
+      try {
+        const emps = getEmpresas();
+        for (const emp of emps) {
+          const cfgEf = emp?.controlEfectivo || {};
+          for (const pdvId of Object.keys(cfgEf)) {
+            if (localStorage.getItem(`ef_bloq_${emp.id}_${pdvId}`) === '1') {
+              return { empId: emp.id, pdvId, cfg: cfgEf[pdvId] };
+            }
+          }
+        }
+      } catch(e) {}
+      return null;
+    })();
+    if (bloqBuzonInfo) {
+      // Mostrar sección de desbloqueo
+      checkLoginBuzonBlock();
+      errorEl.textContent = '⛔ Hay un PDV bloqueado por buzón. Desbloqueá primero con la palabra clave.';
+      errorEl.style.display = 'block';
+      if (loginBtn) loginBtn.textContent = 'Ingresar';
+      return;
+    }
+
     if (loginBtn) loginBtn.textContent = 'Ingresando...';
     try {
       // Try Supabase first
@@ -1597,7 +1632,67 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     document.getElementById('app-screen').style.display='none';
     document.getElementById('login-screen').style.display='flex';
     document.getElementById('l-user').value='';
+    // Verificar si algún PDV está bloqueado para mostrar sección en login
+    checkLoginBuzonBlock();
   }
+
+  function checkLoginBuzonBlock() {
+    const blockDiv = document.getElementById('login-buzon-block');
+    const msgDiv = document.getElementById('login-buzon-block-msg');
+    if (!blockDiv) return;
+    // Buscar PDVs bloqueados en todas las empresas
+    const bloqueados = [];
+    try {
+      const empresas = getEmpresas();
+      empresas.forEach(emp => {
+        const cfgEf = emp?.controlEfectivo || {};
+        Object.keys(cfgEf).forEach(pdvId => {
+          const key = `ef_bloq_${emp.id}_${pdvId}`;
+          if (localStorage.getItem(key) === '1') {
+            bloqueados.push({ empId: emp.id, pdvId, cfg: cfgEf[pdvId] });
+          }
+        });
+      });
+    } catch(e) {}
+    if (bloqueados.length > 0) {
+      const nombres = bloqueados.map(b => b.cfg?.nombre || `PDV ${b.pdvId.substring(0,6)}`).join(', ');
+      if (msgDiv) msgDiv.innerHTML = `PDV bloqueado por exceso de efectivo.<br>Ingresá la palabra clave para desbloquearlo y continuar.`;
+      blockDiv.style.display = '';
+      blockDiv.dataset.bloqueados = JSON.stringify(bloqueados);
+    } else {
+      blockDiv.style.display = 'none';
+    }
+  }
+
+  window.intentarDesbloqueoLogin = function() {
+    const clave = (document.getElementById('login-clave-operador')?.value || '').trim();
+    const errEl = document.getElementById('login-clave-error');
+    if (!clave) return;
+    try {
+      const blockDiv = document.getElementById('login-buzon-block');
+      const bloqueados = JSON.parse(blockDiv?.dataset?.bloqueados || '[]');
+      let desbloqueado = false;
+      const empresas = getEmpresas();
+      bloqueados.forEach(b => {
+        const emp = empresas.find(e => String(e.id) === String(b.empId));
+        const cfgPdv = emp?.controlEfectivo?.[String(b.pdvId)] || {};
+        if (cfgPdv.claveOperador && clave === cfgPdv.claveOperador) {
+          localStorage.removeItem(`ef_acum_${b.empId}_${b.pdvId}`);
+          localStorage.removeItem(`ef_avisos_${b.empId}_${b.pdvId}`);
+          localStorage.removeItem(`ef_bloq_${b.empId}_${b.pdvId}`);
+          desbloqueado = true;
+        }
+      });
+      if (desbloqueado) {
+        if (errEl) errEl.style.display = 'none';
+        document.getElementById('login-clave-operador').value = '';
+        checkLoginBuzonBlock();
+        toast('🔓 PDV desbloqueado. Ya podés iniciar sesión.', 'success');
+      } else {
+        if (errEl) { errEl.style.display = ''; setTimeout(() => errEl && (errEl.style.display='none'), 2500); }
+      }
+    } catch(e) { console.warn('Error desbloqueo login:', e); }
+  };
 
   function startApp() {
     try {
@@ -6968,18 +7063,45 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!panelVentas) return;
     // Remover bloqueo existente
     document.getElementById('ventas-bloqueo-overlay')?.remove();
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || document.getElementById('ventas-pdv-sel-top')?.value || '';
+    const emp = getEmpresas().find(e => String(e.id) === String(empresaActual));
+    const cfgPdv = emp?.controlEfectivo?.[String(pdvId)] || {};
+    const tieneClaveOp = !!cfgPdv.claveOperador;
     const bloqueo = document.createElement('div');
     bloqueo.id = 'ventas-bloqueo-overlay';
-    bloqueo.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,.85);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;backdrop-filter:blur(4px);';
-    bloqueo.innerHTML = `<div style="text-align:center;padding:32px;">
+    bloqueo.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,.88);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;backdrop-filter:blur(4px);';
+    bloqueo.innerHTML = `<div style="text-align:center;padding:32px;max-width:340px;">
       <div style="font-size:56px;margin-bottom:16px;">🔒</div>
       <div style="font-size:18px;font-weight:900;color:#ff5a5a;margin-bottom:8px;">VENTAS BLOQUEADAS</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Tope de efectivo alcanzado.<br>Esperá que el administrador desbloquee.</div>
-      ${isAdmin ? `<button onclick="desbloquearEfectivo()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:800;cursor:pointer;">🔓 Desbloquear</button>` : ''}
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Tope de efectivo alcanzado.<br>${tieneClaveOp ? 'Usá la palabra clave para desbloquear.' : 'Avisá al administrador.'}</div>
+      ${tieneClaveOp ? `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+        <input type="password" id="ventas-clave-op-input" placeholder="Palabra clave de operador"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;text-align:center;font-family:var(--mono);"
+          onkeydown="if(event.key==='Enter') window.intentarDesbloqueoVentas()">
+        <div id="ventas-clave-op-err" style="font-size:12px;color:#ff5a5a;display:none;">Clave incorrecta</div>
+        <button onclick="window.intentarDesbloqueoVentas()" style="background:#6ee7b7;color:#000;border:none;border-radius:8px;padding:11px 24px;font-size:13px;font-weight:800;cursor:pointer;">🔓 Desbloquear</button>
+      </div>` : ''}
+      ${isAdmin ? `<button onclick="desbloquearEfectivo()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;margin-top:4px;">🛠 Desbloquear (admin)</button>` : ''}
     </div>`;
     panelVentas.style.position = 'relative';
     panelVentas.appendChild(bloqueo);
+    // Focus en el input si existe
+    setTimeout(() => document.getElementById('ventas-clave-op-input')?.focus(), 100);
   }
+
+  window.intentarDesbloqueoVentas = function() {
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || document.getElementById('ventas-pdv-sel-top')?.value || '';
+    const emp = getEmpresas().find(e => String(e.id) === String(empresaActual));
+    const cfgPdv = emp?.controlEfectivo?.[String(pdvId)] || {};
+    const clave = document.getElementById('ventas-clave-op-input')?.value || '';
+    const errEl = document.getElementById('ventas-clave-op-err');
+    if (cfgPdv.claveOperador && clave === cfgPdv.claveOperador) {
+      desbloquearEfectivoPdv(pdvId);
+      toast('🔓 PDV desbloqueado', 'success');
+    } else {
+      if (errEl) { errEl.style.display = ''; setTimeout(() => errEl.style.display='none', 2000); }
+    }
+  };
 
   function desbloquearEfectivo() {
     const pdvId = document.getElementById('ventas-pdv-sel')?.value || document.getElementById('ventas-pdv-sel-top')?.value || '';
@@ -7258,6 +7380,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             localStorage.setItem(keyAv, avisosDados);
             if (avisosDados >= maxAvisos) {
               localStorage.setItem(keyBloq, '1');
+              // Incrementar contador de bloqueos
+              const keyCnt = `ef_bloq_count_${empresaActual}_${pdvId}`;
+              localStorage.setItem(keyCnt, (parseInt(localStorage.getItem(keyCnt))||0) + 1);
               mostrarAlertaBuzon(acum, true);
             } else {
               mostrarAlertaBuzon(acum, false, avisosDados, maxAvisos);
@@ -12158,38 +12283,59 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     cont.innerHTML = pdvs.map(p => {
       const cfg = cfgEf[String(p.id)] || {};
       const nombre = p.nombre || p.name || 'PDV';
-      const keyBloq = `ef_bloq_${empresaActual}_${p.id}`;
+      const keyBloq  = `ef_bloq_${empresaActual}_${p.id}`;
+      const keyCnt   = `ef_bloq_count_${empresaActual}_${p.id}`;
       const bloqueado = localStorage.getItem(keyBloq) === '1';
-      return `<div style="background:var(--surface2);border:1px solid ${bloqueado?'#ff5a5a':'var(--border)'};border-radius:10px;padding:14px;display:grid;grid-template-columns:1fr 120px 120px auto auto;gap:10px;align-items:center;">
-        <div style="font-size:13px;font-weight:700;color:var(--text);">🏪 ${nombre}
-          ${bloqueado ? '<span style="background:rgba(255,90,90,.15);color:#ff5a5a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:6px;">🔒 BLOQUEADO</span>' : ''}
+      const veces     = parseInt(localStorage.getItem(keyCnt)) || 0;
+      return `<div style="background:var(--surface2);border:1px solid ${bloqueado?'#ff5a5a':'var(--border)'};border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">🏪 ${nombre}</span>
+          ${bloqueado ? '<span style="background:rgba(255,90,90,.15);color:#ff5a5a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">🔒 BLOQUEADO</span>' : ''}
+          ${veces > 0 ? `<span style="background:rgba(255,180,50,.12);color:#ffb432;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;" title="Veces que se bloqueó este PDV">⚠️ Bloqueado ${veces} vez${veces!==1?'es':''}</span>` : ''}
         </div>
-        <div style="display:flex;flex-direction:column;gap:3px;">
-          <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Tope ($)</label>
-          <input type="number" id="ef-tope-${p.id}" value="${cfg.tope||''}" placeholder="0" min="0"
-            style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;width:100%;" />
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Tope ($)</label>
+            <input type="number" id="ef-tope-${p.id}" value="${cfg.tope||''}" placeholder="0" min="0"
+              style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;width:100%;" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Avisos</label>
+            <input type="number" id="ef-avisos-${p.id}" value="${cfg.avisos||3}" min="1" max="10"
+              style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;width:100%;" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Palabra clave operador</label>
+            <input type="text" id="ef-clave-${p.id}" value="${cfg.claveOperador||''}" placeholder="(opcional)"
+              style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;width:100%;" />
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:3px;">
-          <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Avisos</label>
-          <input type="number" id="ef-avisos-${p.id}" value="${cfg.avisos||3}" min="1" max="10"
-            style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;width:100%;" />
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button onclick="saveControlEfPdv('${p.id}')" style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 Guardar</button>
+          ${bloqueado ? `<button onclick="desbloquearEfectivoPdv('${p.id}')" style="background:none;border:1px solid #6ee7b7;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;color:#6ee7b7;cursor:pointer;white-space:nowrap;">🔓 Desbloquear</button>` : ''}
+          ${veces > 0 ? `<button onclick="resetContadorBloqueos('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:8px 14px;font-size:11px;color:var(--text-muted);cursor:pointer;white-space:nowrap;">↺ Resetear contador</button>` : ''}
         </div>
-        <button onclick="saveControlEfPdv('${p.id}')" style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">💾 Guardar</button>
-        ${bloqueado ? `<button onclick="desbloquearEfectivoPdv('${p.id}')" style="background:none;border:1px solid #6ee7b7;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:700;color:#6ee7b7;cursor:pointer;white-space:nowrap;">🔓 Desbloquear</button>` : '<div></div>'}
       </div>`;
     }).join('');
   }
 
   function saveControlEfPdv(pdvId) {
-    const tope = parseFloat(document.getElementById(`ef-tope-${pdvId}`)?.value) || 0;
+    const tope  = parseFloat(document.getElementById(`ef-tope-${pdvId}`)?.value) || 0;
     const avisos = parseInt(document.getElementById(`ef-avisos-${pdvId}`)?.value) || 3;
+    const claveOperador = (document.getElementById(`ef-clave-${pdvId}`)?.value || '').trim();
     const empresas = getEmpresas();
     const idx = empresas.findIndex(e => String(e.id) === String(empresaActual));
     if (idx === -1) return;
     if (!empresas[idx].controlEfectivo) empresas[idx].controlEfectivo = {};
-    empresas[idx].controlEfectivo[String(pdvId)] = { tope, avisos };
+    empresas[idx].controlEfectivo[String(pdvId)] = { tope, avisos, claveOperador };
     saveEmpresas(empresas);
     toast('✓ Configuración guardada', 'success');
+  }
+
+  function resetContadorBloqueos(pdvId) {
+    localStorage.removeItem(`ef_bloq_count_${empresaActual}_${pdvId}`);
+    toast('↺ Contador reseteado', 'success');
+    renderControlEfectivo();
   }
 
   function desbloquearEfectivoPdv(pdvId) {
@@ -12457,6 +12603,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const duration = type==='error' ? 8000 : 3000;
     t._t=setTimeout(()=>t.classList.remove('show'), duration);
   }
+
+  // Al cargar la página verificar si hay PDVs bloqueados por buzón
+  (function initLoginBuzonCheck() {
+    try { checkLoginBuzonBlock(); } catch(e) {}
+  })();
 </script>
 
 
