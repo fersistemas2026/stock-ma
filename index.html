@@ -512,6 +512,7 @@
               <option value="ventas">🛒 Ventas</option>
               <option value="cantVentas">📊 Cantidad de ventas</option>
               <option value="clientes">👥 Clientes</option>
+              <option value="descuentosAuto">🏷️ Descuentos automáticos</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
@@ -4186,6 +4187,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='ventas')       { await loadInformesVentas(range); return; }
     if (seccion==='cantVentas')   { await loadInformesCantVentas(range); return; }
     if (seccion==='clientes')     { await loadInformesClientes(range); return; }
+    if (seccion==='descuentosAuto') { await loadInformesDescuentosAuto(); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
     if (seccion==='tarjetas')     { await loadInformesTarjetas(range.desde, range.hasta); return; }
@@ -7568,76 +7570,93 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       return;
     }
 
-    tbody.innerHTML = _ventasItems.map((item, i) => {
+    // Descuento automático con reglas por ítem
+    const descAutoData = window._ventasDescuentoAutoActivo ? window._ventasDescuentoAutoData : null;
+    const descAutoTipoReglas = descAutoData && descAutoData.tipo_aplicacion === 'reglas' && descAutoData.reglas && descAutoData.reglas.length > 0;
+
+    function itemAplicaRegla(item, regla) {
+      const matchProd = !regla.prodId || String(item.prodId) === String(regla.prodId);
+      const matchGusto = !regla.gustoId || String(item.gustoId) === String(regla.gustoId);
+      const matchCant = !regla.cantMin || regla.cantMin <= 0 || item.cant >= regla.cantMin;
+      return matchProd && matchGusto && matchCant;
+    }
+
+    function getDescuentoItem(item) {
+      if (!descAutoData) return 0;
+      if (!descAutoTipoReglas) return 0; // toda la venta se maneja globalmente
+      return descAutoData.reglas.some(function(r){ return itemAplicaRegla(item,r); }) ? descAutoData.pct : 0;
+    }
+
+    tbody.innerHTML = _ventasItems.map(function(item, i) {
       const precio = ventasParsePrecio(item.precio);
       const subtotal = precio * item.cant;
-      return `<tr style="border-top:2px solid var(--border);${i%2===1?'background:rgba(255,255,255,.03)':''}">
-        <td style="padding:12px 14px;">
-          <div style="font-size:16px;font-weight:800;color:var(--text);line-height:1.2;">${item.prod}</div>
-          <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${item.gusto}</div>
-        </td>
-        <td style="padding:12px 10px;text-align:center;">
-          ${item.unidad && item.unidad !== 'u'
-            ? `<span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);">${item.cantDisplay||item.cant+' '+item.unidad}</span>`
-            : `<input type="number" min="1" step="1" value="${item.cant}"
-                onchange="ventasUpdateCant(${i}, this.value)"
-                style="width:64px;background:var(--surface2);border:2px solid var(--border);border-radius:7px;padding:6px 8px;font-size:15px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;" />`
-          }
-        </td>
-        <td style="padding:12px 10px;text-align:right;font-family:var(--mono);font-size:14px;color:var(--text-muted);">
-          ${item.unidad&&item.unidad!=='u' ? '<span style="font-size:11px;color:var(--text-dim);">$'+( item.precioUnitario||item.precio)+'/ kg</span><br>' : ''}$ ${item.precio||'—'}
-        </td>
-        <td style="padding:12px 10px;text-align:right;font-family:var(--mono);font-size:16px;font-weight:900;color:var(--accent);">$ ${subtotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-        <td style="padding:12px 8px;text-align:center;">
-          <button onclick="ventasEliminarItem(${i})" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:18px;line-height:1;padding:4px 6px;">✕</button>
-        </td>
-      </tr>`;
+      const descItemPct = descAutoTipoReglas ? getDescuentoItem(item) : 0;
+      const subtotalConDesc = descItemPct > 0 ? subtotal * (1 - descItemPct/100) : subtotal;
+      const descBadge = descItemPct > 0 ? '<div style="font-size:10px;color:var(--accent);margin-top:3px;font-weight:700;">🏷️ -'+descItemPct+'% ('+descAutoData.nombre+')</div>' : '';
+      const cantCell = (item.unidad && item.unidad !== 'u')
+        ? '<span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);">'+(item.cantDisplay||item.cant+' '+item.unidad)+'</span>'
+        : '<input type="number" min="1" step="1" value="'+item.cant+'" onchange="ventasUpdateCant('+i+', this.value)" style="width:64px;background:var(--surface2);border:2px solid var(--border);border-radius:7px;padding:6px 8px;font-size:15px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;" />';
+      const precioCell = (item.unidad && item.unidad !== 'u')
+        ? '<span style="font-size:11px;color:var(--text-dim);">$'+(item.precioUnitario||item.precio)+'/ kg</span><br>$ '+item.precio
+        : '$ '+(item.precio||'—');
+      let subtotalCell;
+      if (descItemPct > 0) {
+        subtotalCell = '<span style="font-size:11px;color:var(--text-dim);text-decoration:line-through;display:block;">$ '+subtotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span><span style="color:var(--accent);">$ '+subtotalConDesc.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span>';
+      } else {
+        subtotalCell = '<span style="color:var(--accent);">$ '+subtotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span>';
+      }
+      return '<tr style="border-top:2px solid var(--border);'+(i%2===1?'background:rgba(255,255,255,.03)':'')+'"><td style="padding:12px 14px;"><div style="font-size:16px;font-weight:800;color:var(--text);line-height:1.2;">'+item.prod+'</div><div style="font-size:13px;color:var(--text-muted);margin-top:2px;">'+item.gusto+'</div>'+descBadge+'</td><td style="padding:12px 10px;text-align:center;">'+cantCell+'</td><td style="padding:12px 10px;text-align:right;font-family:var(--mono);font-size:14px;color:var(--text-muted);">'+precioCell+'</td><td style="padding:12px 10px;text-align:right;font-family:var(--mono);font-size:16px;font-weight:900;">'+subtotalCell+'</td><td style="padding:12px 8px;text-align:center;"><button onclick="ventasEliminarItem('+i+')" style="background:none;border:none;color:#ff5a5a;cursor:pointer;font-size:18px;line-height:1;padding:4px 6px;">✕</button></td></tr>';
     }).join('');
 
-    // Resumen compacto derecha
     const byProd = {};
-    _ventasItems.forEach(item => {
+    _ventasItems.forEach(function(item) {
       if (!byProd[item.prod]) byProd[item.prod] = { total: 0 };
       byProd[item.prod].total += ventasParsePrecio(item.precio) * item.cant;
     });
-    const grandTotal = _ventasItems.reduce((s,i) => s + ventasParsePrecio(i.precio)*i.cant, 0);
-    const listaLabel = document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex]?.text || '';
-
-    let resHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:sticky;top:16px;">
-      <div style="background:var(--surface2);padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text);">📊 ${listaLabel}</div>`;
-
-    Object.entries(byProd).forEach(([prod, data]) => {
-      resHtml += `<div style="display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);font-size:13px;">
-        <span style="color:var(--text-muted);font-weight:600;">📦 ${prod}</span>
-        <span style="font-family:var(--mono);font-weight:700;color:var(--text);">$ ${data.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-      </div>`;
-    });
+    const grandTotal = _ventasItems.reduce(function(s,i){ return s + ventasParsePrecio(i.precio)*i.cant; }, 0);
 
     const descPct = window._ventasDescuento || 0;
     const montoFijo = window._ventasMontoFijo || 0;
-    const totalFinal = montoFijo > 0 ? Math.max(0, grandTotal - montoFijo) : (descPct > 0 ? grandTotal * (1 - descPct/100) : grandTotal);
-    resHtml += `<div style="padding:8px 14px;border-top:1px solid var(--border);">
-      <div style="display:flex;gap:6px;align-items:center;">
-        <input type="text" id="ventas-voucher-input" placeholder="Código voucher..." autocomplete="off"
-          style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;font-family:var(--mono);color:var(--text);outline:none;text-transform:uppercase;" />
-        <button onclick="aplicarVoucher()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text);cursor:pointer;white-space:nowrap;">🎟️ Aplicar</button>
-        ${descPct > 0 ? '<button onclick="quitarVoucher()" style="background:none;border:1px solid #ff5a5a;border-radius:6px;padding:6px 8px;font-size:11px;color:#ff5a5a;cursor:pointer;">✕</button>' : ''}
-      </div>
-      ${descPct > 0 ? '<div style="font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--mono);">✓ Descuento '+descPct+'% aplicado</div>' : ''}
-      ${montoFijo > 0 ? '<div style="font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--mono);">✓ Descuento $'+montoFijo.toLocaleString("es-AR",{minimumFractionDigits:2})+' aplicado</div>' : ''}
-    </div>
-    <div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:rgba(200,240,74,.1);border-top:2px solid var(--accent);">
-      <div>
-        <span style="font-size:13px;font-weight:900;color:var(--text);">TOTAL</span>
-        ${descPct > 0 ? '<div style="font-size:10px;color:var(--text-muted);font-family:var(--mono);text-decoration:line-through;">$ '+grandTotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>' : ''}
-      </div>
-      <span style="font-size:20px;font-weight:900;font-family:var(--mono);color:var(--accent);">$ ${totalFinal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-    </div>
-</div>\`;`;
+    let totalFinalDesc;
+    if (descAutoTipoReglas) {
+      totalFinalDesc = _ventasItems.reduce(function(s,item){
+        const base = ventasParsePrecio(item.precio) * item.cant;
+        const dp = getDescuentoItem(item);
+        return s + (dp > 0 ? base*(1-dp/100) : base);
+      }, 0);
+    } else if (montoFijo > 0) {
+      totalFinalDesc = Math.max(0, grandTotal - montoFijo);
+    } else if (descPct > 0) {
+      totalFinalDesc = grandTotal * (1 - descPct/100);
+    } else {
+      totalFinalDesc = grandTotal;
+    }
+
+    const listaLabel = document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex]&&document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex].text || '';
+    let resHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:sticky;top:16px;"><div style="background:var(--surface2);padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text);">📊 '+listaLabel+'</div>';
+
+    Object.entries(byProd).forEach(function([prod,data]) {
+      resHtml += '<div style="display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--text-muted);font-weight:600;">📦 '+prod+'</span><span style="font-family:var(--mono);font-weight:700;color:var(--text);">$ '+data.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div>';
+    });
+
+    let descInfoHtml = '';
+    if (descAutoTipoReglas && descAutoData) {
+      const ahorroAuto = grandTotal - totalFinalDesc;
+      descInfoHtml = '<div style="font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--mono);">🏷️ '+descAutoData.nombre+': -'+descAutoData.pct+'% en selección (ahorro $ '+ahorroAuto.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+')</div>';
+    } else if (descPct > 0) {
+      const label = (window._ventasDescuentoAutoActivo && window._ventasDescuentoAutoNombre) ? '🏷️ '+window._ventasDescuentoAutoNombre+': ' : 'Descuento ';
+      descInfoHtml = '<div style="font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--mono);">✓ '+label+descPct+'% aplicado</div>';
+    }
+    if (montoFijo > 0) {
+      descInfoHtml += '<div style="font-size:11px;color:var(--accent);margin-top:3px;font-family:var(--mono);">✓ Descuento $'+montoFijo.toLocaleString('es-AR',{minimumFractionDigits:2})+' aplicado</div>';
+    }
+    const hayDescuento = totalFinalDesc < grandTotal - 0.001;
+    const quitarBtn = descPct > 0 ? '<button onclick="quitarVoucher()" style="background:none;border:1px solid #ff5a5a;border-radius:6px;padding:6px 8px;font-size:11px;color:#ff5a5a;cursor:pointer;">✕</button>' : '';
+
+    resHtml += '<div style="padding:8px 14px;border-top:1px solid var(--border);"><div style="display:flex;gap:6px;align-items:center;"><input type="text" id="ventas-voucher-input" placeholder="Código voucher..." autocomplete="off" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;font-family:var(--mono);color:var(--text);outline:none;text-transform:uppercase;" /><button onclick="aplicarVoucher()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text);cursor:pointer;white-space:nowrap;">🎟️ Aplicar</button>'+quitarBtn+'</div>'+descInfoHtml+'</div><div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;background:rgba(200,240,74,.1);border-top:2px solid var(--accent);"><div><span style="font-size:13px;font-weight:900;color:var(--text);">TOTAL</span>'+(hayDescuento?'<div style="font-size:10px;color:var(--text-muted);font-family:var(--mono);text-decoration:line-through;">$ '+grandTotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>':'')+'</div><span style="font-size:20px;font-weight:900;font-family:var(--mono);color:var(--accent);">$ '+totalFinalDesc.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span></div></div>';
 
     resumen.innerHTML = resHtml;
   }
-
   function ventasUpdateCant(idx, val) {
     _ventasItems[idx].cant = parseInt(val)||1;
     ventasRenderTabla();
@@ -7650,6 +7669,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     selDocTipo('venta');
     _ventasItems = [];
     window._ventasDescuento = 0;
+    window._ventasDescuentoAutoActivo = false;
+    window._ventasDescuentoAutoNombre = '';
+    window._ventasDescuentoAutoData = null;
     window._ventasVoucherCodigo = '';
     ventasRenderTabla();
     document.getElementById('ventas-prod-input').value = '';
@@ -9134,23 +9156,89 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (msgTel) msgTel.style.display = 'none';
       if (msgEmail) msgEmail.style.display = 'none';
 
+      // Limpiar descuento automático anterior (solo si fue puesto por este sistema)
+      if (window._ventasDescuentoAutoActivo) {
+        window._ventasDescuento = 0;
+        window._ventasDescuentoAutoActivo = false;
+        window._ventasDescuentoAutoNombre = '';
+        ventasRenderTabla();
+      }
+
+      let clienteEncontrado = false;
+
       if (tel && tel.length >= 8) {
         const found = await sbApi(`clientes?empresa_id=eq.${empresaActual}&telefono=eq.${encodeURIComponent(tel)}&select=nombre,email,pdv_nombre&limit=1`);
         if (found?.length) {
           const c = found[0];
-          if (msgTel) { msgTel.textContent = `✓ Cliente registrado: ${c.nombre||''} ${c.pdv_nombre?'('+c.pdv_nombre+')':''}`; msgTel.style.display = 'block'; }
+          clienteEncontrado = true;
           if (c.nombre && !document.getElementById('ventas-cliente-nombre').value) document.getElementById('ventas-cliente-nombre').value = c.nombre;
           if (c.email && !document.getElementById('ventas-cliente-email').value) document.getElementById('ventas-cliente-email').value = c.email;
+
+          // Verificar descuento automático para hoy
+          const descAuto = await calcularDescuentoClienteHoy();
+          if (descAuto && descAuto.pct > 0) {
+            window._ventasDescuentoAutoActivo = true;
+            window._ventasDescuentoAutoNombre = descAuto.nombre;
+            window._ventasDescuentoAutoData = descAuto; // {nombre,pct,tipo_aplicacion,reglas}
+            // Solo aplicar _ventasDescuento global si aplica a toda la venta
+            if (!descAuto.tipo_aplicacion || descAuto.tipo_aplicacion === 'todo') {
+              window._ventasDescuento = descAuto.pct;
+            } else {
+              window._ventasDescuento = 0; // el descuento por ítem se calcula en render
+            }
+            ventasRenderTabla();
+            if (msgTel) {
+              const alcance = descAuto.tipo_aplicacion === 'reglas' && descAuto.reglas?.length
+                ? ` (${descAuto.reglas.map(r=>[r.prodNombre,r.gustoNombre].filter(Boolean).join('/')).join(', ')})`
+                : '';
+              msgTel.innerHTML = `✓ Cliente: <strong>${c.nombre||''}</strong>${c.pdv_nombre?' ('+c.pdv_nombre+')':''} &nbsp;|&nbsp; 🏷️ <strong>${descAuto.nombre}</strong>: ${descAuto.pct}% de descuento${alcance}`;
+              msgTel.style.cssText = 'font-size:11px;color:var(--accent);margin-top:4px;display:block;font-weight:600;';
+            }
+          } else {
+            if (msgTel) { msgTel.textContent = `✓ Cliente registrado: ${c.nombre||''} ${c.pdv_nombre?'('+c.pdv_nombre+')':''}`; msgTel.style.display = 'block'; }
+          }
         }
       }
       if (email && email.includes('@')) {
         const found = await sbApi(`clientes?empresa_id=eq.${empresaActual}&email=eq.${encodeURIComponent(email)}&select=nombre,telefono,pdv_nombre&limit=1`);
         if (found?.length) {
           const c = found[0];
-          if (msgEmail) { msgEmail.textContent = `✓ Cliente registrado: ${c.nombre||''} ${c.pdv_nombre?'('+c.pdv_nombre+')':''}`; msgEmail.style.display = 'block'; }
+          clienteEncontrado = true;
           if (c.nombre && !document.getElementById('ventas-cliente-nombre').value) document.getElementById('ventas-cliente-nombre').value = c.nombre;
           if (c.telefono && !document.getElementById('ventas-cliente-tel').value) document.getElementById('ventas-cliente-tel').value = c.telefono;
+          if (msgEmail) { msgEmail.textContent = `✓ Cliente registrado: ${c.nombre||''} ${c.pdv_nombre?'('+c.pdv_nombre+')':''}`; msgEmail.style.display = 'block'; }
+
+          // Aplicar descuento automático si no se aplicó ya por tel
+          if (!window._ventasDescuentoAutoActivo) {
+            const descAuto = await calcularDescuentoClienteHoy();
+            if (descAuto && descAuto.pct > 0) {
+              window._ventasDescuentoAutoActivo = true;
+              window._ventasDescuentoAutoNombre = descAuto.nombre;
+              window._ventasDescuentoAutoData = descAuto;
+              if (!descAuto.tipo_aplicacion || descAuto.tipo_aplicacion === 'todo') {
+                window._ventasDescuento = descAuto.pct;
+              } else {
+                window._ventasDescuento = 0;
+              }
+              ventasRenderTabla();
+              const alcance = descAuto.tipo_aplicacion === 'reglas' && descAuto.reglas?.length
+                ? ` (${descAuto.reglas.map(r=>[r.prodNombre,r.gustoNombre].filter(Boolean).join('/')).join(', ')})`
+                : '';
+              if (msgEmail) {
+                msgEmail.innerHTML = `✓ Cliente: <strong>${c.nombre||''}</strong> &nbsp;|&nbsp; 🏷️ <strong>${descAuto.nombre}</strong>: ${descAuto.pct}% aplicado${alcance}`;
+                msgEmail.style.cssText = 'font-size:11px;color:var(--accent);margin-top:4px;display:block;font-weight:600;';
+              }
+            }
+          }
         }
+      }
+
+      // Si se borró el campo, limpiar descuento auto
+      if (!clienteEncontrado && window._ventasDescuentoAutoActivo) {
+        window._ventasDescuento = 0;
+        window._ventasDescuentoAutoActivo = false;
+        window._ventasDescuentoAutoNombre = '';
+        ventasRenderTabla();
       }
     }, 600);
   }
@@ -12593,6 +12681,475 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   // Invalidar caché de avisos cuando el admin los modifique
   function invalidarCacheAvisos() { _avisosCache = null; }
+
+  // ── DESCUENTOS AUTOMÁTICOS ────────────────────────────────────────────
+  // SQL a ejecutar en Supabase una sola vez:
+  // CREATE TABLE IF NOT EXISTS descuentos_automaticos (
+  //   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  //   empresa_id text NOT NULL,
+  //   nombre text NOT NULL,
+  //   tipo text NOT NULL, -- 'dia_semana' | 'dia_mes' | 'rango_fechas'
+  //   valor text NOT NULL, -- '1' (lunes) | '15' (día 15) | '2025-12-24' / '2025-12-31'
+  //   valor_hasta text, -- solo para rango_fechas
+  //   pct numeric NOT NULL DEFAULT 0,
+  //   activo boolean NOT NULL DEFAULT true,
+  //   created_at timestamptz DEFAULT now()
+  // );
+
+  window._descuentosAutoCache = null;
+  window._descuentosAutoCacheTime = 0;
+
+  async function getDescuentosAuto(force) {
+    const now = Date.now();
+    if (!force && window._descuentosAutoCache && (now - window._descuentosAutoCacheTime) < 60000) {
+      return window._descuentosAutoCache;
+    }
+    try {
+      const data = await sbApi(`descuentos_automaticos?empresa_id=eq.${empresaActual}&activo=eq.true&order=created_at.asc`) || [];
+      window._descuentosAutoCache = data;
+      window._descuentosAutoCacheTime = now;
+      return data;
+    } catch(e) { return []; }
+  }
+
+  // Calcula si hoy aplica algún descuento activo y devuelve el objeto completo o null
+  async function calcularDescuentoClienteHoy() {
+    const descuentos = await getDescuentosAuto();
+    if (!descuentos.length) return null;
+    const hoy = fechaHoyAR(); // 'YYYY-MM-DD'
+    const fecha = new Date(hoy + 'T00:00:00');
+    const diaSemana = fecha.getDay(); // 0=Dom,1=Lun...6=Sab
+    const diaMes = fecha.getDate();   // 1-31
+
+    for (const d of descuentos) {
+      let aplica = false;
+      if (d.tipo === 'dia_semana') aplica = parseInt(d.valor) === diaSemana;
+      else if (d.tipo === 'dia_mes') aplica = parseInt(d.valor) === diaMes;
+      else if (d.tipo === 'rango_fechas') aplica = hoy >= d.valor && hoy <= (d.valor_hasta||d.valor);
+      if (aplica) {
+        let reglas = null;
+        if (d.tipo_aplicacion === 'reglas' && d.reglas) {
+          try { reglas = JSON.parse(d.reglas); } catch(e) { reglas = null; }
+        }
+        return { nombre: d.nombre, pct: parseFloat(d.pct)||0, tipo_aplicacion: d.tipo_aplicacion||'todo', reglas };
+      }
+    }
+    return null;
+  }
+
+  // Panel de administración de descuentos automáticos
+  async function loadInformesDescuentosAuto() {
+    const body = document.getElementById('inf-body');
+    body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando descuentos...</p></div>';
+    try {
+      const todos = await sbApi(`descuentos_automaticos?empresa_id=eq.${empresaActual}&order=created_at.desc`) || [];
+      window._descuentosAutoTodos = todos;
+      renderDescuentosAutoPanel(todos);
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+  function renderDescuentosAutoPanel(lista) {
+    const body = document.getElementById('inf-body');
+    const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+    const filas = lista.length ? lista.map(d => {
+      let periodoLabel = '';
+      if (d.tipo === 'dia_semana') periodoLabel = `📅 ${diasSemana[parseInt(d.valor)]||d.valor}`;
+      else if (d.tipo === 'dia_mes') periodoLabel = `📆 Día ${d.valor} de cada mes`;
+      else if (d.tipo === 'rango_fechas') periodoLabel = `🗓️ ${d.valor}${d.valor_hasta && d.valor_hasta!==d.valor ? ' → '+d.valor_hasta : ''}`;
+
+      let aplicaLabel = '🛒 Toda la venta';
+      if (d.tipo_aplicacion === 'reglas' && d.reglas) {
+        try {
+          const reglas = JSON.parse(d.reglas);
+          if (reglas.length) {
+            const nombres = reglas.map(r => [r.prodNombre, r.gustoNombre].filter(Boolean).join(' / ')).join(', ');
+            aplicaLabel = `📦 ${nombres.length > 40 ? nombres.slice(0,40)+'…' : nombres}`;
+          }
+        } catch(e) {}
+      }
+
+      return `<tr style="border-top:1px solid var(--border);">
+        <td style="padding:11px 14px;font-size:14px;font-weight:700;color:var(--accent);">🏷️ ${d.nombre}</td>
+        <td style="padding:11px 12px;font-size:13px;color:var(--text-muted);">${periodoLabel}</td>
+        <td style="padding:11px 12px;font-size:13px;color:var(--text-muted);">${aplicaLabel}</td>
+        <td style="padding:11px 12px;font-size:18px;font-weight:900;font-family:var(--mono);color:var(--accent);">${d.pct}%</td>
+        <td style="padding:11px 12px;">
+          <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+            background:${d.activo?'rgba(200,240,74,.15)':'rgba(255,255,255,.06)'};
+            color:${d.activo?'var(--accent)':'var(--text-dim)'};">
+            ${d.activo?'✅ Activo':'⏸ Inactivo'}
+          </span>
+        </td>
+        <td style="padding:11px 12px;text-align:right;white-space:nowrap;">
+          <button onclick="window.editarDescuentoAuto('${d.id}')"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text);cursor:pointer;margin-right:6px;">✏️ Editar</button>
+          <button onclick="window.toggleDescuentoAuto('${d.id}',${!d.activo})"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text);cursor:pointer;margin-right:6px;">
+            ${d.activo?'⏸ Pausar':'▶ Activar'}</button>
+          <button onclick="window.eliminarDescuentoAuto('${d.id}')"
+            style="background:rgba(220,60,60,.12);border:1px solid rgba(220,60,60,.3);border-radius:7px;padding:5px 12px;font-size:12px;color:#f87171;cursor:pointer;">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--text-dim);">No hay descuentos configurados todavía</td></tr>`;
+
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+        <div>
+          <div style="font-size:16px;font-weight:900;color:var(--text);">🏷️ Descuentos Automáticos</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Se aplican automáticamente al identificar un cliente en ventas según el día/período</div>
+        </div>
+        <button onclick="window.abrirFormDescuentoAuto()"
+          style="background:#ffd700;color:#000;border:none;border-radius:9px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;">+ Nuevo descuento</button>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--surface2);border-bottom:2px solid var(--accent);">
+            <th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Nombre</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Período</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Aplica a</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">%</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Estado</th>
+            <th style="padding:10px 12px;"></th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>`;
+
+    // Preview de hoy
+    const hoy = fechaHoyAR();
+    const fechaH = new Date(hoy + 'T00:00:00');
+    const diasSemanaH = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const activos = lista.filter(d => d.activo);
+    let hoyDesc = null;
+    for (const d of activos) {
+      if (d.tipo === 'dia_semana' && parseInt(d.valor) === fechaH.getDay()) { hoyDesc = d; break; }
+      if (d.tipo === 'dia_mes' && parseInt(d.valor) === fechaH.getDate()) { hoyDesc = d; break; }
+      if (d.tipo === 'rango_fechas' && hoy >= d.valor && hoy <= (d.valor_hasta||d.valor)) { hoyDesc = d; break; }
+    }
+    const previewDiv = document.createElement('div');
+    previewDiv.style.cssText = 'margin-top:16px;padding:14px 18px;border-radius:10px;font-size:13px;' +
+      (hoyDesc
+        ? 'background:rgba(200,240,74,.1);border:1px solid rgba(200,240,74,.3);color:var(--accent);'
+        : 'background:var(--surface);border:1px solid var(--border);color:var(--text-muted);');
+    let aplicaHoyLabel = '';
+    if (hoyDesc) {
+      if (hoyDesc.tipo_aplicacion === 'reglas' && hoyDesc.reglas) {
+        try {
+          const rr = JSON.parse(hoyDesc.reglas);
+          aplicaHoyLabel = ` — aplica a: <em>${rr.map(r=>[r.prodNombre,r.gustoNombre].filter(Boolean).join('/')).join(', ')}</em>`;
+        } catch(e) {}
+      } else { aplicaHoyLabel = ' — aplica a toda la venta'; }
+    }
+    previewDiv.innerHTML = hoyDesc
+      ? `✅ <strong>Hoy (${diasSemanaH[fechaH.getDay()]} ${fechaH.getDate()}):</strong> "<strong>${hoyDesc.nombre}</strong>" — <strong>${hoyDesc.pct}%</strong>${aplicaHoyLabel}`
+      : `ℹ️ Hoy (${diasSemanaH[fechaH.getDay()]} ${fechaH.getDate()}) no hay ningún descuento activo configurado.`;
+    body.appendChild(previewDiv);
+  }
+
+  // Estado temporal de reglas de productos durante edición del modal
+  window._daReglas = []; // [{prodId,prodNombre,gustoId,gustoNombre,cantMin}]
+
+  window.abrirFormDescuentoAuto = async function(id) {
+    const esEdicion = !!id;
+    const d = esEdicion ? (window._descuentosAutoTodos||[]).find(x=>x.id===id) : null;
+    const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+    // Cargar productos para el selector
+    const prods = await getProd();
+    window._daProds = prods;
+
+    // Inicializar reglas desde datos guardados
+    window._daReglas = [];
+    if (d?.reglas) {
+      try { window._daReglas = JSON.parse(d.reglas) || []; } catch(e) { window._daReglas = []; }
+    }
+    const tipoApli = d?.tipo_aplicacion || 'todo';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-descuento-auto';
+    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;">
+        <span style="font-size:15px;font-weight:900;">🏷️ ${esEdicion?'Editar':'Nuevo'} descuento automático</span>
+        <button onclick="document.getElementById('modal-descuento-auto').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;flex:1;">
+
+        <!-- Nombre -->
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Nombre del descuento</label>
+          <input type="text" id="da-nombre" value="${d?.nombre||''}" placeholder="Ej: Promo Martes, Descuento Quincena..."
+            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:700;color:var(--accent);outline:none;"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+
+        <!-- Período -->
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Tipo de período</label>
+          <select id="da-tipo" onchange="window.daOnTipoChange()"
+            style="width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;cursor:pointer;">
+            <option value="dia_semana" ${d?.tipo==='dia_semana'?'selected':''}>📅 Día de la semana (semanal)</option>
+            <option value="dia_mes" ${d?.tipo==='dia_mes'?'selected':''}>📆 Día del mes (mensual)</option>
+            <option value="rango_fechas" ${d?.tipo==='rango_fechas'?'selected':''}>🗓️ Rango de fechas (único)</option>
+          </select>
+        </div>
+
+        <div id="da-campo-dia-semana" style="${(!d||d.tipo==='dia_semana')?'':'display:none'}">
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Día de la semana</label>
+          <select id="da-dia-semana"
+            style="width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;cursor:pointer;">
+            ${diasSemana.map((n,i)=>`<option value="${i}" ${d?.tipo==='dia_semana'&&parseInt(d.valor)===i?'selected':''}>${n}</option>`).join('')}
+          </select>
+        </div>
+
+        <div id="da-campo-dia-mes" style="${d?.tipo==='dia_mes'?'':'display:none'}">
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Día del mes (1-31)</label>
+          <input type="number" id="da-dia-mes" min="1" max="31" value="${d?.tipo==='dia_mes'?d.valor:'15'}"
+            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+
+        <div id="da-campo-rango" style="${d?.tipo==='rango_fechas'?'':'display:none'}">
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Desde</label>
+          <input type="date" id="da-fecha-desde" value="${d?.tipo==='rango_fechas'?d.valor:''}"
+            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;margin-bottom:8px;"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Hasta (dejar igual para un solo día)</label>
+          <input type="date" id="da-fecha-hasta" value="${d?.tipo==='rango_fechas'&&d.valor_hasta?d.valor_hasta:''}"
+            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+
+        <!-- % descuento -->
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Porcentaje de descuento</label>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="number" id="da-pct" min="1" max="100" value="${d?.pct||10}"
+              style="width:90px;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:22px;font-weight:900;font-family:var(--mono);color:var(--accent);outline:none;text-align:center;"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+            <span style="font-size:22px;color:var(--text-muted);">%</span>
+          </div>
+        </div>
+
+        <!-- ── APLICAR A ──────────────────────────────────────────── -->
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <div style="background:var(--surface2);padding:12px 16px;font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">
+            🎯 Aplicar a
+          </div>
+          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px;">
+
+            <!-- Modo: todo / reglas -->
+            <div style="display:flex;gap:8px;">
+              <button id="da-modo-todo" onclick="window.daSwitchModo('todo')"
+                style="flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid ${tipoApli==='todo'?'var(--accent)':'var(--border)'};background:${tipoApli==='todo'?'rgba(200,240,74,.12)':'var(--surface2)'};color:${tipoApli==='todo'?'var(--accent)':'var(--text)'};">
+                🛒 Toda la venta</button>
+              <button id="da-modo-reglas" onclick="window.daSwitchModo('reglas')"
+                style="flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid ${tipoApli!=='todo'?'var(--accent)':'var(--border)'};background:${tipoApli!=='todo'?'rgba(200,240,74,.12)':'var(--surface2)'};color:${tipoApli!=='todo'?'var(--accent)':'var(--text)'};">
+                📦 Productos / gustos</button>
+            </div>
+
+            <!-- Sección reglas -->
+            <div id="da-reglas-area" style="${tipoApli==='todo'?'display:none':''}">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+                Agregá condiciones. El descuento aplica a los ítems que coincidan con <strong style="color:var(--text);">cualquiera</strong> de las reglas.
+              </div>
+
+              <!-- Lista de reglas -->
+              <div id="da-reglas-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+
+              <!-- Formulario para agregar regla -->
+              <div style="background:var(--surface2);border:1px dashed var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+                <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">+ Nueva condición</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <div style="flex:1;min-width:140px;">
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:4px;">Producto</label>
+                    <select id="da-reg-prod" onchange="window.daOnRegProdChange()"
+                      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;cursor:pointer;">
+                      <option value="">— Cualquier producto —</option>
+                      ${prods.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div style="flex:1;min-width:140px;">
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:4px;">Gusto / Sabor</label>
+                    <select id="da-reg-gusto"
+                      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;cursor:pointer;">
+                      <option value="">— Cualquier gusto —</option>
+                    </select>
+                  </div>
+                  <div style="width:90px;">
+                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:4px;">Cant. mín.</label>
+                    <input type="number" id="da-reg-cant" min="0" step="0.001" value="0" placeholder="0=sin mín"
+                      style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;">
+                  </div>
+                </div>
+                <button onclick="window.daAgregarRegla()"
+                  style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer;align-self:flex-start;">
+                  ＋ Agregar condición</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Botones -->
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button onclick="document.getElementById('modal-descuento-auto').remove()"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="window.guardarDescuentoAuto('${id||''}')"
+            style="flex:2;background:#ffd700;color:#000;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;">
+            ${esEdicion?'💾 Guardar cambios':'✅ Crear descuento'}</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    window.daRenderReglas();
+  };
+
+  window.daSwitchModo = function(modo) {
+    document.getElementById('da-reglas-area').style.display = modo==='reglas' ? '' : 'none';
+    const btnTodo = document.getElementById('da-modo-todo');
+    const btnReg = document.getElementById('da-modo-reglas');
+    const onAcc = 'border:2px solid var(--accent);background:rgba(200,240,74,.12);color:var(--accent);';
+    const offAcc = 'border:2px solid var(--border);background:var(--surface2);color:var(--text);';
+    if (btnTodo) btnTodo.style.cssText = 'flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;' + (modo==='todo'?onAcc:offAcc);
+    if (btnReg)  btnReg.style.cssText  = 'flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;' + (modo==='reglas'?onAcc:offAcc);
+  };
+
+  window.daOnRegProdChange = function() {
+    const prodId = document.getElementById('da-reg-prod')?.value;
+    const sel = document.getElementById('da-reg-gusto');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Cualquier gusto —</option>';
+    if (prodId) {
+      const prod = (window._daProds||[]).find(p=>String(p.id)===String(prodId));
+      (prod?.gustos||[]).forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id; opt.textContent = g.nombre||g.name;
+        sel.appendChild(opt);
+      });
+    }
+  };
+
+  window.daAgregarRegla = function() {
+    const prodId = document.getElementById('da-reg-prod')?.value || '';
+    const gustoId = document.getElementById('da-reg-gusto')?.value || '';
+    const cantMin = parseFloat(document.getElementById('da-reg-cant')?.value) || 0;
+    const prod = prodId ? (window._daProds||[]).find(p=>String(p.id)===String(prodId)) : null;
+    const gusto = (gustoId && prod) ? (prod.gustos||[]).find(g=>String(g.id)===String(gustoId)) : null;
+    // Validar que no sea totalmente vacía
+    if (!prodId && !gustoId) { toast('Elegí al menos un producto o gusto para la condición','error'); return; }
+    window._daReglas.push({
+      prodId: prodId||'',
+      prodNombre: prod ? (prod.nombre||prod.name) : '',
+      gustoId: gustoId||'',
+      gustoNombre: gusto ? (gusto.nombre||gusto.name) : '',
+      cantMin
+    });
+    // Reset selector gustos
+    document.getElementById('da-reg-prod').value = '';
+    document.getElementById('da-reg-gusto').innerHTML = '<option value="">— Cualquier gusto —</option>';
+    document.getElementById('da-reg-cant').value = '0';
+    window.daRenderReglas();
+  };
+
+  window.daEliminarRegla = function(idx) {
+    window._daReglas.splice(idx, 1);
+    window.daRenderReglas();
+  };
+
+  window.daRenderReglas = function() {
+    const lista = document.getElementById('da-reglas-lista');
+    if (!lista) return;
+    if (!window._daReglas.length) {
+      lista.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:6px 0;">Sin condiciones — agregá al menos una.</div>';
+      return;
+    }
+    lista.innerHTML = window._daReglas.map((r,i) => {
+      const partes = [];
+      if (r.prodNombre) partes.push(`📦 <strong>${r.prodNombre}</strong>`);
+      if (r.gustoNombre) partes.push(`🏷️ <strong>${r.gustoNombre}</strong>`);
+      if (r.cantMin > 0) partes.push(`× mín <strong>${r.cantMin}</strong>`);
+      return `<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.2);border-radius:7px;padding:8px 12px;font-size:12px;color:var(--text);">
+        <span>${partes.join(' &nbsp;·&nbsp; ')}</span>
+        <button onclick="window.daEliminarRegla(${i})" style="background:none;border:none;color:#f87171;font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
+      </div>`;
+    }).join('');
+  };
+
+  window.editarDescuentoAuto = function(id) { window.abrirFormDescuentoAuto(id); };
+
+  window.daOnTipoChange = function() {
+    const tipo = document.getElementById('da-tipo')?.value;
+    document.getElementById('da-campo-dia-semana').style.display = tipo==='dia_semana' ? '' : 'none';
+    document.getElementById('da-campo-dia-mes').style.display = tipo==='dia_mes' ? '' : 'none';
+    document.getElementById('da-campo-rango').style.display = tipo==='rango_fechas' ? '' : 'none';
+  };
+
+  window.guardarDescuentoAuto = async function(id) {
+    const nombre = document.getElementById('da-nombre')?.value?.trim();
+    const tipo = document.getElementById('da-tipo')?.value;
+    const pct = parseFloat(document.getElementById('da-pct')?.value)||0;
+    if (!nombre) { toast('Ingresá un nombre para el descuento','error'); return; }
+    if (pct <= 0 || pct > 100) { toast('El porcentaje debe ser entre 1 y 100','error'); return; }
+
+    // Modo aplicación
+    const modoReglas = document.getElementById('da-reglas-area')?.style.display !== 'none';
+    const tipo_aplicacion = modoReglas ? 'reglas' : 'todo';
+    const reglas = modoReglas ? JSON.stringify(window._daReglas||[]) : null;
+    if (modoReglas && (!window._daReglas||!window._daReglas.length)) {
+      toast('Agregá al menos una condición de producto/gusto','error'); return;
+    }
+
+    let valor = '', valor_hasta = null;
+    if (tipo === 'dia_semana') { valor = document.getElementById('da-dia-semana')?.value; }
+    else if (tipo === 'dia_mes') {
+      valor = document.getElementById('da-dia-mes')?.value;
+      if (!valor || parseInt(valor)<1 || parseInt(valor)>31) { toast('Ingresá un día válido (1-31)','error'); return; }
+    } else if (tipo === 'rango_fechas') {
+      valor = document.getElementById('da-fecha-desde')?.value;
+      valor_hasta = document.getElementById('da-fecha-hasta')?.value || valor;
+      if (!valor) { toast('Ingresá la fecha de inicio','error'); return; }
+    }
+
+    const payload = { empresa_id: String(empresaActual), nombre, tipo, valor: String(valor), valor_hasta: valor_hasta||null, pct, activo: true, tipo_aplicacion, reglas };
+    try {
+      if (id) {
+        await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos?id=eq.${id}`, { method:'PATCH', headers:{ ...H,'Prefer':'return=minimal' }, body:JSON.stringify(payload) });
+        toast('✅ Descuento actualizado','success');
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos`, { method:'POST', headers:{ ...H,'Prefer':'return=minimal' }, body:JSON.stringify(payload) });
+        toast('✅ Descuento creado','success');
+      }
+      document.getElementById('modal-descuento-auto')?.remove();
+      window._descuentosAutoCache = null;
+      await loadInformesDescuentosAuto();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
+
+  window.toggleDescuentoAuto = async function(id, activo) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos?id=eq.${id}`, { method:'PATCH', headers:{ ...H,'Prefer':'return=minimal' }, body:JSON.stringify({activo}) });
+      toast(activo ? '▶ Descuento activado' : '⏸ Descuento pausado', 'success');
+      window._descuentosAutoCache = null;
+      await loadInformesDescuentosAuto();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
+
+  window.eliminarDescuentoAuto = async function(id) {
+    if (!confirm('¿Eliminar este descuento automático?')) return;
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos?id=eq.${id}`, { method:'DELETE', headers:H });
+      toast('🗑️ Descuento eliminado','success');
+      window._descuentosAutoCache = null;
+      await loadInformesDescuentosAuto();
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
+
 
   function toast(msg, type='success') {
     const t = document.getElementById('toast');
