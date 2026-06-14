@@ -997,7 +997,63 @@
                 style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;box-sizing:border-box;resize:vertical;font-family:var(--font);"></textarea>
             </div>
             <div>
-              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Cada cuántas operaciones mostrar</label>
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Programación (opcional — dejar sin marcar = siempre)</label>
+              
+              <!-- Días de la semana -->
+              <div style="margin-bottom:10px;">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:700;">Días de la semana</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;" id="aviso-dias-semana">
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-dia-check" value="0" style="accent-color:var(--accent);"> Dom</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-dia-check" value="1" style="accent-color:var(--accent);"> Lun</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-dia-check" value="2" style="accent-color:var(--accent);"> Mar</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-dia-check" value="3" style="accent-color:var(--accent);"> Mié</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-dia-check" value="4" style="accent-color:var(--accent);"> Jue</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-dia-check" value="5" style="accent-color:var(--accent);"> Vie</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-dia-check" value="6" style="accent-color:var(--accent);"> Sáb</label>
+                </div>
+              </div>
+
+              <!-- Meses -->
+              <div style="margin-bottom:10px;">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:700;">Meses</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;" id="aviso-meses">
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="1" style="accent-color:var(--accent);"> Ene</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="2" style="accent-color:var(--accent);"> Feb</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="3" style="accent-color:var(--accent);"> Mar</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="4" style="accent-color:var(--accent);"> Abr</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="5" style="accent-color:var(--accent);"> May</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="6" style="accent-color:var(--accent);"> Jun</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="7" style="accent-color:var(--accent);"> Jul</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="8" style="accent-color:var(--accent);"> Ago</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="9" style="accent-color:var(--accent);"> Sep</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="10" style="accent-color:var(--accent);"> Oct</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="11" style="accent-color:var(--accent);"> Nov</label>
+                  <label style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" class="aviso-mes-check" value="12" style="accent-color:var(--accent);"> Dic</label>
+                </div>
+              </div>
+
+              <!-- Año -->
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:700;">Año específico (opcional)</div>
+                <input type="number" id="aviso-form-anio" min="2024" max="2099" placeholder="Ej: 2026 — dejar vacío para todos los años"
+                  style="width:180px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;font-family:var(--mono);color:var(--text);outline:none;" />
+              </div>
+
+              <!-- Fecha inicio y fin -->
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:140px;">
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:700;">Fecha de inicio (opcional)</div>
+                  <input type="date" id="aviso-form-fecha-inicio"
+                    style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;" />
+                </div>
+                <div style="flex:1;min-width:140px;">
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:700;">Fecha de finalización (opcional)</div>
+                  <input type="date" id="aviso-form-fecha-fin"
+                    style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;" />
+                </div>
+              </div>
+              </div>
+            </div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <input type="number" id="aviso-form-cada" min="1" max="9999" value="1" placeholder="1"
                   style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 10px;font-size:14px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;" />
@@ -12732,27 +12788,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const dest = av.destinatarios === 'todos' ? 'Todos los operadores'
           : (av.destinatarios_lista || []).map(u => userMap[u] || u).join(', ') || '—';
         const activo = av.activo !== false;
-        return `<div style="background:var(--surface);border:1px solid ${activo?'var(--border)':'rgba(255,255,255,.06)'};border-radius:12px;padding:14px 18px;margin-bottom:10px;opacity:${activo?1:.5};">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;">${av.titulo || '(sin título)'}</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;white-space:pre-line;">${av.nota || ''}</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;font-family:var(--mono);">
-                <span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">⚡ Cada ${av.cada || 1} op.</span>
-                <span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">📍 ${secs}</span>
-                <span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">👤 ${dest}</span>
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;flex-shrink:0;">
-              <button onclick="toggleActivoAviso('${av.id}',${!activo})" title="${activo?'Desactivar':'Activar'}"
-                style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);">${activo?'⏸ Desactivar':'▶ Activar'}</button>
-              <button onclick="abrirModalAviso('${av.id}')"
-                style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);">✏️ Editar</button>
-              <button onclick="eliminarAviso('${av.id}')"
-                style="background:none;border:1px solid rgba(255,90,90,.3);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:#ff5a5a;">🗑</button>
-            </div>
-          </div>
-        </div>`;
+        const diasN = ['Dom','Lun','Mar','Mi\u00e9','Jue','Vie','S\u00e1b'];
+        const mesesN = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        let progLabel = '';
+        if (av.prog_dias_semana && av.prog_dias_semana.length) progLabel += ' \u{1F4C5} '+av.prog_dias_semana.map(d=>diasN[d]).join(', ');
+        if (av.prog_meses && av.prog_meses.length) progLabel += ' \u{1F4C6} '+av.prog_meses.map(m=>mesesN[m]).join(', ');
+        if (av.prog_anio) progLabel += ' \u{1F5D3}\uFE0F '+av.prog_anio;
+        if (av.fecha_inicio || av.fecha_fin) progLabel += ' \u{1F4C8} '+(av.fecha_inicio||'...')+' → '+(av.fecha_fin||'...');
+        const progBadge = progLabel
+          ? '<span style="background:rgba(200,240,74,.1);border:1px solid rgba(200,240,74,.2);border-radius:5px;padding:2px 8px;color:var(--accent);">'+progLabel.trim()+'</span>'
+          : '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u{1F504} Siempre</span>';
+        return '<div style="background:var(--surface);border:1px solid '+(activo?'var(--border)':'rgba(255,255,255,.06)')+';border-radius:12px;padding:14px 18px;margin-bottom:10px;opacity:'+(activo?1:.5)+';">'+
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+            '<div style="flex:1;min-width:0;">'+
+              '<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;">'+(av.titulo || '(sin t\u00edtulo)')+'</div>'+
+              '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;white-space:pre-line;">'+(av.nota || '')+'</div>'+
+              '<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;font-family:var(--mono);">'+
+                '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u26A1 Cada '+(av.cada || 1)+' op.</span>'+
+                '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u{1F4CD} '+secs+'</span>'+
+                '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u{1F464} '+dest+'</span>'+
+                progBadge+
+              '</div>'+
+            '</div>'+
+            '<div style="display:flex;gap:6px;flex-shrink:0;">'+
+              '<button onclick="toggleActivoAviso(\''+av.id+'\','+((!activo))+')" title="'+(activo?'Desactivar':'Activar')+'" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);">'+(activo?'\u23F8 Desactivar':'\u25B6 Activar')+'</button>'+
+              '<button onclick="abrirModalAviso(\''+av.id+'\')" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);">\u270F\uFE0F Editar</button>'+
+              '<button onclick="eliminarAviso(\''+av.id+'\')" style="background:none;border:1px solid rgba(255,90,90,.3);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;color:#ff5a5a;">\u{1F5D1}</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
       }).join('');
     } catch(e) {
       body.innerHTML = `<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`;
@@ -12769,6 +12833,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     document.getElementById('aviso-form-nota').value = '';
     document.getElementById('aviso-form-cada').value = '1';
     document.querySelectorAll('.aviso-sec-check').forEach(c => c.checked = false);
+    document.querySelectorAll('.aviso-dia-check').forEach(c => c.checked = false);
+    document.querySelectorAll('.aviso-mes-check').forEach(c => c.checked = false);
+    const inpAnio = document.getElementById('aviso-form-anio');
+    if (inpAnio) inpAnio.value = '';
+    const inpFI = document.getElementById('aviso-form-fecha-inicio');
+    const inpFF = document.getElementById('aviso-form-fecha-fin');
+    if (inpFI) inpFI.value = '';
+    if (inpFF) inpFF.value = '';
     document.getElementById('aviso-dest-todos').checked = true;
     document.getElementById('aviso-dest-lista').style.display = 'none';
     // Cargar operadores en lista destinatarios
@@ -12789,6 +12861,24 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           const el = document.querySelector(`.aviso-sec-check[value="${s}"]`);
           if (el) el.checked = true;
         });
+        // Cargar programación
+        (av.prog_dias_semana || []).forEach(d => {
+          const el = document.querySelector(`.aviso-dia-check[value="${d}"]`);
+          if (el) el.checked = true;
+        });
+        (av.prog_meses || []).forEach(m => {
+          const el = document.querySelector(`.aviso-mes-check[value="${m}"]`);
+          if (el) el.checked = true;
+        });
+        if (av.prog_anio && document.getElementById('aviso-form-anio')) {
+          document.getElementById('aviso-form-anio').value = av.prog_anio;
+        }
+        if (av.fecha_inicio && document.getElementById('aviso-form-fecha-inicio')) {
+          document.getElementById('aviso-form-fecha-inicio').value = av.fecha_inicio;
+        }
+        if (av.fecha_fin && document.getElementById('aviso-form-fecha-fin')) {
+          document.getElementById('aviso-form-fecha-fin').value = av.fecha_fin;
+        }
         if (av.destinatarios === 'especificos') {
           document.getElementById('aviso-dest-esp').checked = true;
           destLista.style.display = 'flex';
@@ -12820,6 +12910,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       ? [...document.querySelectorAll('.aviso-user-check:checked')].map(c => c.value)
       : [];
 
+    // Programación
+    const diasSemana = [...document.querySelectorAll('.aviso-dia-check:checked')].map(c => parseInt(c.value));
+    const meses = [...document.querySelectorAll('.aviso-mes-check:checked')].map(c => parseInt(c.value));
+    const anio = parseInt(document.getElementById('aviso-form-anio')?.value) || null;
+    const fechaInicio = document.getElementById('aviso-form-fecha-inicio')?.value || null;
+    const fechaFin = document.getElementById('aviso-form-fecha-fin')?.value || null;
+
     if (!titulo) { toast('El título es obligatorio', 'error'); return; }
     if (!secciones.length) { toast('Seleccioná al menos una sección', 'error'); return; }
 
@@ -12829,7 +12926,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       secciones,
       destinatarios: destTipo,
       destinatarios_lista: destLista,
-      activo: true
+      activo: true,
+      prog_dias_semana: diasSemana.length ? diasSemana : null,
+      prog_meses: meses.length ? meses : null,
+      prog_anio: anio || null,
+      fecha_inicio: fechaInicio || null,
+      fecha_fin: fechaFin || null
     };
 
     try {
@@ -12875,6 +12977,18 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (!av.activo) return false;
       if (!(av.secciones || []).includes(seccion)) return false;
       if (av.destinatarios === 'especificos' && !(av.destinatarios_lista || []).includes(username)) return false;
+      // Filtrar por programación
+      const ahora = new Date();
+      const diaSemana = ahora.getDay();   // 0=Dom
+      const mes = ahora.getMonth() + 1;   // 1-12
+      const anio = ahora.getFullYear();
+      if (av.prog_dias_semana && av.prog_dias_semana.length && !av.prog_dias_semana.includes(diaSemana)) return false;
+      if (av.prog_meses && av.prog_meses.length && !av.prog_meses.includes(mes)) return false;
+      if (av.prog_anio && av.prog_anio !== anio) return false;
+      // Filtrar por fechas de inicio y fin
+      const hoy = fechaHoyAR();
+      if (av.fecha_inicio && hoy < av.fecha_inicio) return false;
+      if (av.fecha_fin && hoy > av.fecha_fin) return false;
       return true;
     });
     if (!aplicables.length) return;
