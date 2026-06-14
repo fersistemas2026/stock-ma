@@ -12855,230 +12855,205 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   window.abrirFormDescuentoAuto = async function(id) {
     const esEdicion = !!id;
     const d = esEdicion ? (window._descuentosAutoTodos||[]).find(x=>x.id===id) : null;
-    const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-    // Cargar productos para el selector
-    const prods = await getProd();
-    window._daProds = prods;
+    // Cargar productos directo desde Supabase (sin cache)
+    let prods = [];
+    try {
+      const raw = await sbApi('productos?empresa_id=eq.'+empresaActual+'&order=orden.asc,created_at.asc&select=*') || [];
+      const gs  = await sbApi('gustos?empresa_id=eq.'+empresaActual+'&order=orden.asc&select=*') || [];
+      prods = raw.map(function(p) {
+        return Object.assign({}, p, {
+          nombre: p.nombre||p.name||'',
+          gustos: gs.filter(function(g){ return String(g.producto_id)===String(p.id); })
+                    .map(function(g){ return {id:g.id, nombre:g.nombre||g.name||''}; })
+        });
+      });
+    } catch(e) { console.warn('error cargando productos descuento:', e); }
 
-    // Inicializar reglas desde datos guardados
-    window._daReglas = [];
-    if (d?.reglas) {
-      try { window._daReglas = JSON.parse(d.reglas) || []; } catch(e) { window._daReglas = []; }
+    const reglasPrev = [];
+    if (d && d.reglas) { try { reglasPrev.push.apply(reglasPrev, JSON.parse(d.reglas)||[]); } catch(e){} }
+    const tipoApliPrev = (d && d.tipo_aplicacion) || 'todo';
+    const dias = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+
+    document.getElementById('modal-descuento-auto') && document.getElementById('modal-descuento-auto').remove();
+
+    // helpers
+    function mk(tag, css, txt) {
+      var e = document.createElement(tag);
+      if (css) e.style.cssText = css;
+      if (txt != null) e.textContent = txt;
+      return e;
     }
-    const tipoApli = d?.tipo_aplicacion || 'todo';
+    function lbl(t) { return mk('label','font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;',t); }
+    function inp(id, type, val, css) {
+      var e = document.createElement('input');
+      e.id=id; e.type=type; if(val!=null) e.value=val;
+      e.style.cssText = (css||'width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;');
+      e.onfocus=function(){e.style.borderColor='var(--accent)';}; e.onblur=function(){e.style.borderColor='var(--border)';};
+      return e;
+    }
+    function sel(id, opts, selVal, css) {
+      var s = document.createElement('select');
+      s.id=id; s.style.cssText=(css||'width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;cursor:pointer;');
+      opts.forEach(function(pair){ var o=document.createElement('option'); o.value=pair[0]; o.textContent=pair[1]; if(pair[0]===String(selVal)) o.selected=true; s.appendChild(o); });
+      return s;
+    }
+    function sec(label, child) { var w=mk('div'); w.appendChild(lbl(label)); w.appendChild(child); return w; }
 
-    const overlay = document.createElement('div');
-    overlay.id = 'modal-descuento-auto';
-    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+    // overlay + modal box
+    var ov = mk('div','position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px 16px;');
+    ov.id='modal-descuento-auto';
+    ov.onclick=function(e){if(e.target===ov)ov.remove();};
+    var box = mk('div','background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;');
 
-    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;">
-        <span style="font-size:15px;font-weight:900;">🏷️ ${esEdicion?'Editar':'Nuevo'} descuento automático</span>
-        <button onclick="document.getElementById('modal-descuento-auto').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">✕</button>
-      </div>
-      <div style="padding:20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;flex:1;">
+    // header
+    var hdr = mk('div','display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:14px 14px 0 0;flex-shrink:0;');
+    hdr.appendChild(mk('span','font-size:15px;font-weight:900;', (esEdicion?'Editar':'Nuevo')+' descuento automatico'));
+    var btnX=mk('button','background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;','x');
+    btnX.onclick=function(){ov.remove();};
+    hdr.appendChild(btnX); box.appendChild(hdr);
 
-        <!-- Nombre -->
-        <div>
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Nombre del descuento</label>
-          <input type="text" id="da-nombre" value="${d?.nombre||''}" placeholder="Ej: Promo Martes, Descuento Quincena..."
-            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:700;color:var(--accent);outline:none;"
-            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-        </div>
+    // body
+    var body = mk('div','padding:20px;display:flex;flex-direction:column;gap:14px;');
 
-        <!-- Período -->
-        <div>
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Tipo de período</label>
-          <select id="da-tipo" onchange="window.daOnTipoChange()"
-            style="width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;cursor:pointer;">
-            <option value="dia_semana" ${d?.tipo==='dia_semana'?'selected':''}>📅 Día de la semana (semanal)</option>
-            <option value="dia_mes" ${d?.tipo==='dia_mes'?'selected':''}>📆 Día del mes (mensual)</option>
-            <option value="rango_fechas" ${d?.tipo==='rango_fechas'?'selected':''}>🗓️ Rango de fechas (único)</option>
-          </select>
-        </div>
+    // nombre
+    var inpNom = inp('da-nombre','text',d&&d.nombre||'','width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:700;color:var(--accent);outline:none;');
+    inpNom.placeholder='Ej: Promo Martes...';
+    body.appendChild(sec('Nombre del descuento', inpNom));
 
-        <div id="da-campo-dia-semana" style="${(!d||d.tipo==='dia_semana')?'':'display:none'}">
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Día de la semana</label>
-          <select id="da-dia-semana"
-            style="width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;cursor:pointer;">
-            ${diasSemana.map((n,i)=>`<option value="${i}" ${d?.tipo==='dia_semana'&&parseInt(d.valor)===i?'selected':''}>${n}</option>`).join('')}
-          </select>
-        </div>
+    // tipo periodo
+    var selTipo = sel('da-tipo',[['dia_semana','Dia de la semana'],['dia_mes','Dia del mes'],['rango_fechas','Rango de fechas']], d&&d.tipo||'dia_semana');
+    body.appendChild(sec('Periodo', selTipo));
 
-        <div id="da-campo-dia-mes" style="${d?.tipo==='dia_mes'?'':'display:none'}">
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Día del mes (1-31)</label>
-          <input type="number" id="da-dia-mes" min="1" max="31" value="${d?.tipo==='dia_mes'?d.valor:'15'}"
-            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;"
-            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-        </div>
+    // dia semana
+    var wDS=mk('div',((!d||d.tipo==='dia_semana')?'':'display:none')); wDS.id='da-w-ds';
+    var selDS=sel('da-dia-semana',dias.map(function(n,i){return [String(i),n];}), d&&d.tipo==='dia_semana'&&d.valor||'1');
+    wDS.appendChild(lbl('Dia')); wDS.appendChild(selDS); body.appendChild(wDS);
 
-        <div id="da-campo-rango" style="${d?.tipo==='rango_fechas'?'':'display:none'}">
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Desde</label>
-          <input type="date" id="da-fecha-desde" value="${d?.tipo==='rango_fechas'?d.valor:''}"
-            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;margin-bottom:8px;"
-            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Hasta (dejar igual para un solo día)</label>
-          <input type="date" id="da-fecha-hasta" value="${d?.tipo==='rango_fechas'&&d.valor_hasta?d.valor_hasta:''}"
-            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;"
-            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-        </div>
+    // dia mes
+    var wDM=mk('div',(d&&d.tipo==='dia_mes'?'':'display:none')); wDM.id='da-w-dm';
+    var inpDM=inp('da-dia-mes','number',d&&d.tipo==='dia_mes'&&d.valor||'15');
+    inpDM.min='1'; inpDM.max='31';
+    wDM.appendChild(lbl('Dia del mes (1-31)')); wDM.appendChild(inpDM); body.appendChild(wDM);
 
-        <!-- % descuento -->
-        <div>
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Porcentaje de descuento</label>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="number" id="da-pct" min="1" max="100" value="${d?.pct||10}"
-              style="width:90px;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:22px;font-weight:900;font-family:var(--mono);color:var(--accent);outline:none;text-align:center;"
-              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-            <span style="font-size:22px;color:var(--text-muted);">%</span>
-          </div>
-        </div>
+    // rango
+    var wRng=mk('div',(d&&d.tipo==='rango_fechas'?'':'display:none')); wRng.id='da-w-rng';
+    var inpFD=inp('da-fecha-desde','date',d&&d.tipo==='rango_fechas'&&d.valor||'');
+    var inpFH=inp('da-fecha-hasta','date',d&&d.tipo==='rango_fechas'&&d.valor_hasta||'');
+    inpFD.style.marginBottom='8px';
+    wRng.appendChild(lbl('Desde')); wRng.appendChild(inpFD); wRng.appendChild(lbl('Hasta')); wRng.appendChild(inpFH);
+    body.appendChild(wRng);
 
-        <!-- ── APLICAR A ──────────────────────────────────────────── -->
-        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-          <div style="background:var(--surface2);padding:12px 16px;font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">
-            🎯 Aplicar a
-          </div>
-          <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px;">
+    selTipo.onchange=function(){
+      var v=selTipo.value;
+      wDS.style.display=v==='dia_semana'?'':'none';
+      wDM.style.display=v==='dia_mes'?'':'none';
+      wRng.style.display=v==='rango_fechas'?'':'none';
+    };
 
-            <!-- Modo: todo / reglas -->
-            <div style="display:flex;gap:8px;">
-              <button id="da-modo-todo" onclick="window.daSwitchModo('todo')"
-                style="flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid ${tipoApli==='todo'?'var(--accent)':'var(--border)'};background:${tipoApli==='todo'?'rgba(200,240,74,.12)':'var(--surface2)'};color:${tipoApli==='todo'?'var(--accent)':'var(--text)'};">
-                🛒 Toda la venta</button>
-              <button id="da-modo-reglas" onclick="window.daSwitchModo('reglas')"
-                style="flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid ${tipoApli!=='todo'?'var(--accent)':'var(--border)'};background:${tipoApli!=='todo'?'rgba(200,240,74,.12)':'var(--surface2)'};color:${tipoApli!=='todo'?'var(--accent)':'var(--text)'};">
-                📦 Productos / gustos</button>
-            </div>
+    // porcentaje
+    var inpPct=inp('da-pct','number',d&&d.pct||10,'width:90px;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:22px;font-weight:900;font-family:var(--mono);color:var(--accent);outline:none;text-align:center;');
+    inpPct.min='1'; inpPct.max='100';
+    var rowPct=mk('div','display:flex;align-items:center;gap:8px;');
+    rowPct.appendChild(inpPct); rowPct.appendChild(mk('span','font-size:20px;color:var(--text-muted);','%'));
+    body.appendChild(sec('% de descuento', rowPct));
 
-            <!-- Sección reglas -->
-            <div id="da-reglas-area" style="${tipoApli==='todo'?'display:none':''}">
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
-                Agregá condiciones. El descuento aplica a los ítems que coincidan con <strong style="color:var(--text);">cualquiera</strong> de las reglas.
-              </div>
+    // aplicar a
+    var boxApl=mk('div','border:1px solid var(--border);border-radius:10px;overflow:hidden;');
+    boxApl.appendChild(mk('div','background:var(--surface2);padding:12px 16px;font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;','Aplicar a'));
+    var boxAplBody=mk('div','padding:14px 16px;display:flex;flex-direction:column;gap:12px;');
 
-              <!-- Lista de reglas -->
-              <div id="da-reglas-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+    var isTodo = tipoApliPrev!=='reglas';
+    var stOn ='flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--accent);background:rgba(200,240,74,.12);color:var(--accent);';
+    var stOff='flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:var(--surface2);color:var(--text);';
+    var btnMT=mk('button',isTodo?stOn:stOff,'Toda la venta');
+    var btnMR=mk('button',isTodo?stOff:stOn,'Productos / gustos');
+    var rowModo=mk('div','display:flex;gap:8px;'); rowModo.appendChild(btnMT); rowModo.appendChild(btnMR);
+    boxAplBody.appendChild(rowModo);
 
-              <!-- Formulario para agregar regla -->
-              <div style="background:var(--surface2);border:1px dashed var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;">
-                <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;">+ Nueva condición</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                  <div style="flex:1;min-width:140px;">
-                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:4px;">Producto</label>
-                    <select id="da-reg-prod" onchange="window.daOnRegProdChange()"
-                      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;cursor:pointer;">
-                      <option value="">— Cualquier producto —</option>
-                      ${prods.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('')}
-                    </select>
-                  </div>
-                  <div style="flex:1;min-width:140px;">
-                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:4px;">Gusto / Sabor</label>
-                    <select id="da-reg-gusto"
-                      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;color:var(--text);outline:none;cursor:pointer;">
-                      <option value="">— Cualquier gusto —</option>
-                    </select>
-                  </div>
-                  <div style="width:90px;">
-                    <label style="font-size:10px;color:var(--text-dim);display:block;margin-bottom:4px;">Cant. mín.</label>
-                    <input type="number" id="da-reg-cant" min="0" step="0.001" value="0" placeholder="0=sin mín"
-                      style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;font-family:var(--mono);color:var(--text);outline:none;text-align:center;">
-                  </div>
-                </div>
-                <button onclick="window.daAgregarRegla()"
-                  style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer;align-self:flex-start;">
-                  ＋ Agregar condición</button>
-              </div>
-            </div>
+    // area productos (checkboxes)
+    var areaP=mk('div',isTodo?'display:none':'');
 
-          </div>
-        </div>
-
-        <!-- Botones -->
-        <div style="display:flex;gap:10px;margin-top:4px;">
-          <button onclick="document.getElementById('modal-descuento-auto').remove()"
-            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;">Cancelar</button>
-          <button onclick="window.guardarDescuentoAuto('${id||''}')"
-            style="flex:2;background:#ffd700;color:#000;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;">
-            ${esEdicion?'💾 Guardar cambios':'✅ Crear descuento'}</button>
-        </div>
-      </div>
-    </div>`;
-    document.body.appendChild(overlay);
-    window.daRenderReglas();
-  };
-
-  window.daSwitchModo = function(modo) {
-    document.getElementById('da-reglas-area').style.display = modo==='reglas' ? '' : 'none';
-    const btnTodo = document.getElementById('da-modo-todo');
-    const btnReg = document.getElementById('da-modo-reglas');
-    const onAcc = 'border:2px solid var(--accent);background:rgba(200,240,74,.12);color:var(--accent);';
-    const offAcc = 'border:2px solid var(--border);background:var(--surface2);color:var(--text);';
-    if (btnTodo) btnTodo.style.cssText = 'flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;' + (modo==='todo'?onAcc:offAcc);
-    if (btnReg)  btnReg.style.cssText  = 'flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;' + (modo==='reglas'?onAcc:offAcc);
-  };
-
-  window.daOnRegProdChange = function() {
-    const prodId = document.getElementById('da-reg-prod')?.value;
-    const sel = document.getElementById('da-reg-gusto');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">— Cualquier gusto —</option>';
-    if (prodId) {
-      const prod = (window._daProds||[]).find(p=>String(p.id)===String(prodId));
-      (prod?.gustos||[]).forEach(g => {
-        const opt = document.createElement('option');
-        opt.value = g.id; opt.textContent = g.nombre||g.name;
-        sel.appendChild(opt);
+    if (!prods.length) {
+      areaP.appendChild(mk('div','font-size:12px;color:#f87171;padding:8px 0;','No se pudieron cargar los productos. Revisá la conexion.'));
+    } else {
+      var info=mk('div','font-size:11px;color:var(--text-muted);margin-bottom:10px;','Selecciona los productos y/o gustos que aplican. Sin seleccion = toda la venta.');
+      areaP.appendChild(info);
+      prods.forEach(function(prod) {
+        var pBlock=mk('div','margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;');
+        // checkbox producto completo
+        var rowP=mk('div','display:flex;align-items:center;gap:8px;margin-bottom:6px;');
+        var chkP=document.createElement('input'); chkP.type='checkbox'; chkP.style.cssText='width:16px;height:16px;cursor:pointer;flex-shrink:0;';
+        chkP.dataset.prodId=String(prod.id); chkP.dataset.prodNombre=prod.nombre||''; chkP.dataset.gustoId=''; chkP.dataset.gustoNombre=''; chkP.className='da-chk';
+        // preseleccion
+        if (reglasPrev.some(function(r){return String(r.prodId)===String(prod.id)&&!r.gustoId;})) chkP.checked=true;
+        var lbP=mk('span','font-size:13px;font-weight:700;color:var(--text);cursor:pointer;',prod.nombre||'');
+        lbP.onclick=function(){chkP.checked=!chkP.checked;};
+        rowP.appendChild(chkP); rowP.appendChild(lbP); pBlock.appendChild(rowP);
+        // gustos
+        if (prod.gustos && prod.gustos.length) {
+          var gustosWrap=mk('div','display:flex;flex-wrap:wrap;gap:6px;padding-left:24px;');
+          prod.gustos.forEach(function(g) {
+            var pill=mk('label','display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--text);cursor:pointer;');
+            var chkG=document.createElement('input'); chkG.type='checkbox'; chkG.style.cssText='width:14px;height:14px;cursor:pointer;';
+            chkG.dataset.prodId=String(prod.id); chkG.dataset.prodNombre=prod.nombre||''; chkG.dataset.gustoId=String(g.id); chkG.dataset.gustoNombre=g.nombre||''; chkG.className='da-chk';
+            if (reglasPrev.some(function(r){return String(r.gustoId)===String(g.id);})) chkG.checked=true;
+            pill.appendChild(chkG); pill.appendChild(document.createTextNode(g.nombre||''));
+            gustosWrap.appendChild(pill);
+          });
+          pBlock.appendChild(gustosWrap);
+        }
+        areaP.appendChild(pBlock);
       });
     }
-  };
 
-  window.daAgregarRegla = function() {
-    const prodId = document.getElementById('da-reg-prod')?.value || '';
-    const gustoId = document.getElementById('da-reg-gusto')?.value || '';
-    const cantMin = parseFloat(document.getElementById('da-reg-cant')?.value) || 0;
-    const prod = prodId ? (window._daProds||[]).find(p=>String(p.id)===String(prodId)) : null;
-    const gusto = (gustoId && prod) ? (prod.gustos||[]).find(g=>String(g.id)===String(gustoId)) : null;
-    // Validar que no sea totalmente vacía
-    if (!prodId && !gustoId) { toast('Elegí al menos un producto o gusto para la condición','error'); return; }
-    window._daReglas.push({
-      prodId: prodId||'',
-      prodNombre: prod ? (prod.nombre||prod.name) : '',
-      gustoId: gustoId||'',
-      gustoNombre: gusto ? (gusto.nombre||gusto.name) : '',
-      cantMin
-    });
-    // Reset selector gustos
-    document.getElementById('da-reg-prod').value = '';
-    document.getElementById('da-reg-gusto').innerHTML = '<option value="">— Cualquier gusto —</option>';
-    document.getElementById('da-reg-cant').value = '0';
-    window.daRenderReglas();
-  };
+    boxAplBody.appendChild(areaP);
+    boxApl.appendChild(boxAplBody);
+    body.appendChild(boxApl);
 
-  window.daEliminarRegla = function(idx) {
-    window._daReglas.splice(idx, 1);
-    window.daRenderReglas();
-  };
+    btnMT.onclick=function(){btnMT.style.cssText=stOn; btnMR.style.cssText=stOff; areaP.style.display='none';};
+    btnMR.onclick=function(){btnMR.style.cssText=stOn; btnMT.style.cssText=stOff; areaP.style.display='';};
 
-  window.daRenderReglas = function() {
-    const lista = document.getElementById('da-reglas-lista');
-    if (!lista) return;
-    if (!window._daReglas.length) {
-      lista.innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:6px 0;">Sin condiciones — agregá al menos una.</div>';
-      return;
-    }
-    lista.innerHTML = window._daReglas.map((r,i) => {
-      const partes = [];
-      if (r.prodNombre) partes.push(`📦 <strong>${r.prodNombre}</strong>`);
-      if (r.gustoNombre) partes.push(`🏷️ <strong>${r.gustoNombre}</strong>`);
-      if (r.cantMin > 0) partes.push(`× mín <strong>${r.cantMin}</strong>`);
-      return `<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.2);border-radius:7px;padding:8px 12px;font-size:12px;color:var(--text);">
-        <span>${partes.join(' &nbsp;·&nbsp; ')}</span>
-        <button onclick="window.daEliminarRegla(${i})" style="background:none;border:none;color:#f87171;font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
-      </div>`;
-    }).join('');
+    // botones finales
+    var rowBtns=mk('div','display:flex;gap:10px;margin-top:4px;');
+    var btnCan=mk('button','flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;','Cancelar');
+    btnCan.onclick=function(){ov.remove();};
+    var btnGrd=mk('button','flex:2;background:#ffd700;color:#000;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;', esEdicion?'Guardar cambios':'Crear descuento');
+    btnGrd.onclick=async function(){
+      var nombre2=(document.getElementById('da-nombre')||{}).value&&document.getElementById('da-nombre').value.trim()||'';
+      var tipo2=(document.getElementById('da-tipo')||{}).value||'dia_semana';
+      var pct2=parseFloat((document.getElementById('da-pct')||{}).value)||0;
+      if(!nombre2){toast('Ingresa un nombre','error');return;}
+      if(pct2<=0||pct2>100){toast('% entre 1 y 100','error');return;}
+      var valor2='', valor_hasta2=null;
+      if(tipo2==='dia_semana'){valor2=(document.getElementById('da-dia-semana')||{}).value||'1';}
+      else if(tipo2==='dia_mes'){valor2=(document.getElementById('da-dia-mes')||{}).value||'';if(!valor2||parseInt(valor2)<1||parseInt(valor2)>31){toast('Dia entre 1 y 31','error');return;}}
+      else if(tipo2==='rango_fechas'){valor2=(document.getElementById('da-fecha-desde')||{}).value||'';valor_hasta2=(document.getElementById('da-fecha-hasta')||{}).value||valor2;if(!valor2){toast('Ingresa fecha inicio','error');return;}}
+
+      var modoR=areaP.style.display!=='none';
+      var tApli='todo', reglas2=null;
+      if(modoR){
+        var chks=Array.from(box.querySelectorAll('.da-chk:checked'));
+        if(chks.length){
+          tApli='reglas';
+          reglas2=JSON.stringify(chks.map(function(c){return {prodId:c.dataset.prodId||'',prodNombre:c.dataset.prodNombre||'',gustoId:c.dataset.gustoId||'',gustoNombre:c.dataset.gustoNombre||'',cantMin:0};}));
+        }
+      }
+      var H2={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
+      var payload={empresa_id:String(empresaActual),nombre:nombre2,tipo:tipo2,valor:String(valor2),valor_hasta:valor_hasta2,pct:pct2,activo:true,tipo_aplicacion:tApli,reglas:reglas2};
+      try{
+        if(esEdicion){await fetch(SUPABASE_URL+'/rest/v1/descuentos_automaticos?id=eq.'+id,{method:'PATCH',headers:Object.assign({},H2,{'Prefer':'return=minimal'}),body:JSON.stringify(payload)});toast('Descuento actualizado','success');}
+        else{await fetch(SUPABASE_URL+'/rest/v1/descuentos_automaticos',{method:'POST',headers:Object.assign({},H2,{'Prefer':'return=minimal'}),body:JSON.stringify(payload)});toast('Descuento creado','success');}
+        ov.remove(); window._descAutoCache=null; window._descAutoBadgeCache=null;
+        await loadInformesDescuentosAuto();
+      }catch(e){toast('Error: '+e.message,'error');}
+    };
+    rowBtns.appendChild(btnCan); rowBtns.appendChild(btnGrd);
+    body.appendChild(rowBtns);
+
+    box.appendChild(body);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
   };
 
   window.editarDescuentoAuto = function(id) { window.abrirFormDescuentoAuto(id); };
