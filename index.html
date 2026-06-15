@@ -134,6 +134,8 @@
     .neg-stab-vertical.active { background:#fff176; color:#000; font-weight:800; font-size:16px; border-color:#e6b800; box-shadow:0 2px 10px rgba(255,215,0,.5); }
     .neg-panel { display:none; animation:fadeIn .2s ease; }
     #neg-layout > div:last-child { flex:1; min-width:0; }
+    #neg-content-wrap { flex:1; min-width:0; }
+    #neg-layout.is-flex-layout { display:flex !important; flex-direction:row; align-items:flex-start; gap:20px; }
     .neg-panel.active { display:block; }
 
     /* NEGOCIOS */
@@ -386,7 +388,10 @@
         <button class="neg-stab" onclick="switchNeg(&#39;ventas&#39;)" id="neg-btn-ventas" style="display:none">🛒 Ventas</button>
         <button class="neg-stab" onclick="switchNeg(&#39;monitor&#39;)" id="neg-btn-monitor" style="display:none">📡 Monitor</button>
         <button class="neg-stab" onclick="switchNeg(&#39;pedido-recibido&#39;)" id="neg-btn-pedido-recibido" style="display:none">📬 Pedido recibido</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;promociones-op&#39;)" id="neg-btn-promociones-op" style="display:none">🏷️ Promociones</button>
       </div>
+
+      <div id="neg-content-wrap" style="flex:1;min-width:0;">
 
       <!-- PDV -->
       <div id="neg-pdv" class="neg-panel active">
@@ -647,6 +652,7 @@
               <button onclick="abrirEnvioWAVentas()" title="WhatsApp" style="background:none;border:1px solid #25D366;border-radius:8px;padding:8px 11px;font-size:13px;color:#25D366;cursor:pointer;">📱</button>
               <button onclick="ventasLimpiar()" title="Limpiar" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;color:#ff5a5a;cursor:pointer;">🗑️</button>
               <div id="ventas-descuento-badge" style="display:none;background:#ffd700;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;color:#000;" title="Promocion activa hoy"></div>
+              <button onclick="window.verPromoSemanal()" style="background:rgba(200,240,74,.12);border:1px solid var(--accent);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;color:var(--accent);cursor:pointer;">📅 Promo semanal</button>
             </div>
           </div>
         </div>
@@ -1256,14 +1262,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
       <!-- CAJA -->
       <div id="neg-caja" class="neg-panel" style="display:none">
+      <div id="neg-promociones-op" class="neg-panel" style="display:none">
+        <div class="form-title" style="margin-bottom:4px">🏷️ Promociones de la semana</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Consultá las promos vigentes y próximas.</p>
+        <div id="promo-semanal-op-body"><div class="empty-state"><span class="spin"></span></div></div>
+      </div>
         <div class="form-title" style="margin-bottom:4px">💰 Caja</div>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;">Ingresá los valores de caja.</p>
         <div id="caja-admin-body"></div>
         <div id="caja-op-body"></div>
       </div>
 
-      <!-- EMPRESA -->
-      <div id="neg-panels-wrap" style="flex:1;min-width:0;">
       <!-- EGRESOS OPERADOR -->
       <div id="neg-egresos-op" class="neg-panel" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
@@ -1335,7 +1344,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     </div>
 
-    </div><!-- /neg-panels-wrap -->
+    
+      </div><!-- /neg-content-wrap -->
     </div><!-- /tab-negocios -->
 
     <!-- USUARIOS (solo admin) -->
@@ -5257,11 +5267,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!isAdmin) {
       // Sidebar vertical izquierda para operador
       if (layout) {
+        layout.classList.add('is-flex-layout');
         layout.style.display = 'flex';
         layout.style.flexDirection = 'row';
         layout.style.alignItems = 'flex-start';
         layout.style.gap = '20px';
       }
+      const wrap = document.getElementById('neg-content-wrap');
+      if (wrap) { wrap.style.flex='1'; wrap.style.minWidth='0'; }
       subtabs.style.cssText = [
         'display:flex','flex-direction:column','gap:4px',
         'background:var(--surface)','border:1px solid var(--border)',
@@ -5281,40 +5294,29 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         else btn.style.display = 'block';
       });
     } else {
-      // Tabs horizontales para admin
+      // Grilla de botones para admin
       if (layout) {
         layout.style.display = 'block';
         layout.style.flexDirection = '';
         layout.style.alignItems = '';
         layout.style.gap = '';
+        layout.classList.remove('is-flex-layout');
       }
-      subtabs.style.cssText = [
-        'display:flex','gap:2px','margin-bottom:20px',
-        'background:var(--surface2)','border-radius:var(--radius)',
-        'padding:4px','width:fit-content','flex-wrap:wrap'
-      ].join(';');
-      subtabs.querySelectorAll('.neg-stab-vertical').forEach(btn => {
+      // Convertir subtabs en grilla de cards
+      subtabs.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:24px;width:100%;background:none;padding:0;border-radius:0;';
+      subtabs.querySelectorAll('button').forEach(btn => {
         btn.classList.remove('neg-stab-vertical');
         btn.classList.add('neg-stab');
-        btn.style.textAlign = '';
-        btn.style.width = '';
-        btn.style.padding = '';
-        btn.style.fontSize = '';
-        btn.style.borderRadius = '';
-        btn.style.display = '';
-      });
-      subtabs.style.flexDirection = 'row';
-      subtabs.style.width = 'fit-content';
-      subtabs.style.minWidth = '';
-      subtabs.style.marginBottom = '28px';
-      subtabs.style.marginRight = '';
-      subtabs.querySelectorAll('.neg-stab').forEach(btn => {
-        btn.classList.remove('neg-stab-vertical');
-        btn.style.textAlign = '';
-        btn.style.width = '';
-        btn.style.display = '';
-        btn.style.padding = '';
-        btn.style.fontSize = '';
+        const isActive = btn.classList.contains('active');
+        btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:'+(isActive?'2px solid var(--accent)':'1px solid var(--border)')+';background:'+(isActive?'rgba(200,240,74,.12)':'var(--surface)')+';color:'+(isActive?'var(--accent)':'var(--text)')+';text-align:center;min-height:72px;gap:6px;transition:all .15s;';
+        // Separar emoji del texto
+        const txt = btn.textContent.trim();
+        const emojiMatch = txt.match(/^(\S+)\s+(.+)$/);
+        if (emojiMatch) {
+          btn.innerHTML = '<span style="font-size:22px;line-height:1;">' + emojiMatch[1] + '</span><span style="font-size:11px;line-height:1.2;">' + emojiMatch[2] + '</span>';
+        }
+        btn.onmouseenter = function(){if(!this.classList.contains('active')){this.style.borderColor='var(--accent)';this.style.color='var(--accent)';}};
+        btn.onmouseleave = function(){if(!this.classList.contains('active')){this.style.borderColor='var(--border)';this.style.color='var(--text)';}};
       });
     }
   }
@@ -5641,10 +5643,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function switchNeg(sub) {
-    document.querySelectorAll('.neg-stab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.neg-stab').forEach(t=>{
+      t.classList.remove('active');
+      // Refresh grid style if in admin grid mode
+      if (t.style.minHeight==='72px') {
+        t.style.border='1px solid var(--border)';
+        t.style.background='var(--surface)';
+        t.style.color='var(--text)';
+      }
+    });
     document.querySelectorAll('.neg-panel').forEach(p=>{ p.style.display='none'; p.classList.remove('active'); });
     const btn=document.querySelector(`.neg-stab[onclick="switchNeg('${sub}')"]`);
-    if (btn) btn.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+      // Highlight active in grid mode
+      if (btn.style.minHeight==='72px') {
+        btn.style.border='2px solid var(--accent)';
+        btn.style.background='rgba(200,240,74,.12)';
+        btn.style.color='var(--accent)';
+      }
+    }
     const panel=document.getElementById('neg-'+sub);
     if (panel) { panel.style.display='block'; panel.classList.add('active'); }
     if (sub==='pdv')         renderPdv();
@@ -5667,6 +5685,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='monitor')         initMonitor();
     if (sub==='lista-precios-op') initListaPreciosOp();
     if (sub==='clientes-op')     cargarClientesOp();
+    if (sub==='promociones-op')  renderPromoSemanalOp();
     if (sub==='envio-pedido')    initEnvioPedido();
     if (sub==='recibo-pedido')   initReciboPedido();
     if (sub==='elaboracion')     initElaboracion();
@@ -9544,11 +9563,27 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                 : descAuto.tipo_promo === 'segunda'
                 ? '2da unidad/kg -'+descAuto.promo_pct_segunda+'%'
                 : descAuto.pct+'% de descuento';
-              const alcance = descAuto.tipo_aplicacion === 'reglas' && descAuto.reglas?.length
-                ? descAuto.reglas.map(r=>[r.prodNombre,r.gustoNombre].filter(Boolean).join('/')).join(', ')
-                : 'Toda la venta';
               promoNomEl.textContent = descAuto.nombre;
-              promoDetEl.textContent = tipoLabel + ' · ' + alcance;
+              // Pills de colores por producto/gusto
+              promoDetEl.innerHTML = '';
+              const lblTipo = document.createElement('span');
+              lblTipo.style.cssText='font-size:13px;color:var(--accent);font-weight:700;display:block;margin-bottom:6px;';
+              lblTipo.textContent = tipoLabel;
+              promoDetEl.appendChild(lblTipo);
+              const pillColors=['#93c5fd','#6ee7b7','#fdba74','#d8b4fe','#fda4af','#c8f04a','#fbcfe8','#a5f3fc'];
+              if (descAuto.tipo_aplicacion === 'reglas' && descAuto.reglas?.length) {
+                const wrap = document.createElement('div'); wrap.style.cssText='display:flex;flex-wrap:wrap;gap:5px;';
+                descAuto.reglas.forEach((r,idx) => {
+                  const col = pillColors[idx%pillColors.length];
+                  const pill = document.createElement('span');
+                  pill.style.cssText=`background:${col}22;border:1px solid ${col};color:${col};border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;`;
+                  pill.textContent = [r.prodNombre,r.gustoNombre].filter(Boolean).join(' · ');
+                  wrap.appendChild(pill);
+                });
+                promoDetEl.appendChild(wrap);
+              } else {
+                const lbl=document.createElement('span'); lbl.style.cssText='font-size:13px;color:var(--accent);opacity:.8;'; lbl.textContent='Aplica a toda la venta'; promoDetEl.appendChild(lbl);
+              }
               promoBox.style.display = 'flex';
             }
             if (msgTel) {
@@ -10501,6 +10536,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.ventas)       show('neg-btn-ventas-op');       else hide('neg-btn-ventas-op');
       if (perms.monitor !== false) show('neg-btn-monitor'); else hide('neg-btn-monitor');
       if (perms.detalleCliente) show('neg-btn-clientes-op'); else hide('neg-btn-clientes-op');
+      show('neg-btn-promociones-op');
       setupNegLayout(false);
       // Renombrar tab agregar para operadores
       const tabAgregar = document.getElementById('tab-btn-agregar');
@@ -11881,7 +11917,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   function renderOpCajaHTML(turno, pdvId, pdvNombre, inicioLocked, cierreLocked) {
     const icon = turno==='mañana'?'🌅':'🌆';
-    let html = `<div style="max-width:420px;display:flex;flex-direction:column;gap:16px;">
+    let html = `<div style="width:100%;display:flex;flex-direction:column;gap:16px;">
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;font-size:13px;color:var(--text-muted);">
         🏪 <b style="color:var(--text)">${pdvNombre}</b> &nbsp;·&nbsp; ${icon} <b style="color:var(--text)">Turno ${turno}</b>
       </div>`;
@@ -11952,9 +11988,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
 
     // Layout 2 columnas
-    html = `<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
-      <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:12px;">` + html.replace('<div style="max-width:420px;display:flex;flex-direction:column;gap:16px;">','') + `</div>
-      <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:12px;">`;
+    html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:flex-start;">
+      <div style="display:flex;flex-direction:column;gap:12px;">` + html.replace('<div style="width:100%;display:flex;flex-direction:column;gap:16px;">','') + `</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">`;
 
     // BUZÓN
     html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
@@ -11971,7 +12007,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     </div>`;
 
     // GASTOS
-    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;max-width:420px;">
+    html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">
       <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">💸 Gastos</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -12930,7 +12966,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </label>`).join('');
     // Si es edición, cargar datos
     if (id) {
-      const av = _avisosData.find(a => String(a.id) === String(id));
+      let av = _avisosData.find(a => String(a.id) === String(id));
+      // Si no está en cache, buscar directo en Supabase
+      if (!av) {
+        try {
+          const res = await sbApi(`avisos?id=eq.${id}&select=*&limit=1`) || [];
+          av = res[0] || null;
+        } catch(e) {}
+      }
       if (av) {
         document.getElementById('aviso-form-titulo').value = av.titulo || '';
         document.getElementById('aviso-form-nota').value = av.nota || '';
@@ -13745,6 +13788,89 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       rowB.appendChild(bCan); rowB.appendChild(bSnd); bdy.appendChild(rowB);
       box.appendChild(bdy); ov.appendChild(box); document.body.appendChild(ov);
     });
+  };
+
+  // ── Promo Semanal (panel operador + botón ventas) ──────────────────
+  function _buildPromoSemanal(container) {
+    const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const hoy = new Date();
+    const hoyStr = fechaHoyAR();
+    const coloresDia = [
+      {bg:'rgba(253,186,116,.15)',border:'#fdba74',text:'#fdba74'},
+      {bg:'rgba(147,197,253,.15)',border:'#93c5fd',text:'#93c5fd'},
+      {bg:'rgba(167,243,208,.15)',border:'#6ee7b7',text:'#6ee7b7'},
+      {bg:'rgba(216,180,254,.15)',border:'#d8b4fe',text:'#d8b4fe'},
+      {bg:'rgba(253,164,175,.15)',border:'#fda4af',text:'#fda4af'},
+      {bg:'rgba(200,240,74,.15)',border:'#c8f04a',text:'#c8f04a'},
+      {bg:'rgba(251,207,232,.15)',border:'#fbcfe8',text:'#fbcfe8'},
+    ];
+    sbApi('descuentos_automaticos?empresa_id=eq.'+empresaActual+'&activo=eq.true&order=tipo.asc,valor.asc').then(function(lista) {
+      lista = lista || [];
+      container.innerHTML = '';
+      for (var i=0;i<7;i++) {
+        var fecha = new Date(hoy);
+        var diaSemHoy = hoy.getDay();
+        var diffLunes = (i+1) - (diaSemHoy===0?7:diaSemHoy);
+        fecha.setDate(hoy.getDate()+diffLunes);
+        var fechaStr = fecha.toISOString().slice(0,10);
+        var diaSem = fecha.getDay();
+        var diaMes = fecha.getDate();
+        var mes = fecha.getMonth()+1;
+        var esHoy = fechaStr===hoyStr;
+        var col = coloresDia[diaSem];
+        var promosDelDia = lista.filter(function(d){
+          if(d.tipo==='dia_semana'&&parseInt(d.valor)===diaSem)return true;
+          if(d.tipo==='dia_mes'&&parseInt(d.valor)===diaMes)return true;
+          if(d.tipo==='rango_fechas'&&fechaStr>=d.valor&&fechaStr<=(d.valor_hasta||d.valor))return true;
+          return false;
+        });
+        var card = document.createElement('div');
+        card.style.cssText='border:'+(esHoy?'2px':'1px')+' solid '+(esHoy?col.border:'var(--border)')+';border-radius:10px;overflow:hidden;margin-bottom:8px;background:'+(esHoy?col.bg:'var(--surface)');
+        var dHdr=document.createElement('div');
+        dHdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:'+(esHoy?col.bg:'var(--surface2)')+';border-bottom:1px solid '+(esHoy?col.border:'var(--border)')+';';
+        dHdr.innerHTML='<span style="font-size:14px;font-weight:900;color:'+(esHoy?col.text:'var(--text)')+';">'+dias[diaSem]+'</span><span style="font-size:12px;color:var(--text-muted);margin-left:6px;">'+diaMes+'/'+mes+'</span>'+(esHoy?'<span style="background:'+col.border+';color:#000;font-size:10px;font-weight:900;padding:2px 10px;border-radius:20px;">HOY</span>':'');
+        card.appendChild(dHdr);
+        var dBody=document.createElement('div'); dBody.style.cssText='padding:10px 14px;';
+        if(!promosDelDia.length){
+          dBody.innerHTML='<span style="font-size:12px;color:var(--text-dim);">Sin promos</span>';
+        } else {
+          promosDelDia.forEach(function(p){
+            var tp=p.tipo_promo||'pct';
+            var det=tp==='regalo'?'🎁 Lleva '+p.promo_cant_compra+' + '+p.promo_cant_regalo+' gratis':tp==='segunda'?'2️⃣ 2da unidad -'+p.promo_pct_segunda+'%':'🏷️ '+p.pct+'% off';
+            var alcance='Toda la venta';
+            if(p.tipo_aplicacion==='reglas'&&p.reglas){try{var rr=JSON.parse(p.reglas);alcance=rr.map(function(r){return[r.prodNombre,r.gustoNombre].filter(Boolean).join('/')}).join(', ');}catch(e){}}
+            var mp=p.metodo_pago||'ambas';
+            var mpL=mp==='efectivo'?'💵':mp==='tarjeta'?'💳':'💵💳';
+            var pRow=document.createElement('div'); pRow.style.cssText='padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);';
+            pRow.innerHTML='<div style="font-size:13px;font-weight:800;color:'+(esHoy?col.text:'var(--accent)')+';">'+p.nombre+' '+mpL+'</div><div style="font-size:12px;color:var(--text-muted);">'+det+'</div><div style="font-size:11px;color:var(--text-dim);">📦 '+alcance+'</div>';
+            dBody.appendChild(pRow);
+          });
+        }
+        card.appendChild(dBody);
+        container.appendChild(card);
+      }
+      if(lista.length===0) container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-dim);">No hay promociones activas configuradas</div>';
+    }).catch(function(){container.innerHTML='<div style="color:#f87171;padding:16px;">Error cargando promociones</div>';});
+  }
+
+  function renderPromoSemanalOp() {
+    var cont = document.getElementById('promo-semanal-op-body');
+    if (!cont) return;
+    cont.innerHTML = '<div class="empty-state"><span class="spin"></span></div>';
+    _buildPromoSemanal(cont);
+  }
+
+  window.verPromoSemanal = function() {
+    var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px 16px;'; ov.onclick=function(e){if(e.target===ov)ov.remove();};
+    var box=document.createElement('div'); box.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:580px;margin:0 auto;overflow:hidden;';
+    var hdr=document.createElement('div'); hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);';
+    hdr.innerHTML='<span style="font-size:15px;font-weight:900;">📅 Promos de la semana</span>';
+    var bx=document.createElement('button'); bx.textContent='✕'; bx.style.cssText='background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;'; bx.onclick=function(){ov.remove();}; hdr.appendChild(bx);
+    box.appendChild(hdr);
+    var body=document.createElement('div'); body.style.cssText='padding:16px;';
+    body.innerHTML='<div class="empty-state"><span class="spin"></span></div>';
+    box.appendChild(body); ov.appendChild(box); document.body.appendChild(ov);
+    _buildPromoSemanal(body);
   };
 
   function toast(msg, type='success') {
