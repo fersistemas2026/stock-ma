@@ -7645,6 +7645,20 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
 
     // Calcula el precio final de un item segun el tipo de promo
+    let _segundaYaUsada = false;
+
+    // Pre-calcular totales por producto para modo contar_por='producto'
+    const _cantPorProd = {};
+    if (descData && descData.tipo_promo === 'regalo' && descData.contar_por === 'producto') {
+      _ventasItems.forEach(function(it) {
+        if (!itemAplicaDesc(it)) return;
+        const key = String(it.prodId);
+        _cantPorProd[key] = (_cantPorProd[key]||0) + it.cant;
+      });
+    }
+    // Para distribuir bonificacion por producto: rastrear cuanto ya se bonificó
+    const _bonifUsadaPorProd = {};
+
     function calcItemPromo(item) {
       const base = ventasParsePrecio(item.precio);
       const subtotalBase = base * item.cant;
@@ -7660,26 +7674,64 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const cantCompra = parseInt(descData.promo_cant_compra)||0;
         const cantRegalo = parseInt(descData.promo_cant_regalo)||0;
         if (!cantCompra || !cantRegalo) return { subtotal: subtotalBase, badge: '', ahorro: 0 };
-        const cant = item.cant;
-        // cuantos grupos completos hay
         const totalGrupo = cantCompra + cantRegalo;
-        const grupos = Math.floor(cant / totalGrupo);
-        const resto = cant % totalGrupo;
-        // unidades que paga: grupos*cantCompra + min(resto, cantCompra)
-        const pagadas = grupos * cantCompra + Math.min(resto, cantCompra);
-        const sub = base * pagadas;
-        const bonif = cant - pagadas;
-        const badge = bonif > 0 ? descData.nombre+' (+'+bonif+' bonif.)' : descData.nombre;
-        return { subtotal: sub, badge: badge, ahorro: subtotalBase - sub };
+
+        if (descData.contar_por === 'producto') {
+          // Modo por producto: contar todas las unidades del mismo producto juntas
+          const key = String(item.prodId);
+          const cantTotalProd = _cantPorProd[key] || 0;
+          const bonifUsada = _bonifUsadaPorProd[key] || 0;
+          // cuantas bonificaciones le corresponden a este producto en total
+          const grupos = Math.floor(cantTotalProd / totalGrupo);
+          const totalBonifProd = grupos * cantRegalo;
+          const bonifDisponible = totalBonifProd - bonifUsada;
+          if (bonifDisponible <= 0) return { subtotal: subtotalBase, badge: '', ahorro: 0 };
+          // Bonificar la cantidad de este item (hasta lo disponible)
+          const bonifEsteItem = Math.min(item.cant, bonifDisponible);
+          _bonifUsadaPorProd[key] = bonifUsada + bonifEsteItem;
+          const pagadas = item.cant - bonifEsteItem;
+          const sub = base * pagadas;
+          const badge = descData.nombre+' ('+bonifEsteItem+' bonif. de '+cantTotalProd+' del producto)';
+          return { subtotal: sub, badge: badge, ahorro: subtotalBase - sub };
+        } else {
+          // Modo por ítem (default)
+          const cant = item.cant;
+          const grupos = Math.floor(cant / totalGrupo);
+          const resto = cant % totalGrupo;
+          const pagadas = grupos * cantCompra + Math.min(resto, cantCompra);
+          const sub = base * pagadas;
+          const bonif = cant - pagadas;
+          const badge = bonif > 0 ? descData.nombre+' (+'+bonif+' bonif.)' : descData.nombre;
+          return { subtotal: sub, badge: badge, ahorro: subtotalBase - sub };
+        }
       }
 
       if (tipoPromo === 'segunda') {
         const pctSeg = parseFloat(descData.promo_pct_segunda)||0;
-        if (item.cant < 2) return { subtotal: subtotalBase, badge: '', ahorro: 0 };
-        // primera unidad precio normal, resto con descuento
-        const sub = base + (base * item.cant - base) * (1 - pctSeg/100);
-        const badge = '2da unidad -'+pctSeg+'% ('+descData.nombre+')';
-        return { subtotal: sub, badge: badge, ahorro: subtotalBase - sub };
+        const esKg = item.unidad === 'kg' || item.unidad === 'gr';
+        let cantReal = item.cant;
+        if (esKg && item.cantDisplay) {
+          const match = String(item.cantDisplay).match(/([0-9.,]+)/);
+          if (match) {
+            cantReal = parseFloat(match[1].replace(',','.')) || 1;
+            if (item.unidad === 'gr') cantReal = cantReal / 1000;
+          }
+        }
+        const umbral = esKg ? 1 : 2;
+        if (_segundaYaUsada || cantReal < umbral) return { subtotal: subtotalBase, badge: '', ahorro: 0 };
+        _segundaYaUsada = true;
+        let sub, label;
+        if (esKg) {
+          const precioUnitario = parseFloat(String(item.precioUnitario||'').replace(',','.').replace(/[^0-9.]/g,'')) || 0;
+          const cantExcedente = Math.min(cantReal - 1, 1);
+          const ahorroKg = precioUnitario * cantExcedente * (pctSeg/100);
+          sub = subtotalBase - ahorroKg;
+          label = '2do kg -'+pctSeg+'% ('+descData.nombre+')';
+        } else {
+          sub = subtotalBase - base * (pctSeg/100);
+          label = '2da unidad -'+pctSeg+'% ('+descData.nombre+')';
+        }
+        return { subtotal: sub, badge: label, ahorro: subtotalBase - sub };
       }
 
       return { subtotal: subtotalBase, badge: '', ahorro: 0 };
@@ -13072,8 +13124,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         if (d.tipo_aplicacion === 'reglas' && d.reglas) {
           try { reglas = JSON.parse(d.reglas); } catch(e) { reglas = null; }
         }
-        return { nombre: d.nombre, pct: parseFloat(d.pct)||0, tipo_aplicacion: d.tipo_aplicacion||'todo', reglas,
-                 tipo_promo: d.tipo_promo||'pct', promo_cant_compra: d.promo_cant_compra||0, promo_cant_regalo: d.promo_cant_regalo||0, promo_pct_segunda: d.promo_pct_segunda||0 };
+        return { id: d.id, nombre: d.nombre, pct: parseFloat(d.pct)||0, tipo_aplicacion: d.tipo_aplicacion||'todo', reglas,
+                 tipo_promo: d.tipo_promo||'pct', promo_cant_compra: d.promo_cant_compra||0, promo_cant_regalo: d.promo_cant_regalo||0,
+                 promo_pct_segunda: d.promo_pct_segunda||0, metodo_pago: d.metodo_pago||'ambas', contar_por: d.contar_por||'item' };
       }
     }
     return null;
@@ -13322,6 +13375,23 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     function actualizarDescReg(){descReg.textContent='Lleva '+(parseInt(inpRegCompra.value)||3)+' y le regalas '+(parseInt(inpRegRegalo.value)||1);}
     inpRegCompra.oninput=actualizarDescReg;inpRegRegalo.oninput=actualizarDescReg;actualizarDescReg();
     panelReg.appendChild(descReg);
+
+    // Opción contar por ítem o por producto
+    var contarPrevVal=(d&&d.contar_por)||'item';
+    var wContar=mk('div','margin-top:12px;padding-top:12px;border-top:1px solid var(--border);');
+    wContar.appendChild(mk('div','font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;','¿Cómo contar las unidades?'));
+    var stCOn='flex:1;padding:8px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--accent);background:rgba(200,240,74,.12);color:var(--accent);text-align:center;';
+    var stCOff='flex:1;padding:8px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:var(--surface2);color:var(--text);text-align:center;';
+    var bCItem=mk('button',contarPrevVal==='item'?stCOn:stCOff,'📦 Por ítem');
+    var bCProd=mk('button',contarPrevVal==='producto'?stCOn:stCOff,'🛍️ Por producto (suma sabores)');
+    var inpContar=document.createElement('input'); inpContar.type='hidden'; inpContar.id='da-contar-por'; inpContar.value=contarPrevVal;
+    bCItem.onclick=function(){inpContar.value='item';bCItem.style.cssText=stCOn;bCProd.style.cssText=stCOff;};
+    bCProd.onclick=function(){inpContar.value='producto';bCProd.style.cssText=stCOn;bCItem.style.cssText=stCOff;};
+    var rowContar=mk('div','display:flex;gap:6px;'); rowContar.appendChild(bCItem); rowContar.appendChild(bCProd);
+    var infoContar=mk('div','font-size:11px;color:var(--text-muted);margin-top:6px;');
+    infoContar.textContent='Por ítem: cada sabor cuenta separado. Por producto: suma todos los sabores del mismo producto.';
+    wContar.appendChild(rowContar); wContar.appendChild(inpContar); wContar.appendChild(infoContar);
+    panelReg.appendChild(wContar);
     boxPromoBody.appendChild(panelReg);
 
     // Panel segunda unidad %
@@ -13412,7 +13482,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       var pct2=0,cantCompra=0,cantRegalo=0,pctSegunda=0;
       if(tipoPromo==='pct'){pct2=parseFloat((document.getElementById('da-pct')||{}).value)||0;if(pct2<=0||pct2>100){toast('% entre 1 y 100','error');return;}}
       else if(tipoPromo==='regalo'){cantCompra=parseInt((document.getElementById('da-reg-compra')||{}).value)||0;cantRegalo=parseInt((document.getElementById('da-reg-regalo')||{}).value)||0;if(cantCompra<2||cantRegalo<1){toast('Ingresa cantidades validas','error');return;}}
+
       else if(tipoPromo==='segunda'){pctSegunda=parseFloat((document.getElementById('da-pct-segunda')||{}).value)||0;if(pctSegunda<=0||pctSegunda>100){toast('% entre 1 y 100','error');return;}}
+
+      var contarPor=(document.getElementById('da-contar-por')||{}).value||'item';
 
       var val='',valH=null;
       if(tip==='dia_semana'){val=(document.getElementById('da-dia-semana')||{}).value||'1';}
@@ -13427,7 +13500,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       var H2={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
       var pay={empresa_id:String(empresaActual),nombre:nom,tipo:tip,valor:String(val),valor_hasta:valH,
                pct:pct2,tipo_aplicacion:tA,reglas:reg,activo:true,
-               tipo_promo:tipoPromo,promo_cant_compra:cantCompra||null,promo_cant_regalo:cantRegalo||null,promo_pct_segunda:pctSegunda||null,metodo_pago:metodoPagoVal};
+               tipo_promo:tipoPromo,promo_cant_compra:cantCompra||null,promo_cant_regalo:cantRegalo||null,promo_pct_segunda:pctSegunda||null,metodo_pago:metodoPagoVal,contar_por:contarPor};
       try{
         if(esEdicion){await fetch(SUPABASE_URL+'/rest/v1/descuentos_automaticos?id=eq.'+id,{method:'PATCH',headers:Object.assign({},H2,{'Prefer':'return=minimal'}),body:JSON.stringify(pay)});toast('Guardado','success');}
         else{await fetch(SUPABASE_URL+'/rest/v1/descuentos_automaticos',{method:'POST',headers:Object.assign({},H2,{'Prefer':'return=minimal'}),body:JSON.stringify(pay)});toast('Creado','success');}
