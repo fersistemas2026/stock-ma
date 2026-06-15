@@ -629,6 +629,11 @@
             <span id="ventas-ultima-monto" style="font-size:20px;font-weight:900;font-family:var(--mono);color:var(--accent);">—</span>
             <span id="ventas-ultima-info" style="font-size:11px;color:var(--text-muted);">Sin ventas aún</span>
           </div>
+          <div id="ventas-promo-box" style="display:none;background:rgba(200,240,74,.08);border:2px solid var(--accent);border-radius:10px;padding:12px 20px;flex-direction:column;gap:4px;min-width:240px;flex:1;">
+            <span style="font-size:10px;font-family:var(--mono);color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">🏷️ Promo activa</span>
+            <span id="ventas-promo-nombre" style="font-size:22px;font-weight:900;color:var(--accent);">—</span>
+            <span id="ventas-promo-detalle" style="font-size:14px;color:var(--accent);opacity:.85;font-weight:600;">—</span>
+          </div>
           <div style="display:flex;flex-direction:column;gap:4px;justify-content:center;">
             <span style="font-size:10px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Método de pago</span>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1406,9 +1411,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">
       <button class="btn-outline" onclick="closePdvModal(null)">Cerrar</button>
       <button class="btn-primary" onclick="guardarTodoStock()">💾 Guardar stock</button>
-      </div><!-- /neg-panels-wrap -->
-      </div><!-- /neg-layout -->
     </div>
+  </div>
+</div><!-- /pdv-modal -->
+
+</div><!-- /neg-panels-wrap -->
+</div><!-- /neg-layout -->
   
 
 
@@ -7738,10 +7746,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
 
     // ── Render filas ───────────────────────────────────────────────
+    // Pre-calcular promos UNA SOLA VEZ para evitar recalcular con flags ya consumidos
+    const _promosCalc = _ventasItems.map(function(item) { return calcItemPromo(item); });
+
     tbody.innerHTML = _ventasItems.map(function(item, i) {
       const precio = ventasParsePrecio(item.precio);
       const subtotalBase = precio * item.cant;
-      const promo = calcItemPromo(item);
+      const promo = _promosCalc[i];
       const tieneDesc = promo.ahorro > 0.001;
 
       const cantCell = (item.unidad && item.unidad !== 'u')
@@ -7781,8 +7792,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const montoFijo = window._ventasMontoFijo || 0;
 
     if (descData && tipoPromo !== 'pct') {
-      // promo por item (regalo o segunda)
-      totalFinalDesc = _ventasItems.reduce(function(s,item){ return s + calcItemPromo(item).subtotal; }, 0);
+      // promo por item (regalo o segunda) — usar los ya calculados
+      totalFinalDesc = _promosCalc.reduce(function(s,p){ return s + p.subtotal; }, 0);
     } else if (montoFijo > 0) {
       totalFinalDesc = Math.max(0, grandTotal - montoFijo);
     } else if (descPct > 0) {
@@ -7846,6 +7857,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._ventasDescuentoAutoNombre = '';
     window._ventasDescuentoAutoData = null;
     window._ventasVoucherCodigo = '';
+    const _pb = document.getElementById('ventas-promo-box');
+    if (_pb) _pb.style.display = 'none';
     ventasRenderTabla();
     document.getElementById('ventas-prod-input').value = '';
     document.getElementById('ventas-gusto-input').value = '';
@@ -9493,6 +9506,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         window._ventasDescuento = 0;
         window._ventasDescuentoAutoActivo = false;
         window._ventasDescuentoAutoNombre = '';
+        const _pb2 = document.getElementById('ventas-promo-box');
+        if (_pb2) _pb2.style.display = 'none';
         ventasRenderTabla();
       }
 
@@ -9519,15 +9534,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               window._ventasDescuento = 0; // promo se calcula ítem por ítem en render
             }
             ventasRenderTabla();
-            if (msgTel) {
-              const tipoLabel = descAuto.tipo_promo === 'regalo' ? ' (lleva '+descAuto.promo_cant_compra+' + '+descAuto.promo_cant_regalo+' bonif.)' :
-                                descAuto.tipo_promo === 'segunda' ? ' (2da -'+descAuto.promo_pct_segunda+'%)' :
-                                ' (-'+descAuto.pct+'%)';
+            // Mostrar cuadro promo al lado de última venta
+            const promoBox = document.getElementById('ventas-promo-box');
+            const promoNomEl = document.getElementById('ventas-promo-nombre');
+            const promoDetEl = document.getElementById('ventas-promo-detalle');
+            if (promoBox && promoNomEl && promoDetEl) {
+              const tipoLabel = descAuto.tipo_promo === 'regalo'
+                ? 'Lleva '+descAuto.promo_cant_compra+' + '+descAuto.promo_cant_regalo+' bonificados'
+                : descAuto.tipo_promo === 'segunda'
+                ? '2da unidad/kg -'+descAuto.promo_pct_segunda+'%'
+                : descAuto.pct+'% de descuento';
               const alcance = descAuto.tipo_aplicacion === 'reglas' && descAuto.reglas?.length
-                ? ` (${descAuto.reglas.map(r=>[r.prodNombre,r.gustoNombre].filter(Boolean).join('/')).join(', ')})`
-                : '';
-              msgTel.innerHTML = `✓ Cliente: <strong>${c.nombre||''}</strong>${c.pdv_nombre?' ('+c.pdv_nombre+')':''} &nbsp;|&nbsp; 🏷️ <strong>${descAuto.nombre}</strong>${tipoLabel}${alcance}`;
-              msgTel.style.cssText = 'font-size:11px;color:var(--accent);margin-top:4px;display:block;font-weight:600;';
+                ? descAuto.reglas.map(r=>[r.prodNombre,r.gustoNombre].filter(Boolean).join('/')).join(', ')
+                : 'Toda la venta';
+              promoNomEl.textContent = descAuto.nombre;
+              promoDetEl.textContent = tipoLabel + ' · ' + alcance;
+              promoBox.style.display = 'flex';
+            }
+            if (msgTel) {
+              msgTel.textContent = `✓ Cliente: ${c.nombre||''}${c.pdv_nombre?' ('+c.pdv_nombre+')':''}`;
+              msgTel.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:4px;display:block;';
             }
           } else {
             if (msgTel) { msgTel.textContent = `✓ Cliente registrado: ${c.nombre||''} ${c.pdv_nombre?'('+c.pdv_nombre+')':''}`; msgTel.style.display = 'block'; }
