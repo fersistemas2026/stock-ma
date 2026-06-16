@@ -228,6 +228,7 @@
     .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.1); border-top-color: var(--text-muted); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: -3px; }
     .spin-dark { border: 2px solid rgba(0,0,0,.15); border-top-color: #0f0f0f; }
     @keyframes spin { to{transform:rotate(360deg)} }
+    @keyframes slideInRight { from{transform:translateX(120%);opacity:0} to{transform:translateX(0);opacity:1} }
 
     /* STOCK CONFIG */
     .sc-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
@@ -297,6 +298,7 @@
         <select id="empresa-select" onchange="cambiarEmpresa(this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;max-width:160px;"></select>
       </div>
       <span class="user-badge" id="user-badge"></span>
+      <button id="btn-sesiones-admin" onclick="verSesionesActivas()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Ver sesiones activas">📡 Sesiones</button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </header>
@@ -1608,6 +1610,202 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     setLoginAttempts(data);
   }
 
+  // ── SESIONES ACTIVAS ─────────────────────────────────────────────────
+  // Requiere tabla en Supabase:
+  // CREATE TABLE sesiones_activas (
+  //   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  //   empresa_id text NOT NULL,
+  //   pdv_id text NOT NULL,
+  //   username text NOT NULL,
+  //   pdv_nombre text,
+  //   inicio_at timestamptz DEFAULT now(),
+  //   last_ping timestamptz DEFAULT now(),
+  //   UNIQUE(empresa_id, pdv_id)
+  // );
+  // ALTER TABLE sesiones_activas DISABLE ROW LEVEL SECURITY;
+
+  let _sesionId = null;
+  let _sesionPingInterval = null;
+
+  async function registrarSesionActiva(pdvId, pdvNombre) {
+    try {
+      // Upsert: si ya existe para este pdv_id, sobreescribe (solo si es el mismo user que vuelve)
+      await sbApi('sesiones_activas', {
+        method: 'POST',
+        headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify({
+          empresa_id: String(empresaActual),
+          pdv_id: String(pdvId),
+          username: currentUser.username,
+          pdv_nombre: pdvNombre || pdvId,
+          inicio_at: new Date().toISOString(),
+          last_ping: new Date().toISOString()
+        })
+      });
+      _sesionId = pdvId;
+      // Ping cada 60s para mantener sesión activa
+      if (_sesionPingInterval) clearInterval(_sesionPingInterval);
+      _sesionPingInterval = setInterval(async () => {
+        try {
+          await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ last_ping: new Date().toISOString() })
+          });
+        } catch(e) {}
+      }, 60000);
+    } catch(e) { console.warn('Error registrando sesión:', e); }
+  }
+
+  async function cerrarSesionActiva() {
+    if (!_sesionId) return;
+    if (_sesionPingInterval) { clearInterval(_sesionPingInterval); _sesionPingInterval = null; }
+    try {
+      await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&pdv_id=eq.${_sesionId}&username=eq.${currentUser?.username||''}`, { method: 'DELETE' });
+    } catch(e) {}
+    _sesionId = null;
+  }
+
+  async function verificarSesionDuplicada(pdvIds) {
+    // Devuelve la sesión activa si hay conflicto con alguno de los pdvIds del usuario
+    if (!pdvIds || !pdvIds.length) return null;
+    try {
+      const filter = pdvIds.map(id => `pdv_id.eq.${id}`).join(',');
+      const sesiones = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&or=(${filter})&select=*`) || [];
+      // Considerar sesión muerta si el último ping fue hace más de 5 minutos
+      const ahora = Date.now();
+      const activas = sesiones.filter(s => {
+        const lastPing = new Date(s.last_ping || s.inicio_at).getTime();
+        return (ahora - lastPing) < 5 * 60 * 1000;
+      });
+      return activas.length ? activas[0] : null;
+    } catch(e) { return null; }
+  }
+
+  // Panel de sesiones activas para admin
+  window.verSesionesActivas = async function() {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;max-height:85vh;display:flex;flex-direction:column;';
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;';
+    hdr.innerHTML = '<div><div style="font-size:16px;font-weight:700;">📡 Sesiones activas</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Operadores conectados ahora</div></div>';
+    const bx = document.createElement('button');
+    bx.textContent = '✕'; bx.style.cssText = 'background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;';
+    bx.onclick = () => ov.remove(); hdr.appendChild(bx); box.appendChild(hdr);
+    const body = document.createElement('div');
+    body.style.cssText = 'padding:20px;overflow-y:auto;flex:1;';
+    body.innerHTML = '<div class="empty-state"><span class="spin"></span></div>';
+    box.appendChild(body); ov.appendChild(box); document.body.appendChild(ov);
+
+    async function cargarSesiones() {
+      try {
+        const sesiones = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&order=inicio_at.desc&select=*`) || [];
+        const ahora = Date.now();
+        const activas = sesiones.filter(s => {
+          const lastPing = new Date(s.last_ping || s.inicio_at).getTime();
+          return (ahora - lastPing) < 5 * 60 * 1000;
+        });
+        if (!activas.length) {
+          body.innerHTML = '<div class="empty-state">📭<p>No hay operadores conectados</p></div>';
+          return;
+        }
+        body.innerHTML = '';
+        activas.forEach(s => {
+          const inicio = new Date(s.inicio_at);
+          const mins = Math.round((ahora - inicio.getTime()) / 60000);
+          const tiempoStr = mins < 60 ? `${mins} min` : `${Math.floor(mins/60)}h ${mins%60}m`;
+          const row = document.createElement('div');
+          row.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+          row.innerHTML = `
+            <div>
+              <div style="font-size:14px;font-weight:800;color:var(--accent);">🏪 ${s.pdv_nombre||s.pdv_id}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">👤 ${s.username} · hace ${tiempoStr}</div>
+            </div>
+            <button onclick="window._cerrarSesionForzada('${s.pdv_id}','${s.pdv_nombre||s.pdv_id}',this)" style="background:#ff5a5a;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">⏏ Cerrar</button>
+          `;
+          body.appendChild(row);
+        });
+        const nota = document.createElement('div');
+        nota.style.cssText = 'font-size:11px;color:var(--text-dim);text-align:center;margin-top:8px;';
+        nota.textContent = 'Las sesiones se consideran inactivas si no hay actividad en 5 minutos.';
+        body.appendChild(nota);
+      } catch(e) {
+        body.innerHTML = '<div style="color:#f87171;padding:16px;">Error cargando sesiones: '+e.message+'</div>';
+      }
+    }
+    await cargarSesiones();
+    // Botón refrescar
+    const btnRef = document.createElement('button');
+    btnRef.textContent = '↺ Actualizar'; btnRef.style.cssText = 'margin:0 20px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;color:var(--text);cursor:pointer;width:calc(100% - 40px);';
+    btnRef.onclick = () => { body.innerHTML='<div class="empty-state"><span class="spin"></span></div>'; cargarSesiones(); };
+    box.appendChild(btnRef);
+  };
+
+  window._cerrarSesionForzada = async function(pdvId, pdvNombre, btn) {
+    if (!confirm(`¿Cerrar la sesión de ${pdvNombre}?`)) return;
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}`, { method: 'DELETE' });
+      // Registrar el intento para que el panel lo muestre
+      await sbApi('sesiones_intentos', {
+        method: 'POST',
+        body: JSON.stringify({ empresa_id: String(empresaActual), pdv_id: pdvId, pdv_nombre: pdvNombre, username_intento: '(admin)', tipo: 'cierre_forzado', created_at: new Date().toISOString() })
+      }).catch(()=>{});
+      btn.closest('div[style]').remove();
+      toast('Sesión cerrada','success');
+    } catch(e) { toast('Error: '+e.message,'error'); btn.disabled=false; btn.textContent='⏏ Cerrar'; }
+  };
+
+  // Polling para admin: detectar intentos de acceso a PDVs ocupados
+  let _sesionesAdminPollInterval = null;
+  let _ultimoIntentoVisto = null;
+  function iniciarPollingIntentosAdmin() {
+    if (_sesionesAdminPollInterval) return;
+    _sesionesAdminPollInterval = setInterval(async () => {
+      if (!currentUser || currentUser.role !== 'admin') return;
+      try {
+        let query = `sesiones_intentos?empresa_id=eq.${empresaActual}&tipo=eq.duplicado&order=created_at.desc&limit=5`;
+        if (_ultimoIntentoVisto) query += `&created_at=gt.${_ultimoIntentoVisto}`;
+        const intentos = await sbApi(query) || [];
+        if (intentos.length) {
+          _ultimoIntentoVisto = intentos[0].created_at;
+          intentos.forEach(it => {
+            mostrarAlertaSesionAdmin(it);
+          });
+        }
+      } catch(e) {}
+    }, 20000); // cada 20 segundos
+    // Primera verificación a los 5s
+    setTimeout(async () => {
+      if (!currentUser || currentUser.role !== 'admin') return;
+      try {
+        // Marcar punto de partida
+        const r = await sbApi(`sesiones_intentos?empresa_id=eq.${empresaActual}&tipo=eq.duplicado&order=created_at.desc&limit=1`) || [];
+        if (r.length) _ultimoIntentoVisto = r[0].created_at;
+      } catch(e) {}
+    }, 5000);
+  }
+
+  function mostrarAlertaSesionAdmin(intento) {
+    const hora = new Date(intento.created_at).toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;background:#2a0a0a;border:2px solid #ff5a5a;border-radius:12px;padding:16px 20px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.6);animation:slideInRight .3s ease;';
+    ov.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="font-size:22px;line-height:1;">⚠️</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:900;color:#ff5a5a;margin-bottom:4px;">Intento de acceso bloqueado</div>
+          <div style="font-size:12px;color:var(--text);margin-bottom:2px;">🏪 <b>${intento.pdv_nombre||intento.pdv_id}</b></div>
+          <div style="font-size:11px;color:var(--text-muted);">👤 ${intento.username_intento} · ${hora}hs</div>
+        </div>
+        <button onclick="this.closest('div[style]').remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1;padding:0;">✕</button>
+      </div>
+    `;
+    document.body.appendChild(ov);
+    setTimeout(() => { if (ov.parentNode) ov.remove(); }, 12000);
+  }
+
   async function doLogin() {
     const loginBtn = document.getElementById('login-btn');
     const errorEl = document.getElementById('login-error');
@@ -1677,6 +1875,53 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       }
       // Normalize turno: manana -> mañana
       if (found.perms && found.perms.turno === 'manana') found.perms.turno = 'mañana';
+
+      // ── Verificar sesión duplicada (solo para operadores, no admin) ──
+      if (found.role !== 'admin') {
+        const pdvsDelUser = found.pdvs || [];
+        if (pdvsDelUser.length) {
+          const sesionConflicto = await verificarSesionDuplicada(pdvsDelUser);
+          if (sesionConflicto && sesionConflicto.username !== found.username) {
+            const pdvNombreConf = sesionConflicto.pdv_nombre || sesionConflicto.pdv_id;
+            const horaIntento = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+            // Registrar el intento en sesiones_intentos
+            sbApi('sesiones_intentos', {
+              method: 'POST',
+              body: JSON.stringify({
+                empresa_id: String(empresaActual),
+                pdv_id: sesionConflicto.pdv_id,
+                pdv_nombre: pdvNombreConf,
+                username_intento: found.username,
+                tipo: 'duplicado',
+                created_at: new Date().toISOString()
+              })
+            }).catch(()=>{});
+            // Enviar mensaje interno al admin
+            try {
+              const todosUsers = getUsers();
+              const admins = todosUsers.filter(u => u.role === 'admin');
+              for (const admin of admins) {
+                await sbApi('mensajes', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    empresa_id: String(empresaActual),
+                    desde: 'sistema',
+                    desde_nombre: '🔒 Sistema',
+                    para: admin.username,
+                    mensaje: `⚠️ Intento de acceso bloqueado\n📍 PDV: ${pdvNombreConf}\n👤 Usuario: ${found.username}\n🕐 Hora: ${horaIntento}hs\n\nEse PDV ya tiene una sesión activa (${sesionConflicto.username}).`,
+                    leido: false
+                  })
+                });
+              }
+            } catch(e) { console.warn('Error enviando mensaje interno:', e); }
+            errorEl.textContent = `🔒 ${pdvNombreConf} ya tiene una sesión activa (${sesionConflicto.username}). Contactá al administrador.`;
+            errorEl.style.display = 'block';
+            if (loginBtn) loginBtn.textContent = 'Ingresar';
+            return;
+          }
+        }
+      }
+
       currentUser = {...found};
       resetLoginAttempts();
       errorEl.style.display='none';
@@ -1704,6 +1949,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function doLogout() {
+    cerrarSesionActiva().catch(()=>{});
+    if (_sesionesAdminPollInterval) { clearInterval(_sesionesAdminPollInterval); _sesionesAdminPollInterval = null; }
     currentUser = null;
     document.getElementById('app-screen').style.display='none';
     document.getElementById('login-screen').style.display='flex';
@@ -1797,9 +2044,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         show(document.getElementById('btn-export'));
         // Show empresa selector
         initEmpresaSelector();
+        const btnSes = document.getElementById('btn-sesiones-admin');
+        if (btnSes) btnSes.style.display = '';
         switchTab('agregar');
         loadContacts();
         initRealtime();
+        // Polling para detectar intentos de sesión duplicada
+        iniciarPollingIntentosAdmin();
     // Check for unread messages every 15s
     setInterval(()=>{
       const chatPanel = document.getElementById('neg-mensajes');
@@ -1843,6 +2094,15 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         hide(document.getElementById('btn-export'));
         // detalleCliente se controla por PDV al cambiar selector
         const opPerms = currentUser.perms||{};
+        // Registrar sesión activa en Supabase para control de acceso único por PDV
+        const myPdvsOp = (currentUser.pdvs||[]);
+        if (myPdvsOp.length) {
+          getPdv().then(allPdvs => {
+            const primerPdv = allPdvs.find(p => myPdvsOp.includes(p.id));
+            const pdvNombre = myPdvsOp.length === 1 && primerPdv ? (primerPdv.nombre||primerPdv.name||myPdvsOp[0]) : myPdvsOp.join(',');
+            registrarSesionActiva(myPdvsOp[0], pdvNombre).catch(()=>{});
+          }).catch(()=>{});
+        }
         if (opPerms.caja) {
           switchTab('negocios');
         } else if (opPerms.stock||opPerms.pedido||opPerms.pedidoSuc||opPerms.productos||opPerms.elaboracion||opPerms.informes) {
@@ -9286,6 +9546,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <button onclick="exportarClientesExcel()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📊 Excel</button>
           <button onclick="exportarClientesWA()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📱 WhatsApp</button>
           <button onclick="window.enviarPromoWATodos()" style="background:rgba(255,215,0,.12);border:1px solid #ffd700;border-radius:7px;padding:7px 14px;font-size:12px;color:#ffd700;cursor:pointer;font-weight:700;">🏷️ Promo a todos</button>
+          <button onclick="window.enviarVoucherWATodos()" style="background:rgba(37,211,102,.1);border:1px solid #25D366;border-radius:7px;padding:7px 14px;font-size:12px;color:#25D366;cursor:pointer;font-weight:700;">🎟️ Voucher a todos</button>
         </div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
@@ -9376,6 +9637,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             style="background:none;border:1px solid #ffd700;border-radius:7px;padding:4px 10px;font-size:12px;color:#ffd700;cursor:pointer;margin-left:4px;">🏷️ Promo</button>` : ''}
           ${c.telefono ? `<button onclick="verHistorialCliente('${c.id}')" title="Ver historial de compras"
             style="background:none;border:1px solid #a78bfa;border-radius:7px;padding:4px 10px;font-size:12px;color:#a78bfa;cursor:pointer;margin-left:4px;">🛍️ Historial</button>` : ''}
+          ${c.telefono ? `<button onclick="verHistorialPromos('${c.id}')" title="Ver historial de promos y vouchers"
+            style="background:none;border:1px solid #34d399;border-radius:7px;padding:4px 10px;font-size:12px;color:#34d399;cursor:pointer;margin-left:4px;">📊 Promos/Voucher</button>` : ''}
           <button onclick="borrarCliente('${c.id}')" title="Eliminar cliente"
             style="background:none;border:1px solid #ff5a5a;border-radius:7px;padding:4px 8px;font-size:12px;color:#ff5a5a;cursor:pointer;margin-left:4px;">🗑️</button>
         </td>
@@ -13767,28 +14030,80 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   window.enviarPromoWATodos = function() {
     var clientes = (window._clientesData||[]).filter(function(c){return !!c.telefono;});
     if (!clientes.length) { toast('No hay clientes con telefono registrado','error'); return; }
-    _abrirSelectorPromo(function(desc) {
-      var info=_labelPromo(desc);
-      var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px 16px;'; ov.onclick=function(e){if(e.target===ov)ov.remove();};
-      var box=document.createElement('div'); box.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:540px;margin:0 auto;';
+
+    sbApi('descuentos_automaticos?empresa_id=eq.'+empresaActual+'&activo=eq.true&order=tipo.asc,valor.asc').then(function(lista) {
+      lista = lista || [];
+
+      var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px 16px;';
+      ov.onclick=function(e){if(e.target===ov)ov.remove();};
+      var box=document.createElement('div'); box.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:580px;margin:0 auto;';
+
+      // Header
       var hdr=document.createElement('div'); hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:14px 14px 0 0;';
-      hdr.innerHTML='<span style="font-size:15px;font-weight:900;">Enviar promo a todos ('+clientes.length+' clientes)</span>';
+      hdr.innerHTML='<span style="font-size:15px;font-weight:900;">Enviar mensaje a clientes ('+clientes.length+')</span>';
       var bx=document.createElement('button'); bx.textContent='x'; bx.style.cssText='background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;'; bx.onclick=function(){ov.remove();}; hdr.appendChild(bx); box.appendChild(hdr);
-      var bdy=document.createElement('div'); bdy.style.cssText='padding:20px;display:flex;flex-direction:column;gap:14px;';
-      var iD=document.createElement('div'); iD.style.cssText='background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--accent);';
-      iD.innerHTML='<strong>'+desc.nombre+'</strong> — '+info.cuando+' — '+info.promo; bdy.appendChild(iD);
-      var lbl=document.createElement('label'); lbl.style.cssText='font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;'; lbl.textContent='Mensaje (use {nombre} para personalizar)'; bdy.appendChild(lbl);
-      var txt=document.createElement('textarea'); txt.rows=6; txt.style.cssText='width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;resize:vertical;';
-      txt.value=_armarMsgPromo(desc,'{nombre}'); txt.onfocus=function(){txt.style.borderColor='var(--accent)';}; txt.onblur=function(){txt.style.borderColor='var(--border)';}; bdy.appendChild(txt);
-      var iC=document.createElement('div'); iC.style.cssText='font-size:12px;color:var(--text-muted);'; iC.textContent='Se abrira WhatsApp uno por uno ('+clientes.length+' clientes). El navegador puede pedir permiso.'; bdy.appendChild(iC);
+
+      var bdy=document.createElement('div'); bdy.style.cssText='padding:20px;display:flex;flex-direction:column;gap:16px;';
+
+      // Selector de promos (checkboxes)
+      if (lista.length) {
+        var secPromos=document.createElement('div');
+        secPromos.innerHTML='<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px;">Promos a incluir (elegí una o varias)</div>';
+        var hoy=fechaHoyAR(); var dobj=new Date(hoy+'T00:00:00'); var ds=dobj.getDay(), dm=dobj.getDate();
+        lista.forEach(function(x, idx) {
+          var esHoy=(x.tipo==='dia_semana'&&parseInt(x.valor)===ds)||(x.tipo==='dia_mes'&&parseInt(x.valor)===dm)||(x.tipo==='rango_fechas'&&hoy>=x.valor&&hoy<=(x.valor_hasta||x.valor));
+          var info=_labelPromo(x);
+          var row=document.createElement('label'); row.style.cssText='display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 14px;cursor:pointer;';
+          var chk=document.createElement('input'); chk.type='checkbox'; chk.dataset.idx=idx; chk.style.cssText='accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;';
+          var lbl=document.createElement('div'); lbl.style.cssText='flex:1;';
+          lbl.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--accent);">'+x.nombre+(esHoy?' <span style="background:rgba(200,240,74,.2);color:var(--accent);font-size:10px;font-weight:800;padding:1px 7px;border-radius:10px;">HOY</span>':'')+'</div><div style="font-size:11px;color:var(--text-muted);">'+info.cuando+' — '+info.promo+'</div>';
+          row.appendChild(chk); row.appendChild(lbl); secPromos.appendChild(row);
+          row.onclick=function(){chk.checked=!chk.checked; actualizarMsgDesdePromos();};
+          chk.onclick=function(e){e.stopPropagation();};
+          chk.onchange=actualizarMsgDesdePromos;
+        });
+        bdy.appendChild(secPromos);
+      }
+
+      // Mensaje editable
+      var lblMsg=document.createElement('label'); lblMsg.style.cssText='font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;'; lblMsg.textContent='Mensaje (use {nombre} para personalizar)';
+      var txt=document.createElement('textarea'); txt.rows=7; txt.style.cssText='width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;resize:vertical;';
+      // Mensaje base sin promos
+      var msgBase='Hola {nombre}!\n\nEn Miguel Angel Pastas, Sandwicheria y Pasteleria no te olvides de darnos tu numero de cliente con tu compra para ofrecerte los mejores descuentos y promociones que tenemos preparados para vos!\n\nTe esperamos nuevamente!';
+      txt.value=msgBase;
+      txt.onfocus=function(){txt.style.borderColor='var(--accent)';}; txt.onblur=function(){txt.style.borderColor='var(--border)';};
+      bdy.appendChild(lblMsg); bdy.appendChild(txt);
+
+      function actualizarMsgDesdePromos() {
+        var seleccionadas = lista.filter(function(x, i) {
+          var chk = secPromos ? secPromos.querySelector('input[data-idx="'+i+'"]') : null;
+          return chk && chk.checked;
+        });
+        if (!seleccionadas.length) {
+          txt.value = msgBase;
+          return;
+        }
+        var lineasPromo = seleccionadas.map(function(d) {
+          var tp=d.tipo_promo||'pct';
+          var det=tp==='regalo'?'*'+d.nombre+'*: lleva '+d.promo_cant_compra+' y te regalamos '+d.promo_cant_regalo:tp==='segunda'?'*'+d.nombre+'*: la 2da unidad con '+d.promo_pct_segunda+'% de descuento':'*'+d.nombre+'*: '+d.pct+'% de descuento';
+          var info=_labelPromo(d);
+          return det+'. Valido: '+info.cuando;
+        }).join('\n');
+        txt.value='Hola {nombre}! Estamos muy contentos de tenerte como cliente de Miguel Angel Pastas!\n\nTe avisamos de las siguientes promos especiales:\n\n'+lineasPromo+'\n\nValido hasta agotar stock.\n\nPasa a visitarnos!';
+      }
+
+      var infoC=document.createElement('div'); infoC.style.cssText='font-size:12px;color:var(--text-muted);'; infoC.textContent='Se abrira WhatsApp uno por uno ('+clientes.length+' clientes). El navegador puede pedir permiso.'; bdy.appendChild(infoC);
+
       var rowB=document.createElement('div'); rowB.style.cssText='display:flex;gap:10px;';
       var bCan=document.createElement('button'); bCan.textContent='Cancelar'; bCan.style.cssText='flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;'; bCan.onclick=function(){ov.remove();};
       var bSnd=document.createElement('button'); bSnd.textContent='Abrir WhatsApp ('+clientes.length+')'; bSnd.style.cssText='flex:2;background:#25D366;color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;';
       bSnd.onclick=function(){var p=txt.value||'';ov.remove();clientes.forEach(function(c,i){setTimeout(function(){var tel=c.telefono.replace(/[^0-9]/g,'');var nom=c.nombre?c.nombre.split(' ')[0]:'cliente';var msg=p.replace(/\{nombre\}/g,nom);window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');},i*800);});};
       rowB.appendChild(bCan); rowB.appendChild(bSnd); bdy.appendChild(rowB);
+
       box.appendChild(bdy); ov.appendChild(box); document.body.appendChild(ov);
-    });
+    }).catch(function(){ toast('Error cargando promociones','error'); });
   };
+
 
   // ── Promo Semanal (panel operador + botón ventas) ──────────────────
   function _buildPromoSemanal(container) {
@@ -13871,6 +14186,244 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     body.innerHTML='<div class="empty-state"><span class="spin"></span></div>';
     box.appendChild(body); ov.appendChild(box); document.body.appendChild(ov);
     _buildPromoSemanal(body);
+  };
+
+  // ── Voucher a todos los clientes ──────────────────────────────────
+  window.enviarVoucherWATodos = function() {
+    var clientes = (window._clientesData||[]).filter(function(c){ return !!c.telefono; });
+    if (!clientes.length) { toast('No hay clientes con telefono registrado','error'); return; }
+
+    var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px 16px;';
+    ov.onclick=function(e){if(e.target===ov)ov.remove();};
+    var box=document.createElement('div'); box.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;margin:0 auto;';
+
+    // Header
+    var hdr=document.createElement('div'); hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:14px 14px 0 0;';
+    hdr.innerHTML='<span style="font-size:15px;font-weight:900;">🎟️ Voucher a todos ('+clientes.length+' clientes)</span>';
+    var bx=document.createElement('button'); bx.textContent='✕'; bx.style.cssText='background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;'; bx.onclick=function(){ov.remove();}; hdr.appendChild(bx); box.appendChild(hdr);
+
+    var bdy=document.createElement('div'); bdy.style.cssText='padding:20px;display:flex;flex-direction:column;gap:16px;';
+
+    // Tipo de voucher
+    var tipoActual = 'pct';
+    var lblTipo=document.createElement('div'); lblTipo.style.cssText='font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px;'; lblTipo.textContent='Tipo de voucher';
+
+    var stOn='flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--accent);background:rgba(200,240,74,.12);color:var(--accent);text-align:center;';
+    var stOff='flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:var(--surface2);color:var(--text);text-align:center;';
+
+    var bPct=document.createElement('button'); bPct.textContent='% Descuento'; bPct.style.cssText=stOn;
+    var bMonto=document.createElement('button'); bMonto.textContent='$ Monto fijo'; bMonto.style.cssText=stOff;
+    var bReg=document.createElement('button'); bReg.textContent='🎁 Regalo'; bReg.style.cssText=stOff;
+    var rowTipo=document.createElement('div'); rowTipo.style.cssText='display:flex;gap:6px;';
+    rowTipo.appendChild(bPct); rowTipo.appendChild(bMonto); rowTipo.appendChild(bReg);
+
+    // Paneles de valor
+    var panelPct=document.createElement('div');
+    panelPct.innerHTML='<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;">Porcentaje de descuento</label>'
+      +'<div style="display:flex;align-items:center;background:var(--surface2);border:2px solid var(--border);border-radius:8px;overflow:hidden;">'
+      +'<input type="number" id="vat-pct" min="1" max="100" value="10" style="flex:1;background:none;border:none;padding:10px 14px;font-size:20px;font-weight:900;font-family:var(--mono);color:var(--accent);outline:none;">'
+      +'<span style="padding:10px 14px;font-size:16px;color:var(--text-muted);">%</span></div>';
+
+    var panelMonto=document.createElement('div'); panelMonto.style.display='none';
+    panelMonto.innerHTML='<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;">Monto de descuento</label>'
+      +'<div style="display:flex;align-items:center;background:var(--surface2);border:2px solid var(--border);border-radius:8px;overflow:hidden;">'
+      +'<span style="padding:10px 14px;font-size:16px;color:var(--text-muted);">$</span>'
+      +'<input type="number" id="vat-monto" min="1" value="500" style="flex:1;background:none;border:none;padding:10px 14px;font-size:20px;font-weight:900;font-family:var(--mono);color:var(--accent);outline:none;"></div>';
+
+    var panelReg=document.createElement('div'); panelReg.style.display='none';
+    panelReg.innerHTML='<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;">Descripción del regalo</label>'
+      +'<input type="text" id="vat-regalo" placeholder="Ej: 1 empanada gratis" style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:15px;color:var(--text);outline:none;">';
+
+    function switchTipo(t) {
+      tipoActual=t;
+      bPct.style.cssText=t==='pct'?stOn:stOff;
+      bMonto.style.cssText=t==='monto'?stOn:stOff;
+      bReg.style.cssText=t==='regalo'?stOn:stOff;
+      panelPct.style.display=t==='pct'?'':'none';
+      panelMonto.style.display=t==='monto'?'':'none';
+      panelReg.style.display=t==='regalo'?'':'none';
+      actualizarMsg();
+    }
+    bPct.onclick=function(){switchTipo('pct');};
+    bMonto.onclick=function(){switchTipo('monto');};
+    bReg.onclick=function(){switchTipo('regalo');};
+
+    // Vencimiento
+    var wVenc=document.createElement('div');
+    wVenc.innerHTML='<label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Vence el (opcional)</label>'
+      +'<input type="date" id="vat-vence" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);outline:none;">';
+
+    // Mensaje editable
+    var lblMsg=document.createElement('label'); lblMsg.style.cssText='font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;'; lblMsg.textContent='Mensaje (use {nombre} para personalizar)';
+    var txt=document.createElement('textarea'); txt.rows=6; txt.style.cssText='width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;resize:vertical;';
+    txt.onfocus=function(){txt.style.borderColor='var(--accent)';}; txt.onblur=function(){txt.style.borderColor='var(--border)';};
+
+    function actualizarMsg() {
+      var vence = document.getElementById('vat-vence') ? document.getElementById('vat-vence').value : '';
+      var venceStr = vence ? '\nVence: '+vence+'.' : '';
+      if (tipoActual==='pct') {
+        var pct = (document.getElementById('vat-pct')||{}).value||'10';
+        txt.value='Hola {nombre}! Te enviamos un voucher especial de Miguel Angel Pastas:\n\n🎟️ *'+pct+'% de descuento* en tu proxima compra.'+venceStr+'\n\nPresenta este mensaje al momento de pagar.\n\nTe esperamos!';
+      } else if (tipoActual==='monto') {
+        var monto = (document.getElementById('vat-monto')||{}).value||'500';
+        txt.value='Hola {nombre}! Te enviamos un voucher especial de Miguel Angel Pastas:\n\n🎟️ *$'+monto+' de descuento* en tu proxima compra.'+venceStr+'\n\nPresenta este mensaje al momento de pagar.\n\nTe esperamos!';
+      } else {
+        var reg = (document.getElementById('vat-regalo')||{}).value||'regalo especial';
+        txt.value='Hola {nombre}! Te enviamos un voucher especial de Miguel Angel Pastas:\n\n🎟️ *'+reg+'* en tu proxima visita.'+venceStr+'\n\nPresenta este mensaje al momento de pagar.\n\nTe esperamos!';
+      }
+    }
+
+    // Actualizar mensaje al cambiar valores
+    setTimeout(function(){
+      var inpPct=document.getElementById('vat-pct'); if(inpPct) inpPct.oninput=actualizarMsg;
+      var inpMonto=document.getElementById('vat-monto'); if(inpMonto) inpMonto.oninput=actualizarMsg;
+      var inpReg=document.getElementById('vat-regalo'); if(inpReg) inpReg.oninput=actualizarMsg;
+      var inpVence=document.getElementById('vat-vence'); if(inpVence) inpVence.onchange=actualizarMsg;
+    }, 100);
+
+    actualizarMsg();
+
+    // Info
+    var infoC=document.createElement('div'); infoC.style.cssText='font-size:12px;color:var(--text-muted);'; infoC.textContent='Se abrira WhatsApp uno por uno ('+clientes.length+' clientes). El navegador puede pedir permiso.';
+
+    // Botones
+    var rowB=document.createElement('div'); rowB.style.cssText='display:flex;gap:10px;';
+    var bCan=document.createElement('button'); bCan.textContent='Cancelar'; bCan.style.cssText='flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;'; bCan.onclick=function(){ov.remove();};
+    var bSnd=document.createElement('button'); bSnd.textContent='Abrir WhatsApp ('+clientes.length+')'; bSnd.style.cssText='flex:2;background:#25D366;color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;';
+    bSnd.onclick=function(){
+      var p=txt.value||''; ov.remove();
+      clientes.forEach(function(c,i){
+        setTimeout(function(){
+          var tel=c.telefono.replace(/[^0-9]/g,'');
+          var nom=c.nombre?c.nombre.split(' ')[0]:'cliente';
+          var msg=p.replace(/\{nombre\}/g,nom);
+          window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
+        },i*800);
+      });
+    };
+    rowB.appendChild(bCan); rowB.appendChild(bSnd);
+
+    bdy.appendChild(lblTipo); bdy.appendChild(rowTipo);
+    bdy.appendChild(panelPct); bdy.appendChild(panelMonto); bdy.appendChild(panelReg);
+    bdy.appendChild(wVenc); bdy.appendChild(lblMsg); bdy.appendChild(txt);
+    bdy.appendChild(infoC); bdy.appendChild(rowB);
+    box.appendChild(bdy); ov.appendChild(box); document.body.appendChild(ov);
+    actualizarMsg();
+  };
+
+  // ── Historial de Promos y Vouchers por cliente ─────────────────────
+  window.verHistorialPromos = async function(cid) {
+    const c = (window._clientesData||[]).find(x => String(x.id) === String(cid));
+    if (!c) return;
+    const tel = (c.telefono||'').replace(/[^0-9]/g,'');
+
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px 16px;';
+    ov.onclick = e => { if(e.target===ov) ov.remove(); };
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:580px;margin:0 auto;overflow:hidden;';
+
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);';
+    hdr.innerHTML = `<div><div style="font-size:15px;font-weight:900;">📊 Promos y Vouchers — ${c.nombre||c.telefono}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${c.telefono||''}</div></div>`;
+    const bx = document.createElement('button'); bx.textContent='✕'; bx.style.cssText='background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;'; bx.onclick=()=>ov.remove(); hdr.appendChild(bx);
+    box.appendChild(hdr);
+
+    const body = document.createElement('div');
+    body.style.cssText = 'padding:20px;';
+    body.innerHTML = '<div class="empty-state"><span class="spin"></span></div>';
+    box.appendChild(body); ov.appendChild(box); document.body.appendChild(ov);
+
+    try {
+      // Cargar usos de promos y vouchers en paralelo
+      const [promoUsos, vouchers, ventas, descuentos] = await Promise.all([
+        sbApi(`promo_usos?empresa_id=eq.${empresaActual}&cliente_tel=eq.${tel}&order=fecha.desc&limit=50`) || [],
+        sbApi(`vouchers?empresa_id=eq.${empresaActual}&cliente_tel=eq.${tel}&order=created_at.desc&limit=50`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&cliente_tel=eq.${tel}&order=fecha.desc&limit=100&select=fecha,total,descuento_pct,descuento_monto,items`) || [],
+        sbApi(`descuentos_automaticos?empresa_id=eq.${empresaActual}&select=id,nombre,pct,tipo_promo,promo_pct_segunda`) || []
+      ]);
+
+      const descMap = {};
+      (descuentos||[]).forEach(d => { descMap[d.id] = d; });
+
+      body.innerHTML = '';
+
+      // ── RESUMEN ──────────────────────────────────────────────────
+      const totalVentas = (ventas||[]).length;
+      const ventasConDesc = (ventas||[]).filter(v => (v.descuento_pct > 0 || v.descuento_monto > 0));
+      const totalAhorro = (ventas||[]).reduce((s,v) => {
+        if (v.descuento_pct > 0 && v.total) return s + (v.total / (1-v.descuento_pct/100) - v.total);
+        if (v.descuento_monto > 0) return s + v.descuento_monto;
+        return s;
+      }, 0);
+
+      const resumen = document.createElement('div');
+      resumen.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;';
+      const mkStat = (label, val, color) => {
+        const d = document.createElement('div');
+        d.style.cssText = `background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;`;
+        d.innerHTML = `<div style="font-size:20px;font-weight:900;color:${color};">${val}</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${label}</div>`;
+        return d;
+      };
+      resumen.appendChild(mkStat('Promos usadas', (promoUsos||[]).length, '#6ee7b7'));
+      resumen.appendChild(mkStat('Vouchers', (vouchers||[]).length, '#93c5fd'));
+      resumen.appendChild(mkStat('Ahorro aprox.', '$ '+totalAhorro.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}), '#ffd700'));
+      body.appendChild(resumen);
+
+      // ── PROMOS ────────────────────────────────────────────────────
+      if (promoUsos && promoUsos.length) {
+        const secTitle = document.createElement('div');
+        secTitle.style.cssText = 'font-size:11px;font-weight:900;color:#6ee7b7;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;';
+        secTitle.textContent = '🏷️ Historial de promociones';
+        body.appendChild(secTitle);
+
+        const tbl = document.createElement('div');
+        tbl.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;';
+        tbl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 2fr;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;"><span>Fecha</span><span>Promoción</span></div>';
+        promoUsos.forEach(u => {
+          const d = descMap[u.descuento_id];
+          const row = document.createElement('div');
+          row.style.cssText = 'display:grid;grid-template-columns:1fr 2fr;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;';
+          row.innerHTML = `<span style="color:var(--text-muted);">${u.fecha||''}</span><span style="font-weight:700;color:var(--accent);">${d?d.nombre:'Promo'}</span>`;
+          tbl.appendChild(row);
+        });
+        body.appendChild(tbl);
+      } else {
+        const noPromo = document.createElement('div');
+        noPromo.style.cssText = 'font-size:13px;color:var(--text-dim);margin-bottom:20px;padding:12px;background:var(--surface2);border-radius:8px;';
+        noPromo.textContent = '🏷️ Sin uso de promociones registrado';
+        body.appendChild(noPromo);
+      }
+
+      // ── VOUCHERS ──────────────────────────────────────────────────
+      if (vouchers && vouchers.length) {
+        const secTitle2 = document.createElement('div');
+        secTitle2.style.cssText = 'font-size:11px;font-weight:900;color:#93c5fd;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;';
+        secTitle2.textContent = '🎟️ Historial de vouchers';
+        body.appendChild(secTitle2);
+
+        const tbl2 = document.createElement('div');
+        tbl2.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;';
+        tbl2.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;"><span>Fecha</span><span>Tipo</span><span>Valor</span><span>Estado</span></div>';
+        vouchers.forEach(v => {
+          const tp = v.tipo==='regalo' ? '🎁 '+v.regalo_desc : v.tipo==='monto' ? '$ '+v.monto_fijo : (v.pct||0)+'% off';
+          const estado = v.usado ? '<span style="color:#f87171;">Usado</span>' : v.vence && v.vence < fechaHoyAR() ? '<span style="color:var(--text-dim);">Vencido</span>' : '<span style="color:#6ee7b7;">Vigente</span>';
+          const row = document.createElement('div');
+          row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;align-items:center;';
+          row.innerHTML = `<span style="color:var(--text-muted);">${(v.created_at||'').slice(0,10)}</span><span>${v.tipo||'pct'}</span><span style="font-weight:700;color:var(--accent);">${tp}</span>${estado}`;
+          tbl2.appendChild(row);
+        });
+        body.appendChild(tbl2);
+      } else {
+        const noV = document.createElement('div');
+        noV.style.cssText = 'font-size:13px;color:var(--text-dim);padding:12px;background:var(--surface2);border-radius:8px;';
+        noV.textContent = '🎟️ Sin vouchers registrados';
+        body.appendChild(noV);
+      }
+
+    } catch(e) {
+      body.innerHTML = '<div style="color:#f87171;padding:16px;">Error cargando historial: '+e.message+'</div>';
+    }
   };
 
   function toast(msg, type='success') {
