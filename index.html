@@ -277,7 +277,10 @@
         <input type="password" id="login-clave-operador" placeholder="Ingresá la clave de desbloqueo" onkeydown="if(event.key==='Enter') window.intentarDesbloqueoLogin()">
       </div>
       <button onclick="window.intentarDesbloqueoLogin()" style="width:100%;background:#ff5a5a;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;">🔓 Desbloquear y continuar</button>
-      <div id="login-clave-error" style="font-size:12px;color:#ff5a5a;margin-top:8px;display:none;">Clave incorrecta</div>
+      <div id="login-clave-error" style="font-size:12px;color:#ff5a5a;margin-top:8px;display:none;">Clave incorrecta — también podés usar la clave maestra</div>
+      <div id="login-admin-unlock-wrap" style="display:none;margin-top:10px;">
+        <button onclick="window.desbloqueoAdminLogin()" style="width:100%;background:#ffd700;color:#000;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:800;cursor:pointer;">🛠 Desbloquear como admin (sin clave)</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1982,6 +1985,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (msgDiv) msgDiv.innerHTML = `PDV bloqueado por exceso de efectivo.<br>Ingresá la palabra clave para desbloquearlo y continuar.`;
       blockDiv.style.display = '';
       blockDiv.dataset.bloqueados = JSON.stringify(bloqueados);
+      // Mostrar botón admin si el usuario ingresado es admin
+      const adminWrap = document.getElementById('login-admin-unlock-wrap');
+      if (adminWrap) {
+        try {
+          const userInput = (document.getElementById('l-user')?.value || '').trim().toLowerCase();
+          const empresas = getEmpresas();
+          let esAdmin = false;
+          empresas.forEach(emp => {
+            (emp.usuarios || []).forEach(u => {
+              if ((u.usuario||'').toLowerCase() === userInput && u.rol === 'admin') esAdmin = true;
+            });
+          });
+          adminWrap.style.display = esAdmin ? '' : 'none';
+        } catch(e) { adminWrap.style.display = 'none'; }
+      }
     } else {
       blockDiv.style.display = 'none';
     }
@@ -1996,10 +2014,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const bloqueados = JSON.parse(blockDiv?.dataset?.bloqueados || '[]');
       let desbloqueado = false;
       const empresas = getEmpresas();
+      const secCfg = getSecConfig();
+      const claveMaestra = (secCfg.claveMaestra || '').trim();
+
       bloqueados.forEach(b => {
         const emp = empresas.find(e => String(e.id) === String(b.empId));
         const cfgPdv = emp?.controlEfectivo?.[String(b.pdvId)] || {};
-        if (cfgPdv.claveOperador && clave === cfgPdv.claveOperador) {
+        const claveOp = (cfgPdv.claveOperador || '').trim();
+        // Acepta: clave de operador del PDV, O clave maestra si no hay clave de operador, O clave maestra siempre
+        const coincide = (claveOp && clave === claveOp) || (claveMaestra && clave === claveMaestra);
+        if (coincide) {
           localStorage.removeItem(`ef_acum_${b.empId}_${b.pdvId}`);
           localStorage.removeItem(`ef_avisos_${b.empId}_${b.pdvId}`);
           localStorage.removeItem(`ef_bloq_${b.empId}_${b.pdvId}`);
@@ -2015,6 +2039,22 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         if (errEl) { errEl.style.display = ''; setTimeout(() => errEl && (errEl.style.display='none'), 2500); }
       }
     } catch(e) { console.warn('Error desbloqueo login:', e); }
+  };
+
+  // Desbloqueo admin directo desde login (sin necesidad de clave)
+  window.desbloqueoAdminLogin = function() {
+    try {
+      const blockDiv = document.getElementById('login-buzon-block');
+      const bloqueados = JSON.parse(blockDiv?.dataset?.bloqueados || '[]');
+      const empresas = getEmpresas();
+      bloqueados.forEach(b => {
+        localStorage.removeItem(`ef_acum_${b.empId}_${b.pdvId}`);
+        localStorage.removeItem(`ef_avisos_${b.empId}_${b.pdvId}`);
+        localStorage.removeItem(`ef_bloq_${b.empId}_${b.pdvId}`);
+      });
+      checkLoginBuzonBlock();
+      toast('🔓 PDV desbloqueado por admin.', 'success');
+    } catch(e) { console.warn('Error desbloqueo admin login:', e); }
   };
 
   function startApp() {
