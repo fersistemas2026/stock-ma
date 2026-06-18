@@ -523,6 +523,7 @@
               <option value="cantVentas">📊 Cantidad de ventas</option>
               <option value="clientes">👥 Clientes</option>
               <option value="descuentosAuto">🏷️ Descuentos automáticos</option>
+              <option value="ranking">🏆 Ranking productos/sabores</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
@@ -4563,6 +4564,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='cantVentas')   { await loadInformesCantVentas(range); return; }
     if (seccion==='clientes')     { await loadInformesClientes(range); return; }
     if (seccion==='descuentosAuto') { await loadInformesDescuentosAuto(); return; }
+    if (seccion==='ranking')        { await loadInformesRanking(range.desde, range.hasta); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
     if (seccion==='tarjetas')     { await loadInformesTarjetas(range.desde, range.hasta); return; }
@@ -12491,61 +12493,116 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     });
   }
 
-  function _buildCajaCard(r, buzon, gastos, pNombre, fmt) {
-    const buzonTotal = buzon.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-    return ['mañana','tarde'].map(turno=>{
+  function _buildCajaCard(r, buzon, gastos, pNombre, fmt, cierreDiaAnt) {
+    const turnos = ['mañana','tarde'];
+    const cards = turnos.map(turno=>{
       const ini = r.find(x=>x.turno===turno&&x.tipo==='inicio');
       const cie = r.find(x=>x.turno===turno&&x.tipo==='cierre');
-      if (!ini&&!cie) return '';
+      if (!ini&&!cie) return null;
       const icon = turno==='mañana'?'🌅':'🌆';
-      const ef_ini = parseFloat(ini?.efectivo||0);
-      const ef_cie = parseFloat(cie?.efectivo||0);
-      const tarj   = parseFloat(cie?.tarjetas||0);
-      const ped    = parseFloat(cie?.pedidos||0);
-      const repZ   = parseFloat(cie?.reporte_z||0);
-      const buzonTurno = buzon.filter(x=>x.turno===turno);
+
+      const ef_ini    = parseFloat(ini?.efectivo||0);
+      const ef_cie    = parseFloat(cie?.efectivo||0);
+      const tarj      = parseFloat(cie?.tarjetas||0);
+      const ped       = parseFloat(cie?.pedidos||0);
+      const repZ      = parseFloat(cie?.reporte_z||0);
+      const buzonTurno      = buzon.filter(x=>x.turno===turno);
       const buzonTurnoTotal = buzonTurno.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-      const gastosTurno = gastos.filter(x=>x.turno===turno);
+      const gastosTurno      = gastos.filter(x=>x.turno===turno);
       const gastosTurnoTotal = gastosTurno.reduce((s,x)=>s+parseFloat(x.monto||0),0);
-      const subtotal1 = ef_ini + ef_cie + buzonTurnoTotal;
-      const subtotal2 = subtotal1 + tarj + ped;
-      const totalFinal = subtotal2 - gastosTurnoTotal;
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;max-width:420px;margin-bottom:16px;">
-        <div style="background:var(--surface2);padding:12px 18px;border-bottom:1px solid var(--border);font-size:14px;font-weight:700;">${icon} Turno ${turno}</div>
-        <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
-          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;"><span style="color:var(--text-muted);">📥 Inicio efectivo</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ef_ini)}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📤 Cierre efectivo</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ef_cie)}</span></div>
-          ${buzonTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-dim);">📬 #${i+1} ${x.display_name||x.username} · ${new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</span><span style="font-family:var(--mono);color:var(--text-muted);">${fmt(x.monto)}</span></div>`).join('')}
-          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;"><span style="color:var(--text);">Subtotal</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal1)}</span></div>
+
+      // Cierre anterior solo aplica en turno mañana
+      const antVal = (turno==='mañana' && cierreDiaAnt!=null) ? cierreDiaAnt : null;
+      const difAnt = antVal!=null ? (ef_ini - antVal) : null;
+      const difAntOk = difAnt!=null && Math.abs(difAnt)<0.01;
+      const difAntColor = difAntOk ? '#6ee7b7' : '#ff5a5a';
+
+      // Diferencia Z vs Tarjetas
+      const difZTarj = repZ>0 ? (repZ - tarj) : null;
+      const difZOk = difZTarj!=null && Math.abs(difZTarj)<0.01;
+      const difZColor = difZOk ? '#6ee7b7' : '#ff5a5a';
+
+      // Resumen
+      const subtotal = ef_cie + tarj + buzonTurnoTotal + ped;
+      const total    = subtotal - gastosTurnoTotal;
+
+      const row = (label, val, muted) =>
+        `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;">
+          <span style="color:${muted?'var(--text-muted)':'var(--text-dim)'};">${label}</span>
+          <span style="font-family:var(--mono);font-size:13px;color:var(--text);">${val}</span>
+        </div>`;
+
+      const badge = (ok, msg, dif) =>
+        `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700;margin:3px 0;background:${ok?'rgba(110,231,183,.1)':'rgba(255,90,90,.1)'};">
+          <span style="color:${ok?'#6ee7b7':'#ff5a5a'};">${ok?'✅':'⚠️'} ${msg}</span>
+          <span style="font-family:var(--mono);color:${ok?'#6ee7b7':'#ff5a5a'};">${dif>=0?'+':''}${fmt(dif)}</span>
+        </div>`;
+
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;min-width:220px;max-width:320px;flex:1;">
+        <!-- header -->
+        <div style="background:var(--surface2);padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;">${icon} Turno ${turno}</div>
+        <!-- efectivo -->
+        <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
+          <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">💰 Efectivo</div>
+          ${antVal!=null ? row('📤 Cierre día anterior', fmt(antVal), true) : ''}
+          ${row('📥 Inicio de caja', fmt(ef_ini), true)}
+          ${difAnt!=null ? badge(difAntOk, difAntOk?'Sin diferencia con anterior':'Diferencia con anterior', difAnt) : ''}
+          <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+          ${row('📤 Cierre efectivo', fmt(ef_cie), true)}
         </div>
-        <div style="padding:12px 18px;border-bottom:1px solid var(--border);">
-          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">💳 Tarjetas</span><span style="font-family:var(--mono);color:var(--text);">${fmt(tarj)}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">📦 Pedidos</span><span style="font-family:var(--mono);color:var(--text);">${fmt(ped)}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;"><span style="color:var(--text);">Subtotal</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal2)}</span></div>
+        <!-- Z / tarjetas -->
+        <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
+          <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">📊 Z / Tarjetas</div>
+          ${row('📋 Informe Z', fmt(repZ), true)}
+          ${row('💳 Tarjetas', fmt(tarj), true)}
+          ${difZTarj!=null ? badge(difZOk, difZOk?'Z = Tarjetas':'Diferencia Z vs Tarjetas', difZTarj) : ''}
         </div>
-        <div style="padding:12px 18px;">
-          ${gastosTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);"><span style="color:var(--text-dim);">💸 #${i+1} ${x.display_name||x.username} · ${x.descripcion}</span><span style="font-family:var(--mono);color:#ff5a5a;">- ${fmt(x.monto)}</span></div>`).join('')}
-          ${gastosTurno.length?`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Total gastos</span><span style="font-family:var(--mono);color:#ff5a5a;">- ${fmt(gastosTurnoTotal)}</span></div>`:''}
-          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;border-bottom:2px solid var(--border);">
-            <span style="color:var(--text);">Subtotal</span>
-            <span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal2 - gastosTurnoTotal)}</span>
+        <!-- buzon -->
+        <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
+          <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">📬 Buzón</div>
+          ${buzonTurno.length
+            ? buzonTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;"><span style="color:var(--text-dim);">#${i+1} ${x.display_name||x.username||''} · ${new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</span><span style="font-family:var(--mono);font-size:13px;">${fmt(x.monto)}</span></div>`).join('')
+            : '<div style="font-size:13px;color:var(--text-dim);">Sin buzón</div>'}
+          ${buzonTurnoTotal>0?`<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;"><span style="color:var(--text-muted);">Total</span><span style="font-family:var(--mono);">${fmt(buzonTurnoTotal)}</span></div>`:''}
+        </div>
+        <!-- pedidos -->
+        <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
+          <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">📦 Pedidos</div>
+          ${row('Total', fmt(ped), true)}
+        </div>
+        <!-- gastos -->
+        <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
+          <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">💸 Gastos</div>
+          ${gastosTurno.length
+            ? gastosTurno.map(x=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;"><span style="color:var(--text-dim);">${x.descripcion||''}</span><span style="font-family:var(--mono);font-size:13px;color:#ff5a5a;">-${fmt(x.monto)}</span></div>`).join('')
+            : '<div style="font-size:13px;color:var(--text-dim);">Sin gastos</div>'}
+          ${gastosTurnoTotal>0?`<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;"><span style="color:#ff5a5a;">Total</span><span style="font-family:var(--mono);color:#ff5a5a;">-${fmt(gastosTurnoTotal)}</span></div>`:''}
+        </div>
+        <!-- resumen -->
+        <div style="padding:6px 10px;background:rgba(0,0,0,.15);">
+          <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">🧮 Resumen</div>
+          ${row('💵 Cierre efectivo', fmt(ef_cie), false)}
+          ${row('💳 Tarjetas', fmt(tarj), false)}
+          ${row('📬 Buzón', fmt(buzonTurnoTotal), false)}
+          ${row('📦 Pedidos', fmt(ped), false)}
+          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;font-weight:700;border-top:1px solid var(--border);margin-top:3px;">
+            <span>Subtotal</span><span style="font-family:var(--mono);color:var(--accent);">${fmt(subtotal)}</span>
           </div>
-          <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px;">📊 Análisis Z</div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);"><span style="color:var(--text-muted);">Informe Z</span><span style="font-family:var(--mono);color:var(--text);">${fmt(repZ)}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--text-dim);border-bottom:1px solid var(--border);">
-            <span>Cierre ef. + Buzón + Tarj. + Ped. - Gastos</span>
-            <span style="font-family:var(--mono);font-weight:600;color:var(--text);">${fmt(ef_cie + buzonTurnoTotal + tarj + ped - gastosTurnoTotal)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:15px;font-weight:800;">
-            <span style="color:var(--text);">TOTAL</span>
-            <span style="font-family:var(--mono);font-size:17px;color:${totalFinal>=0?'var(--accent)':'#ff5a5a'};">${fmt(totalFinal)}</span>
+          ${gastosTurnoTotal>0?`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;"><span style="color:#ff5a5a;">- Gastos</span><span style="font-family:var(--mono);color:#ff5a5a;">-${fmt(gastosTurnoTotal)}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;padding:6px 0 2px;font-size:14px;font-weight:900;border-top:2px solid var(--border);margin-top:4px;">
+            <span>TOTAL</span>
+            <span style="font-family:var(--mono);color:${total>=0?'var(--accent)':'#ff5a5a'};">${fmt(total)}</span>
           </div>
         </div>
       </div>`;
-    }).join('');
+    }).filter(Boolean);
+
+    if (!cards.length) return '';
+    // Mostrar turnos uno al lado del otro
+    return `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">${cards.join('')}</div>`;
   }
 
-  async function loadCajaAdmin() {
+    async function loadCajaAdmin() {
     const fecha = document.getElementById('caja-fecha-admin')?.value;
     const pdvId = document.getElementById('caja-pdv-admin')?.value;
     if (!fecha||!pdvId) { toast('Seleccioná fecha y PDV','error'); return; }
@@ -12565,30 +12622,47 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         if (!rAll.length && !buzonAll.length && !gastosAll.length) {
           result.innerHTML=`<div class="empty-state">📭<p>No hay datos de caja para el ${fecha}.</p></div>`; return;
         }
+        const fechaAntTodos = (()=>{ const d=new Date(fecha+'T00:00:00'); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })();
+        const cajaAntAll = await sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fechaAntTodos}&tipo=eq.cierre&select=pdv_id,efectivo`) || [];
         const pdvIds = [...new Set([...rAll.map(x=>String(x.pdv_id)), ...buzonAll.map(x=>String(x.pdv_id)), ...gastosAll.map(x=>String(x.pdv_id))])];
-        result.innerHTML = pdvIds.map(pid => {
+        const cards = pdvIds.map(pid => {
           const pdv = pdvs.find(p=>String(p.id)===pid);
           const pNombre = pdv?(pdv.nombre||pdv.name):`PDV ${pid.substring(0,6)}`;
           const r = rAll.filter(x=>String(x.pdv_id)===pid);
           const buzon = buzonAll.filter(x=>String(x.pdv_id)===pid);
           const gastos = gastosAll.filter(x=>String(x.pdv_id)===pid);
-          return `<div style="margin-bottom:24px;">
-            <div style="font-size:13px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-family:var(--mono);">🏪 ${pNombre}</div>
-            ${_buildCajaCard(r, buzon, gastos, pNombre, fmt) || `<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Sin datos</div>`}
+          const antRow = cajaAntAll.find(x=>String(x.pdv_id)===pid);
+          const cierreDiaAnt = antRow ? parseFloat(antRow.efectivo||0) : null;
+          return `<div style="display:flex;flex-direction:column;gap:8px;min-width:260px;max-width:340px;flex:1;">
+            <div style="font-size:13px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);">🏪 ${pNombre}</div>
+            ${_buildCajaCard(r, buzon, gastos, pNombre, fmt, cierreDiaAnt) || `<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Sin datos</div>`}
           </div>`;
-        }).join('');
+        });
+        result.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">${cards.join('')}</div>`;
         return;
       }
 
       // ── UN SOLO PDV ──
-      const r = await sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&select=turno,tipo,efectivo,tarjetas,pedidos,reporte_z`) || [];
-      // Also load buzon
-      const buzon = await sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&order=created_at.asc&select=turno,monto,display_name,created_at`) || [];
-      const gastos = await sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&order=created_at.asc&select=turno,monto,descripcion,display_name,created_at`) || [];
+      // Buscar cierre del día anterior
+      const fechaAnt = (()=>{ const d=new Date(fecha+'T00:00:00'); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })();
+      const [r, buzon, gastos, cajaAnt] = await Promise.all([
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&select=turno,tipo,efectivo,tarjetas,pedidos,reporte_z`) || [],
+        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&order=created_at.asc&select=turno,monto,display_name,created_at`) || [],
+        sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=eq.${fecha}&pdv_id=eq.${pdvId}&order=created_at.asc&select=turno,monto,descripcion,display_name,created_at`) || [],
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=eq.${fechaAnt}&pdv_id=eq.${pdvId}&tipo=eq.cierre&order=created_at.desc&limit=1&select=efectivo,turno`) || []
+      ]);
       const pdv = pdvs.find(p=>String(p.id)===String(pdvId));
       const pNombre = pdv?(pdv.nombre||pdv.name):'PDV';
+      // Cierre del día anterior (último cierre disponible)
+      const cierreDiaAnt = cajaAnt.length ? parseFloat(cajaAnt[0].efectivo||0) : null;
+      const fechaAntLabel = cajaAnt.length ? ` (${fechaAnt})` : '';
       if (!r.length && !buzon.length && !gastos.length) { result.innerHTML=`<div class="empty-state">📭<p>No hay datos de caja para ${pNombre} el ${fecha}.</p></div>`; return; }
-      result.innerHTML = _buildCajaCard(r, buzon, gastos, pNombre, fmt) || `<div class="empty-state">📭<p>Sin datos de caja.</p></div>`;
+      // Mostrar encabezado con PDV y fecha
+      const headerHtml = `<div style="margin-bottom:16px;padding:12px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;">
+        <div style="font-size:16px;font-weight:900;color:var(--accent);margin-bottom:4px;">🏪 ${pNombre}</div>
+        <div style="font-size:12px;color:var(--text-muted);">📅 ${fecha}${cierreDiaAnt!=null?' · Cierre anterior'+fechaAntLabel+': <span style=\"font-family:var(--mono);color:var(--text);font-weight:700;\">'+ fmt(cierreDiaAnt)+'</span>':''}</div>
+      </div>`;
+      result.innerHTML = headerHtml + (_buildCajaCard(r, buzon, gastos, pNombre, fmt, cierreDiaAnt) || `<div class="empty-state">📭<p>Sin datos de caja.</p></div>`);
     } catch(e) { result.innerHTML=`<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`; }
   }
 
@@ -13505,6 +13579,295 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   // Panel de administración de descuentos automáticos
+  async function loadInformesRanking(desde, hasta) {
+    const body = document.getElementById('inf-body');
+    if (!body) return;
+    body.innerHTML = `<div class="empty-state"><span class="spin"></span></div>`;
+    try {
+      const [ventas, pdvs] = await Promise.all([
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_nombre,prod_id,gusto_nombre,gusto_id,cantidad,precio,created_at&limit=100000`) || [],
+        getPdv()
+      ]);
+      const pdvMap = {}; pdvs.forEach(p => { pdvMap[String(p.id)] = p.nombre||p.name||p.id; });
+      const pdvIds = ['todos', ...pdvs.map(p=>String(p.id))];
+
+      // Acumular ranking por PDV
+      const rankMap = { todos: {} };
+      const horaMap = { todos: {} };
+      pdvs.forEach(p => { rankMap[String(p.id)] = {}; horaMap[String(p.id)] = {}; });
+
+      ventas.forEach(v => {
+        const pdvId = String(v.pdv_id||'');
+        const prod  = (v.prod_nombre||v.prod_id||'').trim() || '(sin nombre)';
+        const gusto = (v.gusto_nombre||v.gusto_id||'').trim() || '—';
+        const cant  = parseFloat(v.cantidad||1);
+        const monto = parseFloat(v.precio||0) * cant;
+
+        const add = (map) => {
+          if (!map[prod]) map[prod] = {};
+          if (!map[prod][gusto]) map[prod][gusto] = {cant:0, monto:0};
+          map[prod][gusto].cant  += cant;
+          map[prod][gusto].monto += monto;
+        };
+        add(rankMap.todos);
+        if (pdvId && rankMap[pdvId]) add(rankMap[pdvId]);
+
+        // Horarios
+        if (v.created_at) {
+          const h = new Date(v.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',hour12:false});
+          const hora = parseInt(h)||0;
+          const addH = (map) => {
+            if (!map[hora]) map[hora] = {cant:0, monto:0, tickets:new Set()};
+            map[hora].cant  += cant;
+            map[hora].monto += monto;
+          };
+          addH(horaMap.todos);
+          if (pdvId && horaMap[pdvId]) addH(horaMap[pdvId]);
+        }
+      });
+
+      const fmt = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+      const fmtN = n => parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2});
+
+      function buildRankingHtml(pdvId) {
+        const data = rankMap[pdvId] || {};
+        // Flatten a lista de productos con sus sabores
+        const prods = Object.entries(data).map(([prod, gustos]) => {
+          const totalCant  = Object.values(gustos).reduce((s,x)=>s+x.cant,0);
+          const totalMonto = Object.values(gustos).reduce((s,x)=>s+x.monto,0);
+          const gustosList = Object.entries(gustos).sort((a,b)=>b[1].cant-a[1].cant);
+          return { prod, totalCant, totalMonto, gustosList };
+        }).sort((a,b)=>b.totalMonto-a.totalMonto);
+
+        if (!prods.length) return `<div style="color:var(--text-muted);font-size:13px;padding:10px;">Sin ventas</div>`;
+
+        return `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:var(--surface2);">
+              <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">#</th>
+              <th style="padding:8px 10px;text-align:left;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">Producto / Sabor</th>
+              <th style="padding:8px 10px;text-align:right;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">Cant.</th>
+              <th style="padding:8px 10px;text-align:right;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border);">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${prods.map((p,i) => `
+              <tr style="border-bottom:1px solid var(--border);background:${i%2===0?'transparent':'rgba(255,255,255,.02)'};">
+                <td style="padding:7px 10px;font-weight:800;color:${i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-muted)'};">
+                  ${i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`}
+                </td>
+                <td style="padding:7px 10px;">
+                  <div style="font-weight:700;color:var(--text);">${p.prod}</div>
+                  ${p.gustosList.length>1||p.gustosList[0]?.[0]!=='—'
+                    ? p.gustosList.map(([g,v])=>`<div style="font-size:11px;color:var(--text-muted);padding-left:8px;">↳ ${g} · ${fmtN(v.cant)} u</div>`).join('')
+                    : ''}
+                </td>
+                <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:700;color:var(--accent);">${fmtN(p.totalCant)}</td>
+                <td style="padding:7px 10px;text-align:right;font-family:var(--mono);color:var(--text);">${fmt(p.totalMonto)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+      }
+
+      function buildHorarioHtml(pid) {
+        const data = horaMap[pid] || {};
+        const horas = Object.entries(data).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
+        if (!horas.length) return `<div style="color:var(--text-muted);font-size:13px;padding:10px;">Sin datos de horario</div>`;
+        const maxCant = Math.max(...horas.map(([,v])=>v.cant));
+        const sorted = [...horas].sort((a,b)=>b[1].monto-a[1].monto);
+        return `
+          <div style="margin-bottom:18px;">
+            <div style="font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">📊 Unidades vendidas por hora</div>
+            ${horas.map(([h,v])=>{
+              const pct = maxCant>0 ? Math.round((v.monto/maxCant)*100) : 0;
+              const rank = sorted.findIndex(([hh])=>hh===h);
+              const barColor = rank===0?'#ffd700':rank===1?'#c0c0c0':rank===2?'#cd7f32':'var(--accent)';
+              return `<div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+                <span style="font-family:var(--mono);font-size:12px;color:var(--text-muted);min-width:48px;text-align:right;">${String(h).padStart(2,'0')}:00</span>
+                <div style="flex:1;background:var(--surface2);border-radius:4px;height:18px;overflow:hidden;">
+                  <div style="width:${pct}%;background:${barColor};height:100%;border-radius:4px;transition:width .3s;"></div>
+                </div>
+                <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text);min-width:40px;text-align:right;">${v.cant.toLocaleString('es-AR',{maximumFractionDigits:1})}</span>
+                <span style="font-family:var(--mono);font-size:11px;color:var(--text-muted);min-width:90px;text-align:right;">${fmt(v.monto)}</span>
+              </div>`;
+            }).join('')}
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">🏆 Top horarios</div>
+            ${sorted.slice(0,5).map(([h,v],i)=>`
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:8px;margin-bottom:4px;background:var(--surface2);">
+                <span style="font-size:13px;font-weight:700;color:${i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text)'};">
+                  ${i===0?'🥇':i===1?'🥈':i===2?'🥉':'  '} ${String(h).padStart(2,'0')}:00 – ${String(parseInt(h)+1).padStart(2,'0')}:00
+                </span>
+                <span style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;">${v.cant.toLocaleString('es-AR',{maximumFractionDigits:1})} u · ${fmt(v.monto)}</span>
+              </div>`).join('')}
+          </div>`;
+      }
+
+      // Acumular gráfico por fecha y pdv
+      // grafMap[pid][fecha] = monto
+      const grafMap = { todos: {} };
+      pdvs.forEach(p => { grafMap[String(p.id)] = {}; });
+      ventas.forEach(v => {
+        const pid = String(v.pdv_id||'');
+        const fecha = (v.created_at||'').slice(0,10);
+        const monto = parseFloat(v.precio||0) * parseFloat(v.cantidad||1);
+        if (!fecha) return;
+        grafMap.todos[fecha] = (grafMap.todos[fecha]||0) + monto;
+        if (pid && grafMap[pid]) grafMap[pid][fecha] = (grafMap[pid][fecha]||0) + monto;
+      });
+
+      function buildGraficoHtml(pid, modo) {
+        const data = grafMap[pid] || {};
+        const fechas = Object.keys(data).sort();
+        if (!fechas.length) return `<div style="color:var(--text-muted);font-size:13px;padding:10px;">Sin datos</div>`;
+        const fmt2 = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+        const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+        const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        let grouped = {};
+        fechas.forEach(f => {
+          const d = new Date(f+'T12:00:00');
+          let key;
+          if (modo==='semana') key = d.getDay();
+          else if (modo==='mes') key = d.getDate();
+          else key = d.getMonth();
+          grouped[key] = (grouped[key]||0) + data[f];
+        });
+
+        let entries;
+        if (modo==='semana') entries = [0,1,2,3,4,5,6].map(i=>([DIAS[i], grouped[i]||0]));
+        else if (modo==='mes') entries = Array.from({length:31},(_,i)=>([i+1, grouped[i+1]||0])).filter(([,v])=>v>0);
+        else entries = Array.from({length:12},(_,i)=>([MESES[i], grouped[i]||0]));
+
+        const vals = entries.map(([,v])=>v);
+        const maxVal = Math.max(...vals, 1);
+        const minVal = Math.min(...vals.filter(v=>v>0), 0);
+        const W = 560, H = 160, PAD = 40;
+        const xStep = (W - PAD*2) / Math.max(entries.length-1, 1);
+
+        const points = entries.map(([,v],i) => {
+          const x = PAD + i*xStep;
+          const y = PAD + (H - PAD*2) * (1 - (v - minVal) / (maxVal - minVal || 1));
+          return {x, y, v};
+        });
+        const polyline = points.map(p=>`${p.x},${p.y}`).join(' ');
+        const area = `${points[0].x},${H-PAD} ` + points.map(p=>`${p.x},${p.y}`).join(' ') + ` ${points[points.length-1].x},${H-PAD}`;
+
+        const svgDots = points.map((p,i)=>`
+          <circle cx="${p.x}" cy="${p.y}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+          <title>${entries[i][0]}: ${fmt2(p.v)}</title>`).join('');
+
+        const svgLabels = entries.map(([label],i)=>`
+          <text x="${points[i].x}" y="${H-PAD+14}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.5)">${label}</text>`).join('');
+
+        const svgVals = points.map((p,i)=>{
+          if (i===0||i===points.length-1||p.v===maxVal) return `<text x="${p.x}" y="${p.y-8}" text-anchor="middle" font-size="8" fill="var(--accent)" font-weight="700">${fmt2(p.v)}</text>`;
+          return '';
+        }).join('');
+
+        const top3 = [...entries].sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+        return `
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">
+            💰 Ventas por ${modo==='semana'?'día de semana':modo==='mes'?'día del mes':'mes'} · ${pid==='todos'?'Todos los PDVs':(pdvMap[pid]||pid)}
+          </div>
+          <div style="overflow-x:auto;">
+            <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;">
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.02"/>
+                </linearGradient>
+              </defs>
+              <polygon points="${area}" fill="url(#areaGrad)"/>
+              <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+              ${svgDots}
+              ${svgLabels}
+              ${svgVals}
+            </svg>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            ${top3.map(([l,v],i)=>`
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 12px;border-radius:7px;background:var(--surface2);flex:1;min-width:120px;">
+                <span style="font-size:13px;font-weight:700;color:${i===0?'#ffd700':i===1?'#c0c0c0':'#cd7f32'};">${i===0?'🥇':i===1?'🥈':'🥉'} ${l}</span>
+                <span style="font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;">${fmt2(v)}</span>
+              </div>`).join('')}
+          </div>`;
+      }
+
+      // ── Tabs en 2 filas: tipo + PDV ───────────────────────────────────
+      const modos = [
+        { key:'ranking', label:'📊 Ranking' },
+        { key:'horario', label:'⏰ Horarios' },
+        { key:'semana',  label:'📈 Semana' },
+        { key:'mes',     label:'📈 Mes' },
+        { key:'año',     label:'📈 Año' },
+      ];
+      const pdvOpciones = [{ pid:'todos', label:'📋 Todos' }, ...pdvs.map(p=>({ pid:String(p.id), label:p.nombre||p.name||p.id }))];
+
+      const tabsHtml = `
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;" id="ranking-tipo-tabs">
+          ${modos.map((m,i)=>`
+            <button onclick="window._rankingSetTipo('${m.key}')" id="rtipo-${m.key}"
+              style="padding:6px 16px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:700;cursor:pointer;
+              background:${i===0?'var(--accent)':'var(--surface2)'};color:${i===0?'#000':'var(--text)'};">
+              ${m.label}
+            </button>`).join('')}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;" id="ranking-pdv-tabs">
+          ${pdvOpciones.map((o,i)=>`
+            <button onclick="window._rankingSetPdv('${o.pid}')" id="rpdv-${o.pid}"
+              style="padding:5px 12px;border-radius:20px;border:1px solid var(--border);font-size:11px;font-weight:700;cursor:pointer;
+              background:${i===0?'rgba(200,240,74,.2)':'var(--surface2)'};color:${i===0?'var(--accent)':'var(--text)'};">
+              ${o.label}
+            </button>`).join('')}
+        </div>
+        <div id="ranking-content"></div>`;
+
+      body.innerHTML = `
+        <div style="margin-bottom:10px;font-size:12px;color:var(--text-muted);">📅 ${desde} → ${hasta} · ${ventas.length} ventas procesadas</div>
+        ${tabsHtml}`;
+
+      // Estado actual
+      window._rankingTipo = 'ranking';
+      window._rankingPdv  = 'todos';
+      window._rankingRender = function() {
+        const el = document.getElementById('ranking-content');
+        if (!el) return;
+        const tipo = window._rankingTipo;
+        const pid  = window._rankingPdv;
+        if (tipo==='ranking') el.innerHTML = buildRankingHtml(pid);
+        else if (tipo==='horario') el.innerHTML = buildHorarioHtml(pid);
+        else el.innerHTML = buildGraficoHtml(pid, tipo);
+      };
+      window._rankingSetTipo = function(tipo) {
+        modos.forEach(m => {
+          const btn = document.getElementById(`rtipo-${m.key}`);
+          if (!btn) return;
+          const active = m.key===tipo;
+          btn.style.background = active ? 'var(--accent)' : 'var(--surface2)';
+          btn.style.color = active ? '#000' : 'var(--text)';
+        });
+        window._rankingTipo = tipo;
+        window._rankingRender();
+      };
+      window._rankingSetPdv = function(pid) {
+        pdvOpciones.forEach(o => {
+          const btn = document.getElementById(`rpdv-${o.pid}`);
+          if (!btn) return;
+          const active = o.pid===pid;
+          btn.style.background = active ? 'rgba(200,240,74,.2)' : 'var(--surface2)';
+          btn.style.color = active ? 'var(--accent)' : 'var(--text)';
+        });
+        window._rankingPdv = pid;
+        window._rankingRender();
+      };
+      window._rankingRender();
+
+    } catch(e) { body.innerHTML=`<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`; }
+  }
+
   async function loadInformesDescuentosAuto() {
     const body = document.getElementById('inf-body');
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando descuentos...</p></div>';
