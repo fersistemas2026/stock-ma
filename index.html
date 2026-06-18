@@ -1092,6 +1092,18 @@
               </div>
             </div>
             <div>
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Sucursales donde aplica</label>
+              <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="aviso-pdv-tipo" value="todos" id="aviso-pdv-todos" checked onchange="toggleAvisoPdvs()" style="accent-color:var(--accent);"> Todas las sucursales
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
+                  <input type="radio" name="aviso-pdv-tipo" value="especificos" id="aviso-pdv-esp" onchange="toggleAvisoPdvs()" style="accent-color:var(--accent);"> Específicas
+                </label>
+              </div>
+              <div id="aviso-pdv-lista" style="display:none;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+            <div>
               <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px;">Destinatarios</label>
               <div style="display:flex;gap:8px;margin-bottom:8px;">
                 <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">
@@ -12468,23 +12480,86 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const body = document.getElementById('caja-admin-body');
     if (!body) return;
     const hoy = fechaHoyAR();
+    // Calcular inicio de semana (lunes)
+    const hoyD = new Date(hoy+'T00:00:00');
+    const diaSem = hoyD.getDay(); // 0=dom
+    const diffLun = (diaSem === 0) ? 6 : diaSem - 1;
+    const lunes = new Date(hoyD); lunes.setDate(hoyD.getDate() - diffLun);
+    const semIni = lunes.toISOString().slice(0,10);
+    const mesIni = hoy.slice(0,8)+'01';
+    const anioIni = hoy.slice(0,5)+'01-01';
     body.innerHTML = `
-      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:24px;">
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Fecha</label>
-          <input type="date" id="caja-fecha-admin" value="${hoy}"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Punto de venta</label>
-          <select id="caja-pdv-admin" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;min-width:180px;">
-            <option value="">Cargando PDVs...</option>
-          </select>
-        </div>
-        <button class="btn-primary" onclick="loadCajaAdmin()">🔍 Consultar</button>
-        <button class="btn-outline" style="color:#4a90e2;border-color:#4a90e2;" onclick="enviarCajaEmail()">✉️ Enviar por mail</button>
+      <div style="display:flex;gap:6px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content;">
+        <button id="cajatab-dia" onclick="switchCajaTab('dia')" style="padding:8px 18px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--accent);color:#000;">📅 Día</button>
+        <button id="cajatab-semana" onclick="switchCajaTab('semana')" style="padding:8px 18px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:none;color:var(--text-muted);">📆 Semana</button>
+        <button id="cajatab-mes" onclick="switchCajaTab('mes')" style="padding:8px 18px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:none;color:var(--text-muted);">🗓️ Mes</button>
+        <button id="cajatab-anio" onclick="switchCajaTab('anio')" style="padding:8px 18px;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:none;color:var(--text-muted);">📊 Año</button>
       </div>
-      <div id="caja-admin-result"></div>`;
+      <!-- TAB DÍA -->
+      <div id="cajapanel-dia">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Fecha</label>
+            <input type="date" id="caja-fecha-admin" value="${hoy}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Punto de venta</label>
+            <select id="caja-pdv-admin" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;min-width:180px;">
+              <option value="">Cargando PDVs...</option>
+            </select>
+          </div>
+          <button class="btn-primary" onclick="loadCajaAdmin()">🔍 Consultar</button>
+          <button class="btn-outline" style="color:#4a90e2;border-color:#4a90e2;" onclick="enviarCajaEmail()">✉️ Enviar por mail</button>
+        </div>
+        <div id="caja-admin-result"></div>
+      </div>
+      <!-- TAB SEMANA -->
+      <div id="cajapanel-semana" style="display:none;">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Desde (lunes)</label>
+            <input type="date" id="caja-res-desde-semana" value="${semIni}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;" />
+          </div>
+          <button class="btn-primary" onclick="loadCajaResumen('semana')">🔍 Consultar</button>
+        </div>
+        <div id="caja-res-result-semana"></div>
+      </div>
+      <!-- TAB MES -->
+      <div id="cajapanel-mes" style="display:none;">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Desde</label>
+            <input type="date" id="caja-res-desde-mes" value="${mesIni}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Hasta</label>
+            <input type="date" id="caja-res-hasta-mes" value="${hoy}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;" />
+          </div>
+          <button class="btn-primary" onclick="loadCajaResumen('mes')">🔍 Consultar</button>
+        </div>
+        <div id="caja-res-result-mes"></div>
+      </div>
+      <!-- TAB AÑO -->
+      <div id="cajapanel-anio" style="display:none;">
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Desde</label>
+            <input type="date" id="caja-res-desde-anio" value="${anioIni}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Hasta</label>
+            <input type="date" id="caja-res-hasta-anio" value="${hoy}"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;" />
+          </div>
+          <button class="btn-primary" onclick="loadCajaResumen('anio')">🔍 Consultar</button>
+        </div>
+        <div id="caja-res-result-anio"></div>
+      </div>`;
     // Load PDVs into selector
     getPdv().then(pdvs=>{
       const sel=document.getElementById('caja-pdv-admin');
@@ -12492,6 +12567,117 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       sel.innerHTML=`<option value="todos">📋 Todos los PDVs</option>`+pdvs.map(p=>`<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
     });
   }
+
+  window.switchCajaTab = function(tab) {
+    ['dia','semana','mes','anio'].forEach(t => {
+      const panel = document.getElementById('cajapanel-'+t);
+      const btn = document.getElementById('cajatab-'+t);
+      if (!panel||!btn) return;
+      const active = t===tab;
+      panel.style.display = active ? '' : 'none';
+      btn.style.background = active ? 'var(--accent)' : 'none';
+      btn.style.color = active ? '#000' : 'var(--text-muted)';
+    });
+  };
+
+  window.loadCajaResumen = async function(periodo) {
+    const fmt = n => '$'+parseFloat(n||0).toLocaleString('es-AR',{minimumFractionDigits:2});
+    let desde, hasta;
+    if (periodo === 'semana') {
+      desde = document.getElementById('caja-res-desde-semana')?.value;
+      // hasta = 6 días después
+      const d = new Date(desde+'T00:00:00'); d.setDate(d.getDate()+6);
+      hasta = d.toISOString().slice(0,10);
+    } else {
+      desde = document.getElementById('caja-res-desde-'+periodo)?.value;
+      hasta = document.getElementById('caja-res-hasta-'+periodo)?.value;
+    }
+    if (!desde||!hasta) { toast('Completá el rango de fechas','error'); return; }
+    const result = document.getElementById('caja-res-result-'+periodo);
+    result.innerHTML = '<div class="empty-state"><span class="spin"></span></div>';
+    try {
+      const [pdvs, cajaRows, ventasRows] = await Promise.all([
+        getPdv(),
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&tipo=eq.cierre&select=pdv_id,fecha,turno,efectivo,tarjetas,pedidos,reporte_z`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,precio,cantidad,metodo_pago`) || []
+      ]);
+      if (!cajaRows.length && !ventasRows.length) {
+        result.innerHTML = '<div class="empty-state">📭<p>No hay datos en ese período.</p></div>'; return;
+      }
+      // Agrupar por PDV
+      const byPdv = {};
+      cajaRows.forEach(r => {
+        const pid = String(r.pdv_id);
+        if (!byPdv[pid]) byPdv[pid] = { ef:0, tj:0, ped:0, repZ:0, vEf:0, vTj:0 };
+        byPdv[pid].ef  += parseFloat(r.efectivo||0);
+        byPdv[pid].tj  += parseFloat(r.tarjetas||0);
+        byPdv[pid].ped += parseFloat(r.pedidos||0);
+        byPdv[pid].repZ+= parseFloat(r.reporte_z||0);
+      });
+      ventasRows.forEach(v => {
+        const pid = String(v.pdv_id);
+        if (!byPdv[pid]) byPdv[pid] = { ef:0, tj:0, ped:0, repZ:0, vEf:0, vTj:0 };
+        const monto = parseFloat(v.precio||0) * parseFloat(v.cantidad||1);
+        if ((v.metodo_pago||'').includes('tarjeta')) byPdv[pid].vTj += monto;
+        else byPdv[pid].vEf += monto;
+      });
+      // Totales
+      const tot = { ef:0, tj:0, ped:0, repZ:0, vEf:0, vTj:0 };
+      Object.values(byPdv).forEach(r => { tot.ef+=r.ef; tot.tj+=r.tj; tot.ped+=r.ped; tot.repZ+=r.repZ; tot.vEf+=r.vEf; tot.vTj+=r.vTj; });
+      const td = (v, color, bold) => `<td style="padding:8px 12px;font-family:var(--mono);font-size:13px;color:${color||'var(--text)'};${bold?'font-weight:800;':''}">${v}</td>`;
+      const tdOk = (op, sis) => {
+        const dif = op - sis; const ok = Math.abs(dif)<0.5;
+        return `<td style="padding:8px 12px;text-align:center;font-size:16px;">${ok?'✅':'⚠️'}</td>`;
+      };
+      const rows = Object.entries(byPdv).map(([pid, r]) => {
+        const pdv = pdvs.find(p=>String(p.id)===pid);
+        const nombre = pdv?(pdv.nombre||pdv.name):`PDV ${pid.slice(0,6)}`;
+        const vTot = r.vEf + r.vTj;
+        return `<tr>
+          ${td(nombre,'var(--text)',true)}
+          ${td(fmt(r.ef))}
+          ${td(fmt(r.tj))}
+          ${tdOk(r.tj, r.vTj)}
+          ${td(fmt(r.ped))}
+          ${td(fmt(r.ef+r.tj+r.ped),'var(--accent)',true)}
+          ${td(fmt(r.vEf),'var(--text-muted)')}
+          ${td(fmt(r.vTj),'var(--text-muted)')}
+          ${td(fmt(vTot),'var(--text-muted)',true)}
+        </tr>`;
+      }).join('');
+      const vTotTot = tot.vEf+tot.vTj;
+      const thS = 'padding:8px 12px;font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;';
+      result.innerHTML = `
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;font-family:var(--mono);">📅 ${desde} → ${hasta}</div>
+        <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--surface2);">
+            <th style="${thS}">PDV</th>
+            <th style="${thS}">Ef. Operador</th>
+            <th style="${thS}">Tj. Operador</th>
+            <th style="${thS};text-align:center;">✓</th>
+            <th style="${thS}">Pedidos</th>
+            <th style="${thS}">Total Caja</th>
+            <th style="${thS}">Ef. Sistema</th>
+            <th style="${thS}">Tj. Sistema</th>
+            <th style="${thS}">Total Ventas</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="background:var(--surface2);border-top:2px solid var(--border);">
+            ${td('TOTAL','var(--text)',true)}
+            ${td(fmt(tot.ef),'var(--text)',true)}
+            ${td(fmt(tot.tj),'var(--text)',true)}
+            <td></td>
+            ${td(fmt(tot.ped),'var(--text)',true)}
+            ${td(fmt(tot.ef+tot.tj+tot.ped),'var(--accent)',true)}
+            ${td(fmt(tot.vEf),'var(--text-muted)',true)}
+            ${td(fmt(tot.vTj),'var(--text-muted)',true)}
+            ${td(fmt(vTotTot),'var(--text-muted)',true)}
+          </tr></tfoot>
+        </table>
+        </div>`;
+    } catch(e) { result.innerHTML=`<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`; }
+  };
 
   function _buildCajaCard(r, buzon, gastos, pNombre, fmt, cierreDiaAnt) {
     const turnos = ['mañana','tarde'];
@@ -13278,6 +13464,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const secs = (av.secciones || []).join(', ') || '—';
         const dest = av.destinatarios === 'todos' ? 'Todos los operadores'
           : (av.destinatarios_lista || []).map(u => userMap[u] || u).join(', ') || '—';
+        const pdvsLabel = av.pdvs_tipo === 'especificos'
+          ? (av.pdvs_lista || []).map(pid => { const p = _pdvCache?.find(x => String(x.id)===String(pid)); return p ? (p.nombre||p.name||pid) : pid; }).join(', ') || '—'
+          : 'Todas las sucursales';
         const activo = av.activo !== false;
         const diasN = ['Dom','Lun','Mar','Mi\u00e9','Jue','Vie','S\u00e1b'];
         const mesesN = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -13297,6 +13486,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               '<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:11px;font-family:var(--mono);">'+
                 '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u26A1 Cada '+(av.cada || 1)+' op.</span>'+
                 '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u{1F4CD} '+secs+'</span>'+
+                '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u{1F3EA} '+pdvsLabel+'</span>'+
                 '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 8px;color:var(--text-muted);">\u{1F464} '+dest+'</span>'+
                 progBadge+
               '</div>'+
@@ -13334,12 +13524,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (inpFF) inpFF.value = '';
     document.getElementById('aviso-dest-todos').checked = true;
     document.getElementById('aviso-dest-lista').style.display = 'none';
+    document.getElementById('aviso-pdv-todos').checked = true;
+    document.getElementById('aviso-pdv-lista').style.display = 'none';
     // Cargar operadores en lista destinatarios
     const destLista = document.getElementById('aviso-dest-lista');
     const usuarios = await sbApi(`usuarios?role=eq.operador&select=username,display_name`) || [];
     destLista.innerHTML = usuarios.map(u =>
       `<label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;">
         <input type="checkbox" class="aviso-user-check" value="${u.username}" style="accent-color:var(--accent);"> ${u.display_name||u.username}
+      </label>`).join('');
+    // Cargar PDVs en lista sucursales
+    const pdvLista = document.getElementById('aviso-pdv-lista');
+    const allPdvs = await getPdv() || [];
+    pdvLista.innerHTML = allPdvs.map(p =>
+      `<label style="display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" class="aviso-pdv-check" value="${p.id}" style="accent-color:var(--accent);"> 🏪 ${p.nombre||p.name||p.id}
       </label>`).join('');
     // Si es edición, cargar datos
     if (id) {
@@ -13385,6 +13584,15 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             if (el) el.checked = true;
           });
         }
+        // Restaurar PDVs
+        if (av.pdvs_tipo === 'especificos') {
+          document.getElementById('aviso-pdv-esp').checked = true;
+          pdvLista.style.display = 'flex';
+          (av.pdvs_lista || []).forEach(pid => {
+            const el = document.querySelector(`.aviso-pdv-check[value="${pid}"]`);
+            if (el) el.checked = true;
+          });
+        }
       }
     }
   }
@@ -13392,6 +13600,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   window.toggleAvisoDestinatarios = function() {
     const esp = document.getElementById('aviso-dest-esp').checked;
     document.getElementById('aviso-dest-lista').style.display = esp ? 'flex' : 'none';
+  };
+
+  window.toggleAvisoPdvs = function() {
+    const esp = document.getElementById('aviso-pdv-esp').checked;
+    document.getElementById('aviso-pdv-lista').style.display = esp ? 'flex' : 'none';
   };
 
   function cerrarModalAviso() {
@@ -13406,6 +13619,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const destTipo = document.querySelector('input[name="aviso-dest-tipo"]:checked')?.value || 'todos';
     const destLista = destTipo === 'especificos'
       ? [...document.querySelectorAll('.aviso-user-check:checked')].map(c => c.value)
+      : [];
+    const pdvsTipo = document.querySelector('input[name="aviso-pdv-tipo"]:checked')?.value || 'todos';
+    const pdvsLista = pdvsTipo === 'especificos'
+      ? [...document.querySelectorAll('.aviso-pdv-check:checked')].map(c => c.value)
       : [];
 
     // Programación
@@ -13424,6 +13641,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       secciones,
       destinatarios: destTipo,
       destinatarios_lista: destLista,
+      pdvs_tipo: pdvsTipo,
+      pdvs_lista: pdvsLista,
       activo: true,
       prog_dias_semana: diasSemana.length ? diasSemana : null,
       prog_meses: meses.length ? meses : null,
@@ -13470,11 +13689,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       } catch(e) { return; }
     }
     const username = currentUser.username;
+    const operadorPdvId = _sesionId ? String(_sesionId) : (currentUser.pdvs && currentUser.pdvs[0] ? String(currentUser.pdvs[0]) : null);
     // Filtrar avisos aplicables a esta sección y este usuario
     const aplicables = _avisosCache.filter(av => {
       if (!av.activo) return false;
       if (!(av.secciones || []).includes(seccion)) return false;
       if (av.destinatarios === 'especificos' && !(av.destinatarios_lista || []).includes(username)) return false;
+      // Filtrar por sucursal
+      if (av.pdvs_tipo === 'especificos' && operadorPdvId && !(av.pdvs_lista || []).map(String).includes(operadorPdvId)) return false;
       // Filtrar por programación
       const ahora = new Date();
       const diaSemana = ahora.getDay();   // 0=Dom
