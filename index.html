@@ -387,6 +387,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;recuento&#39;)" id="neg-btn-recuento" style="display:none">🔢 Recuento</button>
         <button class="neg-stab" onclick="switchNeg(&#39;lista-precios-op&#39;)" id="neg-btn-lista-precios-op" style="display:none">💰 Lista de precios</button>
         <button class="neg-stab" onclick="switchNeg(&#39;ventas&#39;)" id="neg-btn-ventas-op" style="display:none">🛒 Ventas</button>
+        <button class="neg-stab" onclick="switchNeg('pedidos-op')" id="neg-btn-pedidos-op" style="display:none">📲 Pedidos Online <span id="po-op-badge" style="display:none;background:#D85A30;color:white;border-radius:999px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:4px">0</span></button>
         <button class="neg-stab" onclick="switchNeg(&#39;clientes-op&#39;)" id="neg-btn-clientes-op" style="display:none">👥 Clientes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;lista-prod&#39;)" id="neg-btn-lista-prod" style="display:none">📋 Lista de productos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;envio-pedido&#39;)" id="neg-btn-envio-pedido" style="display:none">📦 Envío pedido</button>
@@ -1492,6 +1493,23 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="neg-pedidos-op" class="neg-panel" style="display:none">
+  <div style="padding:16px;max-width:700px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="form-title">📲 Pedidos Online</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:2px">Pedidos recibidos para tu sucursal</p>
+      </div>
+      <button onclick="poOpCargar()" class="btn-outline" style="font-size:13px">🔄 Actualizar</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="po-op-fbtn active" onclick="poOpFiltrar(this,'pendientes')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer">⏳ Pendientes</button>
+      <button class="po-op-fbtn" onclick="poOpFiltrar(this,'todos')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">Todos</button>
+    </div>
+    <div id="po-op-lista"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
   </div>
 </div>
 </div><!-- /neg-panels-wrap -->
@@ -7356,6 +7374,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function initVentas() {
     try { actualizarBadgeDescuento(); } catch(e) {}
+    try { poOpRecordatorio(); } catch(e) {}
     const [prods, saved] = await Promise.all([
       getProd(),
       sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos`) || []
@@ -10906,6 +10925,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.monitor !== false) show('neg-btn-monitor'); else hide('neg-btn-monitor');
       if (perms.detalleCliente) show('neg-btn-clientes-op'); else hide('neg-btn-clientes-op');
       show('neg-btn-promociones-op');
+      show('neg-btn-pedidos-op');
       setupNegLayout(false);
       // Renombrar tab agregar para operadores
       const tabAgregar = document.getElementById('tab-btn-agregar');
@@ -15317,8 +15337,143 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   const _origSwitchNegPO=switchNeg;
-  switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();};
+  switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();if(sub==='pedidos-op')poOpCargar();};
+  setTimeout(()=>{try{if(!isAdmin){poOpCargar();poOpStartPolling();}}catch(e){}},3000);
   // ══════════════════════════════════════ / PEDIDOS ONLINE ADMIN ══
+
+
+  // ══════════════════════════════ PEDIDOS ONLINE OPERADOR ══
+
+  let _poOpPedidos = [], _poOpFiltro = 'pendientes', _poOpInterval = null;
+
+  async function poOpCargar() {
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    try {
+      // Buscar por pdv_id del operador actual
+      const pdvId = pdvActual || window._pdvId || '';
+      let url = `${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&order=created_at.desc&limit=50`;
+      if (pdvId) url += `&pdv_id=eq.${pdvId}`;
+      const r = await fetch(url, {headers:H2});
+      _poOpPedidos = r.ok ? await r.json() : [];
+    } catch(e) { _poOpPedidos = []; }
+    poOpActualizarBadge();
+    poOpRender();
+  }
+
+  function poOpActualizarBadge() {
+    const pendientes = _poOpPedidos.filter(p => p.estado === 'nuevo' || p.estado === 'en_preparacion').length;
+    const badge = document.getElementById('po-op-badge');
+    if (badge) {
+      badge.style.display = pendientes > 0 ? 'inline' : 'none';
+      badge.textContent = pendientes;
+    }
+    // También badge en botón menú
+    const btnMenu = document.getElementById('neg-btn-pedidos-op');
+    if (btnMenu) btnMenu.style.color = pendientes > 0 ? '#D85A30' : '';
+  }
+
+  function poOpFiltrar(btn, filtro) {
+    _poOpFiltro = filtro;
+    document.querySelectorAll('.po-op-fbtn').forEach(b => { b.style.background='none'; b.style.color='var(--text-muted)'; b.classList.remove('active'); });
+    btn.style.background = 'var(--surface)'; btn.style.color = 'var(--text)'; btn.classList.add('active');
+    poOpRender();
+  }
+
+  function poOpRender() {
+    const el = document.getElementById('po-op-lista');
+    if (!el) return;
+    const estadosPendientes = ['nuevo','en_preparacion'];
+    const lista = _poOpFiltro === 'pendientes'
+      ? _poOpPedidos.filter(p => estadosPendientes.includes(p.estado))
+      : _poOpPedidos;
+
+    if (!lista.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">' +
+        (_poOpFiltro==='pendientes' ? '✅ No hay pedidos pendientes' : 'No hay pedidos') + '</div>';
+      return;
+    }
+
+    const ec = {nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75',entregado:'#5a6070',cancelado:'#888'};
+    const el2 = {nuevo:'🆕 Nuevo',en_preparacion:'👨‍🍳 En preparación',listo:'✅ Listo',entregado:'📦 Entregado',cancelado:'❌ Cancelado'};
+    const sig = {nuevo:'en_preparacion',en_preparacion:'listo',listo:'entregado'};
+    const sigl = {nuevo:'👨‍🍳 Iniciar preparación',en_preparacion:'✅ Marcar listo',listo:'📦 Entregar'};
+
+    el.innerHTML = lista.map(p => {
+      const items = Array.isArray(p.items) ? p.items : [];
+      const hora = new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+          <div>
+            <div style="font-size:15px;font-weight:700">${p.cliente_nombre||'Sin nombre'} <span style="font-size:13px;font-weight:400;color:var(--text-muted)">· ${p.cliente_tel||''}</span></div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'} · ${hora}${p.direccion?' · 📍 '+p.direccion:''}</div>
+          </div>
+          <span style="padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:white;background:${ec[p.estado]||'#888'}">${el2[p.estado]||p.estado}</span>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:8px;margin-bottom:10px">
+          ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0">
+            <span>${it.prod_nombre} · ${it.gusto_nombre} × ${it.cantidad}</span>
+            <span style="color:var(--text-muted)">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span>
+          </div>`).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <span style="font-size:13px">${p.metodo_pago==='transfe'?'🏦 Transferencia':'💵 Efectivo'} · <strong>$${(p.total_final||p.total||0).toLocaleString('es-AR')}</strong></span>
+          <div style="display:flex;gap:6px">
+            ${sig[p.estado]?`<button onclick="poOpAvanzar('${p.id}','${sig[p.estado]}')" class="neg-stab-vertical" style="padding:8px 14px;font-size:13px">${sigl[p.estado]}</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function poOpAvanzar(id, nuevoEstado) {
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${id}`, {method:'PATCH',headers:H2,body:JSON.stringify({estado:nuevoEstado})});
+    if (nuevoEstado === 'entregado') {
+      const ped = _poOpPedidos.find(p=>p.id===id);
+      if (ped) await poGenerarVenta(ped);
+      toast('📦 Entregado y venta registrada', 'success');
+    } else {
+      toast('Estado actualizado', 'success');
+    }
+    poOpCargar();
+  }
+
+  function poOpRecordatorio() {
+    // Solo para operadores, no admins
+    if (isAdmin) return;
+    const pendientes = _poOpPedidos.filter(p => p.estado === 'nuevo').length;
+    if (pendientes > 0) {
+      // Mostrar aviso usando el sistema de toast o un banner
+      const msg = pendientes === 1
+        ? '📲 Tenés 1 pedido online nuevo sin atender'
+        : `📲 Tenés ${pendientes} pedidos online nuevos sin atender`;
+      // Crear banner temporal
+      let banner = document.getElementById('po-op-recordatorio');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'po-op-recordatorio';
+        banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#D85A30;color:white;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap';
+        banner.onclick = () => { banner.remove(); switchNeg('pedidos-op'); };
+        document.body.appendChild(banner);
+        setTimeout(() => { try { banner.remove(); } catch(e){} }, 8000);
+      }
+      banner.textContent = msg + ' — Tap para ver';
+    }
+  }
+
+  // Polling cada 30 segundos para operadores
+  function poOpStartPolling() {
+    if (_poOpInterval) clearInterval(_poOpInterval);
+    _poOpInterval = setInterval(async () => {
+      if (isAdmin) return;
+      const prevNuevos = _poOpPedidos.filter(p=>p.estado==='nuevo').length;
+      await poOpCargar();
+      const nuevosAhora = _poOpPedidos.filter(p=>p.estado==='nuevo').length;
+      if (nuevosAhora > prevNuevos) poOpRecordatorio();
+    }, 30000);
+  }
+
+  // ══════════════════════════════ / PEDIDOS ONLINE OPERADOR ══
 
 </script>
 
