@@ -1446,14 +1446,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 </div><!-- /pdv-modal -->
 
 
-<!-- ══════════════════════════════════════════ PEDIDOS ONLINE -->
 <div id="neg-pedidos-online" class="neg-panel" style="display:none">
   <div style="padding:20px 24px;max-width:900px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div>
-        <div class="form-title">🛒 Pedidos Online</div>
-        <p style="font-size:13px;color:var(--text-muted);margin-top:2px">Gestioná los pedidos que llegan desde la tienda online</p>
-      </div>
+      <div><div class="form-title">🛒 Pedidos Online</div><p style="font-size:13px;color:var(--text-muted);margin-top:2px">Gestioná los pedidos que llegan desde la tienda online</p></div>
       <div style="display:flex;gap:8px;align-items:center">
         <span id="po-badge-nuevos" style="display:none;background:#D85A30;color:white;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700"></span>
         <button onclick="initPedidosOnline()" class="btn-outline" style="font-size:13px">🔄 Actualizar</button>
@@ -1498,8 +1494,6 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     </div>
   </div>
 </div>
-<!-- /PEDIDOS ONLINE -->
-
 </div><!-- /neg-panels-wrap -->
 </div><!-- /neg-layout -->
   
@@ -15125,62 +15119,59 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   })();
 
   // ══════════════════════════════════════ PEDIDOS ONLINE ADMIN ══
-
-  let _poPedidos = [], _poFiltroEstado = 'todos';
-  let _poProductos = [], _poGustos = [], _poListaDatos = {}, _poPromos = [];
+  let _poPedidos=[], _poFiltroEstado='todos', _poProductos=[], _poGustos=[], _poListaDatos={}, _poPromos=[];
 
   async function initPedidosOnline() {
     await Promise.all([poCargarPedidos(), poCargarConfigProductos(), poCargarPromos()]);
   }
 
   function poSwitchTab(tab) {
-    document.getElementById('po-panel-pedidos').style.display = tab === 'pedidos' ? 'block' : 'none';
-    document.getElementById('po-panel-config').style.display  = tab === 'config'  ? 'block' : 'none';
-    document.querySelectorAll('.po-tab').forEach(b => {
-      const a = b.id === 'po-tab-' + tab;
-      b.style.color = a ? 'var(--accent)' : 'var(--text-muted)';
-      b.style.fontWeight = a ? '700' : '500';
-      b.style.borderBottom = a ? '2px solid var(--accent)' : '2px solid transparent';
+    document.getElementById('po-panel-pedidos').style.display = tab==='pedidos'?'block':'none';
+    document.getElementById('po-panel-config').style.display  = tab==='config' ?'block':'none';
+    document.querySelectorAll('.po-tab').forEach(b=>{
+      const a=b.id==='po-tab-'+tab;
+      b.style.color=a?'var(--accent)':'var(--text-muted)';
+      b.style.fontWeight=a?'700':'500';
+      b.style.borderBottom=a?'2px solid var(--accent)':'2px solid transparent';
     });
   }
 
   async function poCargarPedidos() {
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
     try {
-      const hoy = new Date().toISOString().slice(0,10);
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&created_at=gte.${hoy}T00:00:00&order=created_at.desc&limit=100`, { headers: H2 });
-      _poPedidos = r.ok ? await r.json() : [];
-    } catch(e) { _poPedidos = []; }
-    const nuevos = _poPedidos.filter(p => p.estado === 'nuevo').length;
-    const badge = document.getElementById('po-badge-nuevos');
-    if (badge) { badge.style.display = nuevos > 0 ? 'inline' : 'none'; badge.textContent = `${nuevos} nuevo${nuevos>1?'s':''}`; }
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&order=created_at.desc&limit=100`,{headers:H2});
+      _poPedidos=r.ok?await r.json():[];
+    } catch(e){_poPedidos=[];}
+    const nuevos=_poPedidos.filter(p=>p.estado==='nuevo').length;
+    const badge=document.getElementById('po-badge-nuevos');
+    if(badge){badge.style.display=nuevos>0?'inline':'none';badge.textContent=`${nuevos} nuevo${nuevos>1?'s':''}`;}
     poRenderPedidos();
   }
 
-  function poFiltrarEstado(btn, estado) {
-    _poFiltroEstado = estado;
-    document.querySelectorAll('.po-estado-btn').forEach(b => { b.style.background='none'; b.style.color='var(--text-muted)'; });
-    btn.style.background = 'var(--surface)'; btn.style.color = 'var(--text)';
+  function poFiltrarEstado(btn,estado){
+    _poFiltroEstado=estado;
+    document.querySelectorAll('.po-estado-btn').forEach(b=>{b.style.background='none';b.style.color='var(--text-muted)';});
+    btn.style.background='var(--surface)';btn.style.color='var(--text)';
     poRenderPedidos();
   }
 
-  function poRenderPedidos() {
-    const lista = _poFiltroEstado === 'todos' ? _poPedidos : _poPedidos.filter(p => p.estado === _poFiltroEstado);
-    const el = document.getElementById('po-lista-pedidos');
-    if (!el) return;
-    if (!lista.length) { el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">No hay pedidos' + (_poFiltroEstado!=='todos'?' en este estado':' hoy') + '</div>'; return; }
-    const ec = { nuevo:'#D85A30', en_preparacion:'#E6A817', listo:'#1D9E75', entregado:'#5a6070', cancelado:'#c0392b' };
-    const el2 = { nuevo:'🆕 Nuevo', en_preparacion:'👨‍🍳 En preparación', listo:'✅ Listo', entregado:'📦 Entregado', cancelado:'❌ Cancelado' };
-    const sig = { nuevo:'en_preparacion', en_preparacion:'listo', listo:'entregado' };
-    const sigl = { nuevo:'👨‍🍳 Iniciar', en_preparacion:'✅ Listo', listo:'📦 Entregar' };
-    el.innerHTML = lista.map(p => {
-      const items = Array.isArray(p.items) ? p.items : [];
-      const hora = new Date(p.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  function poRenderPedidos(){
+    const lista=_poFiltroEstado==='todos'?_poPedidos:_poPedidos.filter(p=>p.estado===_poFiltroEstado);
+    const el=document.getElementById('po-lista-pedidos');
+    if(!el)return;
+    if(!lista.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">No hay pedidos'+(_poFiltroEstado!=='todos'?' en este estado':'')+' </div>';return;}
+    const ec={nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75',entregado:'#5a6070',cancelado:'#c0392b'};
+    const el2={nuevo:'🆕 Nuevo',en_preparacion:'👨‍🍳 En preparación',listo:'✅ Listo',entregado:'📦 Entregado',cancelado:'❌ Cancelado'};
+    const sig={nuevo:'en_preparacion',en_preparacion:'listo',listo:'entregado'};
+    const sigl={nuevo:'👨‍🍳 Iniciar',en_preparacion:'✅ Listo',listo:'📦 Entregar'};
+    el.innerHTML=lista.map(p=>{
+      const items=Array.isArray(p.items)?p.items:[];
+      const hora=new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
           <div>
             <div style="font-size:15px;font-weight:700">${p.cliente_nombre||'Sin nombre'} <span style="font-size:13px;font-weight:400;color:var(--text-muted)">· ${p.cliente_tel||''}</span></div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.pdv_nombre||''} · ${p.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'} · ${hora}hs${p.direccion?' · 📍 '+p.direccion:''}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.pdv_nombre||''} · ${p.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'} · ${hora}${p.direccion?' · 📍 '+p.direccion:''}</div>
           </div>
           <span style="padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;color:white;background:${ec[p.estado]||'#888'}">${el2[p.estado]||p.estado}</span>
         </div>
@@ -15198,123 +15189,118 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }).join('');
   }
 
-  async function poAvanzarEstado(id, nuevoEstado) {
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-    await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${id}`, { method:'PATCH', headers:H2, body:JSON.stringify({estado:nuevoEstado}) });
-    if (nuevoEstado === 'entregado') { const ped = _poPedidos.find(p=>p.id===id); if (ped) await poGenerarVenta(ped); }
+  async function poAvanzarEstado(id,nuevoEstado){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${id}`,{method:'PATCH',headers:H2,body:JSON.stringify({estado:nuevoEstado})});
+    if(nuevoEstado==='entregado'){const ped=_poPedidos.find(p=>p.id===id);if(ped)await poGenerarVenta(ped);}
     toast(nuevoEstado==='entregado'?'📦 Entregado y venta registrada':'Estado actualizado','success');
     poCargarPedidos();
   }
 
-  async function poCancelarPedido(id) {
-    if (!confirm('¿Cancelar este pedido?')) return;
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-    await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${id}`, { method:'PATCH', headers:H2, body:JSON.stringify({estado:'cancelado'}) });
-    toast('Pedido cancelado','success'); poCargarPedidos();
+  async function poCancelarPedido(id){
+    if(!confirm('¿Cancelar este pedido?'))return;
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${id}`,{method:'PATCH',headers:H2,body:JSON.stringify({estado:'cancelado'})});
+    toast('Pedido cancelado','success');poCargarPedidos();
   }
 
-  async function poGenerarVenta(pedido) {
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-    const fecha = new Date().toISOString().slice(0,10);
-    const hora  = new Date().toTimeString().slice(0,5);
-    const items = Array.isArray(pedido.items) ? pedido.items : [];
-    const totalBase = items.reduce((s,it)=>s+(it.precio||0)*(it.cantidad||0),0);
-    const totalFinal = pedido.total_final || pedido.total || totalBase;
-    const factor = totalBase > 0 ? (totalFinal/totalBase) : 1;
-    const rows = items.map(it => ({
-      empresa_id: String(empresaActual), pdv_id: String(pedido.pdv_id||''), fecha, hora,
-      ticket_id: `ONLINE_${pedido.id}`, prod_id: it.prod_id||'', prod_nombre: it.prod_nombre||'',
-      gusto_id: it.gusto_id||'', gusto_nombre: it.gusto_nombre||'', cantidad: it.cantidad||1,
-      precio: (it.precio||0)*factor, lista:'Lista 1',
-      metodo_pago: pedido.metodo_pago==='transfe'?'transferencia':'efectivo',
-      username:'online', cliente_tel: pedido.cliente_tel||null, cliente_nombre: pedido.cliente_nombre||null, origen:'online'
+  async function poGenerarVenta(pedido){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    const fecha=new Date().toISOString().slice(0,10);
+    const hora=new Date().toTimeString().slice(0,5);
+    const items=Array.isArray(pedido.items)?pedido.items:[];
+    const totalBase=items.reduce((s,it)=>s+(it.precio||0)*(it.cantidad||0),0);
+    const totalFinal=pedido.total_final||pedido.total||totalBase;
+    const factor=totalBase>0?(totalFinal/totalBase):1;
+    const rows=items.map(it=>({
+      empresa_id:String(empresaActual),pdv_id:String(pedido.pdv_id||''),fecha,hora,
+      ticket_id:`ONLINE_${pedido.id}`,prod_id:it.prod_id||'',prod_nombre:it.prod_nombre||'',
+      gusto_id:it.gusto_id||'',gusto_nombre:it.gusto_nombre||'',cantidad:it.cantidad||1,
+      precio:(it.precio||0)*factor,lista:'Lista 1',
+      metodo_pago:pedido.metodo_pago==='transfe'?'transferencia':'efectivo',
+      username:'online',cliente_tel:pedido.cliente_tel||null,cliente_nombre:pedido.cliente_nombre||null,origen:'online'
     }));
-    await fetch(`${SUPABASE_URL}/rest/v1/ventas`, { method:'POST', headers:H2, body:JSON.stringify(rows) });
+    await fetch(`${SUPABASE_URL}/rest/v1/ventas`,{method:'POST',headers:H2,body:JSON.stringify(rows)});
   }
 
-  async function poCargarConfigProductos() {
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
-    try {
-      const [prods, gsts, lista] = await Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre,categoria`, {headers:H2}).then(r=>r.json()),
-        fetch(`${SUPABASE_URL}/rest/v1/gustos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,producto_id,nombre`, {headers:H2}).then(r=>r.json()),
-        fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos,online_activo`, {headers:H2}).then(r=>r.json())
+  async function poCargarConfigProductos(){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    try{
+      const [prods,gsts,lista]=await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre,categoria`,{headers:H2}).then(r=>r.json()),
+        fetch(`${SUPABASE_URL}/rest/v1/gustos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,producto_id,nombre`,{headers:H2}).then(r=>r.json()),
+        fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos,online_activo`,{headers:H2}).then(r=>r.json())
       ]);
-      _poProductos = prods||[];
-      _poGustos    = gsts||[];
-      // lista_datos: prod_id = ID del producto, datos.gustos = [{gid, nombre, precio}]
-      // online_activo = array de gustoIds activos (guardamos así)
-      _poListaDatos = {};
-      (lista||[]).forEach(row => {
-        if (!row.prod_id || row.prod_id.startsWith('SCHED_') || row.prod_id==='__config__') return;
-        try {
-          const d = typeof row.datos==='string' ? JSON.parse(row.datos) : row.datos;
-          const gustosArr = d?.gustos || [];
-          // online_activo puede ser array de gids o boolean
-          let activos = new Set();
-          if (Array.isArray(row.online_activo)) activos = new Set(row.online_activo);
-          _poListaDatos[String(row.prod_id)] = { gustos: gustosArr, activos };
-        } catch(e) {}
+      _poProductos=prods||[];_poGustos=gsts||[];
+      _poListaDatos={};
+      (lista||[]).forEach(row=>{
+        if(!row.prod_id||row.prod_id.startsWith('SCHED_')||row.prod_id==='__config__')return;
+        try{
+          const d=typeof row.datos==='string'?JSON.parse(row.datos):row.datos;
+          const gustosArr=d?.gustos||[];
+          const activosArr=Array.isArray(row.online_activo)?row.online_activo:[];
+          _poListaDatos[String(row.prod_id)]={gustos:gustosArr,activos:new Set(activosArr.map(String))};
+        }catch(e){}
       });
-    } catch(e) {}
+    }catch(e){}
     poRenderConfigProductos();
   }
 
-  function poRenderConfigProductos() {
-    const el = document.getElementById('po-config-productos');
-    if (!el) return;
-    let html = '';
-    _poProductos.forEach(p => {
-      const ld = _poListaDatos[String(p.id)];
-      if (!ld || !ld.gustos.length) return;
-      html += `<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase">${p.nombre}</div>`;
-      ld.gustos.forEach(g => {
-        const act = ld.activos.has(String(g.gid));
-        const precio = parseFloat(g.precio)||0;
-        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+  function poRenderConfigProductos(){
+    const el=document.getElementById('po-config-productos');
+    if(!el)return;
+    let html='';
+    _poProductos.forEach(p=>{
+      const ld=_poListaDatos[String(p.id)];
+      if(!ld||!ld.gustos.length)return;
+      html+=`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase">${p.nombre}</div>`;
+      ld.gustos.forEach(g=>{
+        const act=ld.activos.has(String(g.gid));
+        const precio=String(g.precio||'').replace(/\./g,'').replace(',','.');
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
             <input type="checkbox" class="po-chk" data-prodid="${p.id}" data-gustoid="${g.gid}" ${act?'checked':''} style="width:16px;height:16px;cursor:pointer">
             <span style="font-size:13px">${g.nombre}</span>
           </label>
-          <span style="font-size:12px;color:var(--text-muted)">$${precio.toLocaleString('es-AR')}</span>
+          <span style="font-size:12px;color:var(--text-muted)">$${(parseFloat(precio)||0).toLocaleString('es-AR')}</span>
         </div>`;
       });
-      html += '</div>';
+      html+='</div>';
     });
-    el.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px">No hay productos en la Lista de precios. Cargalos primero en 📋 Lista de productos.</div>';
+    el.innerHTML=html||'<div style="color:var(--text-muted);font-size:13px">No hay productos en Lista de precios.</div>';
   }
 
-  async function poGuardarConfigProductos() {
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-    const porProd = {};
-    document.querySelectorAll('.po-chk').forEach(chk => {
-      const pid = String(chk.dataset.prodid);
-      if (!porProd[pid]) porProd[pid] = [];
-      if (chk.checked) porProd[pid].push(String(chk.dataset.gustoid));
+  async function poGuardarConfigProductos(){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    const porProd={};
+    document.querySelectorAll('.po-chk').forEach(chk=>{
+      const pid=String(chk.dataset.prodid);
+      if(!porProd[pid])porProd[pid]=[];
+      if(chk.checked)porProd[pid].push(String(chk.dataset.gustoid));
     });
-    for (const [prodId, activos] of Object.entries(porProd)) {
-      await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}`, {
-        method:'PATCH', headers:H2, body:JSON.stringify({online_activo: activos})
+    for(const [prodId,activos] of Object.entries(porProd)){
+      await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}`,{
+        method:'PATCH',headers:H2,body:JSON.stringify({online_activo:activos})
       });
     }
     toast('Productos guardados','success');
     poCargarConfigProductos();
   }
 
-  async function poCargarPromos() {
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos?empresa_id=eq.${empresaActual}&order=created_at.asc&select=id,nombre,tipo,pct,activo,online_activo`, {headers:H2});
-      _poPromos = r.ok ? await r.json() : [];
-    } catch(e) { _poPromos = []; }
+  async function poCargarPromos(){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos?empresa_id=eq.${empresaActual}&order=created_at.asc&select=id,nombre,tipo,pct,activo,online_activo`,{headers:H2});
+      _poPromos=r.ok?await r.json():[];
+    }catch(e){_poPromos=[];}
     poRenderPromos();
   }
 
-  function poRenderPromos() {
-    const el = document.getElementById('po-config-promos');
-    if (!el) return;
-    if (!_poPromos.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">No hay promociones configuradas</div>'; return; }
-    el.innerHTML = _poPromos.map(p => `
+  function poRenderPromos(){
+    const el=document.getElementById('po-config-promos');
+    if(!el)return;
+    if(!_poPromos.length){el.innerHTML='<div style="color:var(--text-muted);font-size:13px">No hay promociones</div>';return;}
+    el.innerHTML=_poPromos.map(p=>`
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
           <input type="checkbox" ${p.online_activo?'checked':''} onchange="poTogglePromo('${p.id}',this.checked)" style="width:16px;height:16px;cursor:pointer">
@@ -15324,15 +15310,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>`).join('');
   }
 
-  async function poTogglePromo(id, activo) {
-    const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
-    await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos?id=eq.${id}`, { method:'PATCH', headers:H2, body:JSON.stringify({online_activo:activo}) });
+  async function poTogglePromo(id,activo){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    await fetch(`${SUPABASE_URL}/rest/v1/descuentos_automaticos?id=eq.${id}`,{method:'PATCH',headers:H2,body:JSON.stringify({online_activo:activo})});
     toast(activo?'Promo habilitada online':'Promo deshabilitada','success');
   }
 
-  const _origSwitchNegPO = switchNeg;
-  switchNeg = function(sub) { _origSwitchNegPO(sub); if (sub==='pedidos-online') initPedidosOnline(); };
-
+  const _origSwitchNegPO=switchNeg;
+  switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();};
   // ══════════════════════════════════════ / PEDIDOS ONLINE ADMIN ══
 
 </script>
