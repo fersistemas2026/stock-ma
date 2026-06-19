@@ -6,31 +6,15 @@
 <title>Pedidos Online</title>
 <style>
 :root {
-  --primary: #185FA5;
-  --primary-light: #E6F1FB;
-  --primary-border: #378ADD;
-  --green: #1D9E75;
-  --green-light: #E1F5EE;
-  --wa: #25D366;
-  --danger: #D85A30;
-  --bg: #ffffff;
-  --bg2: #f7f8fa;
-  --border: #e2e5ea;
-  --border2: #d0d4db;
-  --text: #1a1d23;
-  --text2: #5a6070;
-  --text3: #9aa0ad;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --radius-lg: 14px;
+  --primary: #185FA5; --primary-light: #E6F1FB; --primary-border: #378ADD;
+  --green: #1D9E75; --green-light: #E1F5EE; --wa: #25D366; --danger: #D85A30;
+  --bg: #ffffff; --bg2: #f7f8fa; --border: #e2e5ea; --border2: #d0d4db;
+  --text: #1a1d23; --text2: #5a6070; --text3: #9aa0ad;
+  --radius: 10px; --radius-sm: 6px; --radius-lg: 14px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg2); color: var(--text); min-height: 100vh; }
-
-/* Layout */
 .app { max-width: 600px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; }
-
-/* Header */
 .header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg); position: sticky; top: 0; z-index: 50; }
 .header-logo { display: flex; align-items: center; gap: 10px; }
 .header-logo .emoji { font-size: 26px; }
@@ -38,40 +22,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .header-logo p { font-size: 12px; color: var(--text2); }
 .cart-btn { position: relative; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--text); font-weight: 500; }
 .cart-badge { position: absolute; top: -7px; right: -7px; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-
-/* Steps */
 .steps { display: flex; border-bottom: 1px solid var(--border); background: var(--bg); }
-.step { flex: 1; padding: 10px 4px; text-align: center; font-size: 12px; color: var(--text3); border-bottom: 2px solid transparent; transition: all .2s; }
+.step { flex: 1; padding: 10px 4px; text-align: center; font-size: 12px; color: var(--text3); border-bottom: 2px solid transparent; }
 .step.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
-.step.done { color: var(--green); }
-
-/* Content */
 .content { padding: 16px; padding-bottom: 100px; }
-
-/* Section label */
 .slabel { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; margin-top: 16px; }
 .slabel:first-child { margin-top: 0; }
-
-/* PDV chips */
 .pdv-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-.chip { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 13px; cursor: pointer; color: var(--text2); background: var(--bg); transition: all .15s; }
+.chip { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); font-size: 13px; cursor: pointer; color: var(--text2); background: var(--bg); }
 .chip.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary-border); font-weight: 500; }
-
-/* Mode toggle */
 .mode-row { display: flex; gap: 8px; margin-bottom: 4px; }
-.mode-btn { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 13px; color: var(--text2); background: var(--bg); transition: all .15s; }
+.mode-btn { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 13px; color: var(--text2); background: var(--bg); }
 .mode-btn.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary-border); font-weight: 500; }
-
-/* Products grid */
 .products { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.pcard { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
-.pcard:hover { border-color: var(--primary-border); box-shadow: 0 2px 8px rgba(24,95,165,.08); }
+.pcard { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; }
+.pcard:hover { border-color: var(--primary-border); }
 .pcard-img { height: 88px; display: flex; align-items: center; justify-content: center; font-size: 38px; }
-.cat-pasta { background: #E1F5EE; }
-.cat-rellena { background: #EEEDFE; }
-.cat-salsa { background: #FAEEDA; }
-.cat-especial { background: #FAECE7; }
-.cat-default { background: #F0F2F5; }
+.cat-pasta { background: #E1F5EE; } .cat-rellena { background: #EEEDFE; }
+.cat-salsa { background: #FAEEDA; } .cat-default { background: #F0F2F5; }
 .pcard-body { padding: 10px 12px; }
 .pcard-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
 .pcard-sub { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
@@ -79,29 +47,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .pcard-desde { font-size: 12px; color: var(--text2); }
 .pcard-desde strong { font-size: 14px; color: var(--text); }
 .in-cart-badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--primary-light); color: var(--primary); font-weight: 600; }
-
-/* Loader */
 .loader { text-align: center; padding: 40px 16px; color: var(--text2); font-size: 14px; }
-.loader .spin { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 12px; }
+.spin { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 12px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* Empty state */
 .empty-state { text-align: center; padding: 40px 16px; color: var(--text2); font-size: 14px; }
-.empty-state .icon { font-size: 40px; margin-bottom: 10px; opacity: .4; }
-
-/* Main CTA */
-.cta-btn { width: 100%; padding: 13px; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: background .15s; }
-.cta-btn:hover { background: #1451a0; }
+.cta-btn { width: 100%; padding: 13px; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; }
 .cta-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
 .back-btn { width: 100%; margin-top: 10px; padding: 10px; background: none; border: none; color: var(--text2); cursor: pointer; font-size: 13px; }
-
-/* Panel visibility */
-.panel { display: none; }
-.panel.visible { display: block; }
-#catalogPanel { display: block; }
-#catalogPanel.hidden { display: none; }
-
-/* Cart items */
+.panel { display: none; } .panel.visible { display: block; }
+#catalogPanel { display: block; } #catalogPanel.hidden { display: none; }
 .cart-item { display: flex; align-items: flex-start; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--border); gap: 8px; }
 .cart-item-info { flex: 1; }
 .cart-item-name { font-size: 14px; font-weight: 500; color: var(--text); }
@@ -110,35 +64,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .cart-total-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0 4px; }
 .cart-total-label { font-size: 15px; font-weight: 600; }
 .cart-total-amt { font-size: 22px; font-weight: 700; color: var(--primary); }
-
-/* Descuento */
-.descuento-banner { background: var(--green-light); border: 1px solid #b2dfd0; border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: #0F6E56; display: flex; align-items: center; gap: 8px; }
-
-/* Form */
 .form-row { margin-bottom: 12px; }
 .form-label { font-size: 13px; color: var(--text2); margin-bottom: 5px; display: block; font-weight: 500; }
-.form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border-color .15s; }
+.form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg); color: var(--text); outline: none; }
 .form-input:focus { border-color: var(--primary-border); }
 .form-hint { font-size: 12px; color: var(--text3); margin-top: 4px; }
-
-/* Pay options */
-.pay-opt { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; margin-bottom: 8px; font-size: 14px; color: var(--text); transition: all .15s; }
+.pay-opt { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; margin-bottom: 8px; font-size: 14px; color: var(--text); }
 .pay-opt.active { border-color: var(--primary-border); background: var(--primary-light); color: var(--primary); }
-.pay-radio { width: 17px; height: 17px; border-radius: 50%; border: 2px solid var(--border2); flex-shrink: 0; transition: all .15s; }
+.pay-radio { width: 17px; height: 17px; border-radius: 50%; border: 2px solid var(--border2); flex-shrink: 0; }
 .pay-opt.active .pay-radio { border-color: var(--primary); background: var(--primary); }
-
-/* Cliente info banner */
-.cliente-banner { background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: var(--primary); }
-.cliente-banner strong { font-weight: 600; }
-
-/* Success */
+.cliente-banner { border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; }
 .success-screen { display: none; text-align: center; padding: 40px 16px; }
 .success-screen.visible { display: block; }
-.success-icon { font-size: 60px; margin-bottom: 16px; }
-.success-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-.success-sub { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 24px; }
-
-/* Modal */
 .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: flex-end; justify-content: center; }
 .overlay.open { display: flex; }
 .modal { background: var(--bg); border-radius: 18px 18px 0 0; width: 100%; max-width: 600px; max-height: 88vh; overflow-y: auto; padding: 20px 16px; }
@@ -152,159 +89,114 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .flavor-name { font-size: 14px; font-weight: 500; color: var(--text); }
 .flavor-price { font-size: 12px; color: var(--text2); margin-top: 2px; }
 .qty-ctrl { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border2); background: var(--bg2); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: var(--text); font-weight: 300; transition: all .15s; }
-.qty-btn:hover { border-color: var(--primary); color: var(--primary); }
+.qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border2); background: var(--bg2); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: var(--text); }
 .qty-num { font-size: 15px; font-weight: 600; min-width: 20px; text-align: center; }
 .modal-footer { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 .modal-subtotal { display: flex; justify-content: space-between; margin-bottom: 12px; }
 .modal-subtotal-label { font-size: 14px; color: var(--text2); }
 .modal-subtotal-amt { font-size: 16px; font-weight: 700; }
-
-/* WhatsApp FAB */
 .wa-fab { position: fixed; bottom: 24px; right: 16px; z-index: 300; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .wa-tooltip { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; font-size: 13px; max-width: 220px; line-height: 1.5; display: none; box-shadow: 0 4px 16px rgba(0,0,0,.12); }
 .wa-tooltip.open { display: block; }
 .wa-tooltip p { color: var(--text2); margin-bottom: 10px; }
 .wa-tooltip a { display: block; text-align: center; padding: 9px; background: var(--wa); color: white; border-radius: var(--radius-sm); text-decoration: none; font-size: 13px; font-weight: 600; }
 .wa-close-btn { background: none; border: none; font-size: 12px; color: var(--text3); cursor: pointer; width: 100%; padding-top: 8px; }
-.wa-circle { width: 54px; height: 54px; border-radius: 50%; background: var(--wa); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 12px rgba(37,211,102,.4); transition: transform .15s; }
-.wa-circle:hover { transform: scale(1.08); }
+.wa-circle { width: 54px; height: 54px; border-radius: 50%; background: var(--wa); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 12px rgba(37,211,102,.4); }
 .wa-circle svg { width: 30px; height: 30px; fill: white; }
-
-/* Toast */
 .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a1d23; color: white; padding: 10px 20px; border-radius: 999px; font-size: 13px; font-weight: 500; z-index: 999; display: none; white-space: nowrap; }
-.toast.show { display: block; animation: fadeInUp .25s ease; }
-@keyframes fadeInUp { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
-
-/* Promo banner en carrito */
-.promo-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--green-light); border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 13px; color: #0F6E56; }
-.promo-row span { font-weight: 600; }
+.toast.show { display: block; }
 </style>
 </head>
 <body>
 <div class="app">
-
-  <!-- Header -->
   <div class="header">
     <div class="header-logo">
       <div class="emoji">🍝</div>
-      <div>
-        <h1 id="headerNombre">La Pasta</h1>
-        <p>Pedidos online</p>
-      </div>
+      <div><h1>La Pasta</h1><p>Pedidos online</p></div>
     </div>
     <button class="cart-btn" onclick="irAlCarrito()">
-      🛒 Carrito
-      <span class="cart-badge" id="cartBadge">0</span>
+      🛒 Carrito <span class="cart-badge" id="cartBadge">0</span>
     </button>
   </div>
-
-  <!-- Steps -->
   <div class="steps">
     <div class="step active" id="step1">1. Productos</div>
     <div class="step" id="step2">2. Mi pedido</div>
     <div class="step" id="step3">3. Confirmar</div>
   </div>
-
-  <!-- Content -->
   <div class="content">
-
-    <!-- Pantalla de éxito -->
     <div class="success-screen" id="successScreen">
-      <div class="success-icon">✅</div>
-      <div class="success-title">¡Pedido recibido!</div>
-      <div class="success-sub" id="successMsg"></div>
+      <div style="font-size:60px;margin-bottom:16px">✅</div>
+      <div style="font-size:22px;font-weight:700;margin-bottom:8px">¡Pedido recibido!</div>
+      <div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:24px" id="successMsg"></div>
       <button class="cta-btn" style="background:var(--green)" onclick="resetApp()">Hacer otro pedido</button>
     </div>
-
-    <!-- Panel 1: Catálogo -->
-    <div id="catalogPanel">
-      <div class="slabel">¿Dónde retirás / pedís?</div>
-      <div class="pdv-row" id="pdvRow">
-        <div class="loader"><div class="spin"></div></div>
-      </div>
-
-      <div class="slabel">Tipo de pedido</div>
-      <div class="mode-row">
-        <div class="mode-btn active" onclick="selMode(this,'retiro')">🚶 Retiro en local</div>
-        <div class="mode-btn" onclick="selMode(this,'delivery')">🛵 Delivery</div>
-      </div>
-
-      <div id="catalogContent">
-        <div class="loader"><div class="spin"></div><br>Cargando productos...</div>
-      </div>
-
-      <button class="cta-btn" onclick="irAlCarrito()">Ver mi pedido →</button>
-    </div>
-
-    <!-- Panel 2: Carrito -->
-    <div class="panel" id="cartPanel">
-      <div id="cartItems"></div>
-      <div id="promoBanner"></div>
-      <div class="cart-total-row">
-        <span class="cart-total-label">Total</span>
-        <span class="cart-total-amt" id="cartTotal">$0</span>
-      </div>
-      <button class="cta-btn" onclick="irAConfirmar()">Continuar →</button>
-      <button class="back-btn" onclick="volverAlCatalogo()">← Seguir eligiendo</button>
-    </div>
-
-    <!-- Panel 3: Confirmar -->
-    <div class="panel" id="confirmPanel">
-      <div class="slabel" style="margin-top:0">Tus datos</div>
-      <div class="form-row">
-        <label class="form-label">Nombre</label>
-        <input class="form-input" type="text" placeholder="¿Cómo te llamás?" id="inNombre" oninput="onTelInput()">
-      </div>
-      <div class="form-row">
-        <label class="form-label">Celular</label>
-        <input class="form-input" type="tel" placeholder="Ej: 11 1234-5678" id="inTel" oninput="onTelInput()">
-        <div class="form-hint">Con tu celular accedés a descuentos y promociones</div>
-      </div>
-      <div id="clienteBanner"></div>
-      <div id="addressRow" style="display:none">
-        <div class="form-row">
-          <label class="form-label">Dirección de entrega</label>
-          <input class="form-input" type="text" placeholder="Calle y número" id="inDir">
+    <div id="mainContent">
+      <div id="catalogPanel">
+        <div class="slabel" style="margin-top:0">¿Dónde retirás / pedís?</div>
+        <div class="pdv-row" id="pdvRow"><div class="loader"><div class="spin"></div></div></div>
+        <div class="slabel">Tipo de pedido</div>
+        <div class="mode-row">
+          <div class="mode-btn active" onclick="selMode(this,'retiro')">🚶 Retiro en local</div>
+          <div class="mode-btn" onclick="selMode(this,'delivery')">🛵 Delivery</div>
         </div>
+        <div id="catalogContent"><div class="loader"><div class="spin"></div><br>Cargando productos...</div></div>
+        <button class="cta-btn" onclick="irAlCarrito()">Ver mi pedido →</button>
       </div>
-
-      <div class="slabel">Forma de pago</div>
-      <div class="pay-opt active" id="pay-efectivo" onclick="selPay('efectivo')">
-        <div class="pay-radio" id="radio-efectivo" style="background:var(--primary);border-color:var(--primary)"></div>
-        💵 Efectivo al recibir
+      <div class="panel" id="cartPanel">
+        <div id="cartItems"></div>
+        <div class="cart-total-row">
+          <span class="cart-total-label">Total</span>
+          <span class="cart-total-amt" id="cartTotal">$0</span>
+        </div>
+        <button class="cta-btn" onclick="irAConfirmar()">Continuar →</button>
+        <button class="back-btn" onclick="volverAlCatalogo()">← Seguir eligiendo</button>
       </div>
-      <div class="pay-opt" id="pay-transfe" onclick="selPay('transfe')">
-        <div class="pay-radio" id="radio-transfe"></div>
-        🏦 Transferencia
+      <div class="panel" id="confirmPanel">
+        <div class="slabel" style="margin-top:0">Tus datos</div>
+        <div class="form-row">
+          <label class="form-label">Nombre</label>
+          <input class="form-input" type="text" placeholder="¿Cómo te llamás?" id="inNombre">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Celular</label>
+          <input class="form-input" type="tel" placeholder="Ej: 11 1234-5678" id="inTel" oninput="onTelInput()">
+          <div class="form-hint">Con tu celular accedés a descuentos y promociones</div>
+        </div>
+        <div id="clienteBanner"></div>
+        <div id="addressRow" style="display:none">
+          <div class="form-row">
+            <label class="form-label">Dirección de entrega</label>
+            <input class="form-input" type="text" placeholder="Calle y número" id="inDir">
+          </div>
+        </div>
+        <div class="slabel">Forma de pago</div>
+        <div class="pay-opt active" id="pay-efectivo" onclick="selPay('efectivo')">
+          <div class="pay-radio" id="radio-efectivo" style="background:var(--primary);border-color:var(--primary)"></div>
+          💵 Efectivo al recibir
+        </div>
+        <div class="pay-opt" id="pay-transfe" onclick="selPay('transfe')">
+          <div class="pay-radio" id="radio-transfe"></div>
+          🏦 Transferencia
+        </div>
+        <div class="slabel">Resumen</div>
+        <div id="confirmResumen"></div>
+        <div class="cart-total-row">
+          <span class="cart-total-label">Total a pagar</span>
+          <span class="cart-total-amt" id="confirmTotal">$0</span>
+        </div>
+        <button class="cta-btn" onclick="enviarPedido()" id="btnEnviar">Enviar pedido 🚀</button>
+        <button class="back-btn" onclick="irAlCarrito()">← Volver al carrito</button>
       </div>
-
-      <div id="descuentoBanner"></div>
-
-      <div class="slabel">Resumen</div>
-      <div id="confirmResumen"></div>
-      <div class="cart-total-row">
-        <span class="cart-total-label">Total a pagar</span>
-        <span class="cart-total-amt" id="confirmTotal">$0</span>
-      </div>
-
-      <button class="cta-btn" onclick="enviarPedido()" id="btnEnviar">Enviar pedido 🚀</button>
-      <button class="back-btn" onclick="irAlCarrito()">← Volver al carrito</button>
     </div>
+  </div>
+</div>
 
-  </div><!-- /content -->
-</div><!-- /app -->
-
-<!-- Modal sabores -->
 <div class="overlay" id="overlay" onclick="cerrarModalFuera(event)">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-header">
       <div class="modal-icon" id="modalIcon"></div>
-      <div>
-        <div class="modal-title" id="modalTitle"></div>
-        <div class="modal-desc" id="modalDesc"></div>
-      </div>
+      <div><div class="modal-title" id="modalTitle"></div><div class="modal-desc" id="modalDesc"></div></div>
     </div>
     <div id="flavorRows"></div>
     <div class="modal-footer">
@@ -318,104 +210,83 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
-<!-- WhatsApp flotante -->
 <div class="wa-fab">
   <div class="wa-tooltip" id="waTooltip">
     <p>¿Tenés alguna consulta sobre tu pedido?</p>
     <a id="waLink" href="#" target="_blank" rel="noopener">Abrir WhatsApp</a>
     <button class="wa-close-btn" onclick="cerrarWa()">Cerrar</button>
   </div>
-  <button class="wa-circle" onclick="toggleWa()" aria-label="Consultar por WhatsApp">
+  <button class="wa-circle" onclick="toggleWa()">
     <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.523 5.824L.057 23.213a.75.75 0 0 0 .93.93l5.389-1.466A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.925 0-3.736-.518-5.295-1.424l-.378-.22-3.927 1.069 1.069-3.927-.22-.378A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
   </button>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
-// ── CONFIG ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://brcnctdfbdffxmdypnrh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyY25jdGRmYmRmZnhtZHlwbnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3OTYzMzIsImV4cCI6MjA5NDM3MjMzMn0.t8Ot0v465qdHshX-Ridce42iPpytYjoMoHxR_mBytZQ';
 const EMPRESA_ID = '1';
-const WA_NUMBER = '5491100000000'; // ← reemplazá con tu número real
+const WA_NUMBER = '5491100000000';
 const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
 
-// ── ESTADO ──────────────────────────────────────────────────────────────────
-let pdvs = [];
-let productos = [];
-let gustos = [];
-let listaDatos = {}; // prod_id → { precio, nombre }
-let promos = [];
-let selectedPdv = null;
-let selectedMode = 'retiro';
-let selectedPay = 'efectivo';
+// Estado
+let pdvs = [], productos = [], gustos = [], promos = [];
+// prodId → { gustos: [{gid, nombre, precio}], activosSet: Set<gid> }
+let listaDatos = {};
+let selectedPdv = null, selectedMode = 'retiro', selectedPay = 'efectivo';
 let cart = {}; // prodId → { gustoId → qty }
-let currentProdId = null;
-let modalQtys = {};
-let clienteData = null; // datos del cliente encontrado en DB
-let telTimeout = null;
-let descuentoAplicado = 0;
+let currentProdId = null, modalQtys = {};
+let clienteData = null, telTimeout = null;
 
-// ── API ──────────────────────────────────────────────────────────────────────
 async function sbGet(path) {
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: H });
-    if (!r.ok) return null;
+    if (!r.ok) { console.error('Error', path, await r.text()); return null; }
     return await r.json();
-  } catch(e) { return null; }
-}
-async function sbPost(table, body) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' },
-    body: JSON.stringify(body)
-  });
-  return r.ok;
+  } catch(e) { console.error(e); return null; }
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
-  // Cargar PDVs
-  const pdvsData = await sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc,created_at.asc&select=id,nombre`);
-  pdvs = pdvsData || [];
-  renderPdvs();
+  document.getElementById('waLink').href = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
 
-  // Cargar productos, gustos y lista de precios en paralelo
-  const [prodsData, gustosData, listaData, promosData] = await Promise.all([
-    sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc,created_at.asc&select=id,nombre,categoria`),
+  const [pdvsData, prodsData, gustosData, listaData, promosData] = await Promise.all([
+    sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre`),
+    sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria`),
     sbGet(`gustos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,producto_id,nombre`),
-    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&online_activo=eq.true&select=prod_id,datos`),
+    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,online_activo`),
     sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
   ]);
 
+  pdvs     = pdvsData  || [];
   productos = prodsData || [];
-  gustos = gustosData || [];
-  promos = promosData || [];
+  gustos   = gustosData || [];
+  promos   = promosData || [];
 
-  // Procesar lista_datos → mapa prod_id → precio
+  // Procesar lista_datos
+  // Estructura: prod_id = ID del producto, datos.gustos = [{gid, nombre, precio}]
+  // online_activo = array de gustoIds habilitados
+  listaDatos = {};
   (listaData || []).forEach(row => {
     if (!row.prod_id || row.prod_id.startsWith('SCHED_') || row.prod_id === '__config__') return;
     try {
       const d = typeof row.datos === 'string' ? JSON.parse(row.datos) : row.datos;
-      // datos puede ser { precio, nombre } o array de columnas
-      const precio = d?.precio || d?.col1 || d?.p || (Array.isArray(d) ? d[0] : null);
-      if (precio) listaDatos[row.prod_id] = { precio: parseFloat(precio) || 0 };
+      const gustosArr = d?.gustos || [];
+      // online_activo puede ser array de gids o null
+      const activosArr = Array.isArray(row.online_activo) ? row.online_activo : [];
+      const activosSet = new Set(activosArr.map(String));
+      listaDatos[String(row.prod_id)] = { gustos: gustosArr, activosSet };
     } catch(e) {}
   });
 
+  renderPdvs();
   renderCatalogo();
-
-  // WhatsApp link
-  document.getElementById('waLink').href = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
 }
 
-// ── PDVs ─────────────────────────────────────────────────────────────────────
 function renderPdvs() {
   const row = document.getElementById('pdvRow');
-  if (!pdvs.length) { row.innerHTML = '<span style="color:var(--text3);font-size:13px">No hay sucursales configuradas</span>'; return; }
-  row.innerHTML = pdvs.map((p, i) => `
-    <div class="chip ${i===0?'active':''}" onclick="selPdv(this,'${p.id}','${p.nombre}')">${p.nombre}</div>
-  `).join('');
+  if (!pdvs.length) { row.innerHTML = '<span style="color:var(--text3);font-size:13px">No hay sucursales</span>'; return; }
+  row.innerHTML = pdvs.map((p,i) => `<div class="chip ${i===0?'active':''}" onclick="selPdv(this,'${p.id}','${p.nombre}')">${p.nombre}</div>`).join('');
   selectedPdv = pdvs[0];
 }
 
@@ -432,117 +303,119 @@ function selMode(el, mode) {
   document.getElementById('addressRow').style.display = mode === 'delivery' ? 'block' : 'none';
 }
 
-// ── CATÁLOGO ─────────────────────────────────────────────────────────────────
 function renderCatalogo() {
   const el = document.getElementById('catalogContent');
 
-  // Filtrar solo productos que tienen al menos un gusto con precio en lista_datos online
-  const prodsConPrecio = productos.filter(p => {
-    const gps = gustos.filter(g => g.producto_id === p.id);
-    return gps.some(g => listaDatos[g.id] && listaDatos[g.id].precio > 0);
+  // Construir catálogo: solo productos que tienen al menos un gusto habilitado online
+  const catItems = []; // { prod, gustosOnline: [{gid, nombre, precio}] }
+
+  productos.forEach(p => {
+    const ld = listaDatos[String(p.id)];
+    if (!ld) return;
+    // Filtrar gustos habilitados online con precio > 0
+    const gustosOnline = ld.gustos.filter(g => ld.activosSet.has(String(g.gid)) && parsePrecioAR(g.precio) > 0);
+    if (gustosOnline.length > 0) catItems.push({ prod: p, gustosOnline });
   });
 
-  if (!prodsConPrecio.length) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">📦</div>No hay productos disponibles por ahora.</div>';
+  if (!catItems.length) {
+    el.innerHTML = '<div class="empty-state">📦<br><br>No hay productos disponibles por ahora.</div>';
     return;
   }
 
   // Agrupar por categoría
   const cats = {};
-  prodsConPrecio.forEach(p => {
-    const cat = p.categoria || 'Otros';
+  catItems.forEach(item => {
+    const cat = item.prod.categoria || 'Otros';
     if (!cats[cat]) cats[cat] = [];
-    cats[cat].push(p);
+    cats[cat].push(item);
   });
 
-  const catEmojis = { 'pasta seca': '🍝', 'pasta rellena': '🥟', 'rellena': '🥟', 'salsa': '🍅', 'salsas': '🍅', 'especial': '🥩', 'otros': '🍽️' };
-  const catColors = { 'pasta seca': 'cat-pasta', 'pasta rellena': 'cat-rellena', 'rellena': 'cat-rellena', 'salsa': 'cat-salsa', 'salsas': 'cat-salsa', 'especial': 'cat-especial' };
+  const emojis = { 'pasta seca':'🍝','pasta rellena':'🥟','rellena':'🥟','salsa':'🍅','salsas':'🍅','especial':'🥩','otros':'🍽️' };
+  const colors = { 'pasta seca':'cat-pasta','pasta rellena':'cat-rellena','rellena':'cat-rellena','salsa':'cat-salsa','salsas':'cat-salsa' };
 
-  el.innerHTML = Object.entries(cats).map(([cat, prods]) => `
+  el.innerHTML = Object.entries(cats).map(([cat, items]) => `
     <div class="slabel">${cat}</div>
     <div class="products">
-      ${prods.map(p => {
-        const gps = gustos.filter(g => g.producto_id === p.id && listaDatos[g.id]);
-        const minPrecio = Math.min(...gps.map(g => listaDatos[g.id]?.precio || 0));
-        const catKey = (p.categoria || '').toLowerCase();
-        const emoji = catEmojis[catKey] || '🍽️';
-        const color = catColors[catKey] || 'cat-default';
-        return `
-          <div class="pcard" onclick="abrirModal('${p.id}')">
-            <div class="pcard-img ${color}">${emoji}</div>
-            <div class="pcard-body">
-              <div class="pcard-name">${p.nombre}</div>
-              <div class="pcard-sub">${gps.length} ${gps.length === 1 ? 'opción' : 'opciones'}</div>
-              <div class="pcard-footer">
-                <div class="pcard-desde">desde <strong>$${minPrecio.toLocaleString('es-AR')}</strong></div>
-                <span class="in-cart-badge" id="ci-${p.id}" style="display:none">✓ en carrito</span>
-              </div>
+      ${items.map(({prod, gustosOnline}) => {
+        const minPrecio = Math.min(...gustosOnline.map(g => parsePrecioAR(g.precio)||0));
+        const catKey = (prod.categoria||'').toLowerCase();
+        return `<div class="pcard" onclick="abrirModal('${prod.id}')">
+          <div class="pcard-img ${colors[catKey]||'cat-default'}">${emojis[catKey]||'🍽️'}</div>
+          <div class="pcard-body">
+            <div class="pcard-name">${prod.nombre}</div>
+            <div class="pcard-sub">${gustosOnline.length} ${gustosOnline.length===1?'opción':'opciones'}</div>
+            <div class="pcard-footer">
+              <div class="pcard-desde">desde <strong>$${minPrecio.toLocaleString('es-AR')}</strong></div>
+              <span class="in-cart-badge" id="ci-${prod.id}" style="display:none">✓ en carrito</span>
             </div>
-          </div>`;
+          </div>
+        </div>`;
       }).join('')}
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-// ── MODAL SABORES ─────────────────────────────────────────────────────────────
 function abrirModal(prodId) {
   currentProdId = prodId;
-  const prod = productos.find(p => p.id === prodId);
-  const gps = gustos.filter(g => g.producto_id === prodId && listaDatos[g.id]);
-  if (!prod || !gps.length) return;
+  const prod = productos.find(p => String(p.id) === String(prodId));
+  const ld = listaDatos[String(prodId)];
+  if (!prod || !ld) return;
+  const gustosOnline = ld.gustos.filter(g => ld.activosSet.has(String(g.gid)) && parsePrecioAR(g.precio) > 0);
+  if (!gustosOnline.length) return;
 
-  const catKey = (prod.categoria || '').toLowerCase();
-  const catColors = { 'pasta seca': '#E1F5EE', 'pasta rellena': '#EEEDFE', 'rellena': '#EEEDFE', 'salsa': '#FAEEDA', 'salsas': '#FAEEDA', 'especial': '#FAECE7' };
-  const catEmojis = { 'pasta seca': '🍝', 'pasta rellena': '🥟', 'rellena': '🥟', 'salsa': '🍅', 'salsas': '🍅', 'especial': '🥩' };
+  const catKey = (prod.categoria||'').toLowerCase();
+  const catColors = {'pasta seca':'#E1F5EE','pasta rellena':'#EEEDFE','rellena':'#EEEDFE','salsa':'#FAEEDA','salsas':'#FAEEDA'};
+  const catEmojis = {'pasta seca':'🍝','pasta rellena':'🥟','rellena':'🥟','salsa':'🍅','salsas':'🍅'};
 
-  document.getElementById('modalIcon').style.background = catColors[catKey] || '#F0F2F5';
-  document.getElementById('modalIcon').textContent = catEmojis[catKey] || '🍽️';
+  document.getElementById('modalIcon').style.background = catColors[catKey]||'#F0F2F5';
+  document.getElementById('modalIcon').textContent = catEmojis[catKey]||'🍽️';
   document.getElementById('modalTitle').textContent = prod.nombre;
-  document.getElementById('modalDesc').textContent = prod.categoria || '';
+  document.getElementById('modalDesc').textContent = prod.categoria||'';
 
   modalQtys = {};
   if (cart[prodId]) Object.assign(modalQtys, cart[prodId]);
 
-  document.getElementById('flavorRows').innerHTML = gps.map(g => `
+  document.getElementById('flavorRows').innerHTML = gustosOnline.map(g => `
     <div class="flavor-row">
       <div>
         <div class="flavor-name">${g.nombre}</div>
-        <div class="flavor-price">$${(listaDatos[g.id]?.precio || 0).toLocaleString('es-AR')} c/u</div>
+        <div class="flavor-price">$${parsePrecioAR(g.precio).toLocaleString('es-AR')} c/u</div>
       </div>
       <div class="qty-ctrl">
-        <button class="qty-btn" onclick="chgGusto('${g.id}',-1)">−</button>
-        <span class="qty-num" id="fq-${g.id}">${modalQtys[g.id] || 0}</span>
-        <button class="qty-btn" onclick="chgGusto('${g.id}',1)">+</button>
+        <button class="qty-btn" onclick="chgGusto('${g.gid}',-1)">−</button>
+        <span class="qty-num" id="fq-${g.gid}">${modalQtys[g.gid]||0}</span>
+        <button class="qty-btn" onclick="chgGusto('${g.gid}',1)">+</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
+  // Guardar referencia de gustos del modal para precios
+  window._modalGustos = gustosOnline;
   actualizarModalSubtotal();
   document.getElementById('overlay').classList.add('open');
 }
 
-function chgGusto(gustoId, delta) {
-  modalQtys[gustoId] = Math.max(0, (modalQtys[gustoId] || 0) + delta);
-  const el = document.getElementById('fq-' + gustoId);
-  if (el) el.textContent = modalQtys[gustoId];
+function chgGusto(gid, delta) {
+  modalQtys[gid] = Math.max(0, (modalQtys[gid]||0) + delta);
+  const el = document.getElementById('fq-' + gid);
+  if (el) el.textContent = modalQtys[gid];
   actualizarModalSubtotal();
 }
 
 function actualizarModalSubtotal() {
   let total = 0, count = 0;
-  Object.entries(modalQtys).forEach(([gid, q]) => {
-    total += (listaDatos[gid]?.precio || 0) * q;
+  (window._modalGustos||[]).forEach(g => {
+    const q = modalQtys[g.gid]||0;
+    total += parsePrecioAR(g.precio) * q;
     count += q;
   });
   document.getElementById('modalSubtotal').textContent = '$' + total.toLocaleString('es-AR');
   const btn = document.getElementById('modalBtn');
   btn.disabled = count === 0;
-  btn.textContent = count > 0 ? `Agregar (${count} ${count === 1 ? 'unidad' : 'unidades'}) al pedido` : 'Agregar al pedido';
+  btn.textContent = count > 0 ? `Agregar (${count} ${count===1?'unidad':'unidades'}) al pedido` : 'Agregar al pedido';
 }
 
 function agregarAlCarrito() {
   const filtered = {};
-  Object.entries(modalQtys).forEach(([gid, q]) => { if (q > 0) filtered[gid] = q; });
+  Object.entries(modalQtys).forEach(([gid,q]) => { if (q>0) filtered[gid]=q; });
   if (!Object.keys(filtered).length) { delete cart[currentProdId]; }
   else { cart[currentProdId] = filtered; }
   actualizarBadge();
@@ -552,77 +425,71 @@ function agregarAlCarrito() {
 }
 
 function cerrarModal() { document.getElementById('overlay').classList.remove('open'); }
-function cerrarModalFuera(e) { if (e.target === document.getElementById('overlay')) cerrarModal(); }
+function cerrarModalFuera(e) { if (e.target===document.getElementById('overlay')) cerrarModal(); }
 
-// ── CARRITO ───────────────────────────────────────────────────────────────────
+function parsePrecioAR(v) {
+  if (!v) return 0;
+  // Formato argentino: "2.200,00" → 2200
+  const s = String(v).replace(/\./g,'').replace(',','.');
+  return parseFloat(s)||0;
+}
+
+function getPrecioGusto(gid) {
+  for (const ld of Object.values(listaDatos)) {
+    const g = ld.gustos.find(x => String(x.gid) === String(gid));
+    if (g) return parsePrecioAR(g.precio);
+  }
+  return 0;
+}
+
+function getNombreGusto(gid) {
+  for (const ld of Object.values(listaDatos)) {
+    const g = ld.gustos.find(x => String(x.gid) === String(gid));
+    if (g) return g.nombre||'';
+  }
+  return '';
+}
+
 function getCartTotal() {
   let t = 0;
-  Object.entries(cart).forEach(([pid, gustoMap]) => {
-    Object.entries(gustoMap).forEach(([gid, q]) => {
-      t += (listaDatos[gid]?.precio || 0) * q;
-    });
-  });
+  Object.values(cart).forEach(gm => Object.entries(gm).forEach(([gid,q]) => t += getPrecioGusto(gid)*q));
   return t;
 }
 
 function actualizarBadge() {
   let n = 0;
-  Object.values(cart).forEach(gm => Object.values(gm).forEach(q => n += q));
+  Object.values(cart).forEach(gm => Object.values(gm).forEach(q => n+=q));
   document.getElementById('cartBadge').textContent = n;
 }
 
 function actualizarCartIndicators() {
   productos.forEach(p => {
-    const el = document.getElementById('ci-' + p.id);
-    if (el) el.style.display = (cart[p.id] && Object.values(cart[p.id]).some(q => q > 0)) ? 'inline-block' : 'none';
+    const el = document.getElementById('ci-'+p.id);
+    if (el) el.style.display = (cart[p.id] && Object.values(cart[p.id]).some(q=>q>0)) ? 'inline-block' : 'none';
   });
 }
 
 function renderCarrito() {
   const el = document.getElementById('cartItems');
-  const entries = Object.entries(cart).filter(([, gm]) => Object.values(gm).some(q => q > 0));
-
-  if (!entries.length) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">🛒</div>El carrito está vacío</div>';
-    document.getElementById('cartTotal').textContent = '$0';
-    document.getElementById('promoBanner').innerHTML = '';
-    return;
-  }
-
-  el.innerHTML = entries.map(([pid, gustoMap]) => {
-    const prod = productos.find(p => p.id === pid);
-    return Object.entries(gustoMap).filter(([, q]) => q > 0).map(([gid, q]) => {
-      const gusto = gustos.find(g => g.id === gid);
-      const precio = listaDatos[gid]?.precio || 0;
-      return `
-        <div class="cart-item">
-          <div class="cart-item-info">
-            <div class="cart-item-name">${prod?.nombre || ''} · ${gusto?.nombre || ''}</div>
-            <div class="cart-item-sub">${q} × $${precio.toLocaleString('es-AR')}</div>
-          </div>
-          <div class="cart-item-price">$${(q * precio).toLocaleString('es-AR')}</div>
-        </div>`;
+  const entries = Object.entries(cart).filter(([,gm]) => Object.values(gm).some(q=>q>0));
+  if (!entries.length) { el.innerHTML='<div class="empty-state">🛒<br><br>El carrito está vacío</div>'; document.getElementById('cartTotal').textContent='$0'; return; }
+  el.innerHTML = entries.map(([pid,gm]) => {
+    const prod = productos.find(p=>String(p.id)===String(pid));
+    return Object.entries(gm).filter(([,q])=>q>0).map(([gid,q]) => {
+      const precio = getPrecioGusto(gid);
+      return `<div class="cart-item">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${prod?.nombre||''} · ${getNombreGusto(gid)}</div>
+          <div class="cart-item-sub">${q} × $${precio.toLocaleString('es-AR')}</div>
+        </div>
+        <div class="cart-item-price">$${(q*precio).toLocaleString('es-AR')}</div>
+      </div>`;
     }).join('');
   }).join('');
-
-  const total = getCartTotal();
-  document.getElementById('cartTotal').textContent = '$' + total.toLocaleString('es-AR');
-
-  // Mostrar promos activas
-  const promoBanner = document.getElementById('promoBanner');
-  if (promos.length) {
-    promoBanner.innerHTML = promos.map(p => `
-      <div class="promo-row">🎉 ${p.nombre || 'Promoción'} <span>activa</span></div>
-    `).join('');
-  } else {
-    promoBanner.innerHTML = '';
-  }
+  document.getElementById('cartTotal').textContent = '$' + getCartTotal().toLocaleString('es-AR');
 }
 
-// ── NAVEGACIÓN ────────────────────────────────────────────────────────────────
-function setStep(n) {
-  [1, 2, 3].forEach(i => document.getElementById('step' + i).classList.toggle('active', i === n));
-}
+function setStep(n) { [1,2,3].forEach(i=>document.getElementById('step'+i).classList.toggle('active',i===n)); }
 
 function irAlCarrito() {
   renderCarrito();
@@ -633,8 +500,7 @@ function irAlCarrito() {
 }
 
 function irAConfirmar() {
-  const total = getCartTotal();
-  if (!total) { toast('El carrito está vacío'); return; }
+  if (!getCartTotal()) { toast('El carrito está vacío'); return; }
   renderConfirm();
   document.getElementById('cartPanel').classList.remove('visible');
   document.getElementById('confirmPanel').classList.add('visible');
@@ -647,182 +513,112 @@ function volverAlCatalogo() {
   setStep(1);
 }
 
-// ── CONFIRMAR ─────────────────────────────────────────────────────────────────
 function renderConfirm() {
-  const entries = Object.entries(cart).filter(([, gm]) => Object.values(gm).some(q => q > 0));
-  document.getElementById('confirmResumen').innerHTML = entries.map(([pid, gm]) => {
-    const prod = productos.find(p => p.id === pid);
-    return Object.entries(gm).filter(([, q]) => q > 0).map(([gid, q]) => {
-      const g = gustos.find(x => x.id === gid);
-      const precio = listaDatos[gid]?.precio || 0;
+  const entries = Object.entries(cart).filter(([,gm])=>Object.values(gm).some(q=>q>0));
+  document.getElementById('confirmResumen').innerHTML = entries.map(([pid,gm]) => {
+    const prod = productos.find(p=>String(p.id)===String(pid));
+    return Object.entries(gm).filter(([,q])=>q>0).map(([gid,q]) => {
+      const precio = getPrecioGusto(gid);
       return `<div class="cart-item">
         <div class="cart-item-info">
-          <div class="cart-item-name">${prod?.nombre} · ${g?.nombre}</div>
+          <div class="cart-item-name">${prod?.nombre} · ${getNombreGusto(gid)}</div>
           <div class="cart-item-sub">${q} × $${precio.toLocaleString('es-AR')}</div>
         </div>
         <div class="cart-item-price">$${(q*precio).toLocaleString('es-AR')}</div>
       </div>`;
     }).join('');
   }).join('');
-  actualizarTotalConDescuento();
-}
-
-function actualizarTotalConDescuento() {
-  const base = getCartTotal();
-  let final = base;
-  let descEl = document.getElementById('descuentoBanner');
-
-  if (descuentoAplicado > 0 && promos.length > 0) {
-    // Aplicar descuento de promos (simplificado: primer promo activa con pct)
-    const promo = promos.find(p => p.pct > 0 || p.valor > 0);
-    if (promo) {
-      const monto = promo.tipo === 'pct' ? base * (promo.pct / 100) : (promo.valor || 0);
-      final = Math.max(0, base - monto);
-      descEl.innerHTML = `<div class="descuento-banner">✅ Descuento aplicado: -$${monto.toLocaleString('es-AR')}</div>`;
-    }
-  } else {
-    descEl.innerHTML = '';
-  }
-
-  document.getElementById('confirmTotal').textContent = '$' + final.toLocaleString('es-AR');
+  document.getElementById('confirmTotal').textContent = '$' + getCartTotal().toLocaleString('es-AR');
 }
 
 function selPay(m) {
   selectedPay = m;
-  ['efectivo', 'transfe'].forEach(x => {
-    document.getElementById('pay-' + x).classList.toggle('active', x === m);
-    const r = document.getElementById('radio-' + x);
-    r.style.background = x === m ? 'var(--primary)' : '';
-    r.style.borderColor = x === m ? 'var(--primary)' : '';
+  ['efectivo','transfe'].forEach(x => {
+    document.getElementById('pay-'+x).classList.toggle('active', x===m);
+    const r = document.getElementById('radio-'+x);
+    r.style.background = x===m ? 'var(--primary)' : '';
+    r.style.borderColor = x===m ? 'var(--primary)' : '';
   });
 }
 
-// ── CLIENTE POR CELULAR ───────────────────────────────────────────────────────
 let telBusquedaTimeout = null;
-
 async function onTelInput() {
   const tel = document.getElementById('inTel').value.trim().replace(/\s/g,'');
   const banner = document.getElementById('clienteBanner');
-  clienteData = null;
-  descuentoAplicado = 0;
-  banner.innerHTML = '';
-  actualizarTotalConDescuento();
-
+  clienteData = null; banner.innerHTML = '';
   if (tel.length < 8) return;
-
   clearTimeout(telBusquedaTimeout);
   telBusquedaTimeout = setTimeout(async () => {
     const data = await sbGet(`clientes?empresa_id=eq.${EMPRESA_ID}&telefono=eq.${encodeURIComponent(tel)}&select=id,nombre,telefono&limit=1`);
     if (data && data.length > 0) {
       clienteData = data[0];
-      const nombre = document.getElementById('inNombre').value.trim() || clienteData.nombre || '';
-      if (!document.getElementById('inNombre').value.trim() && clienteData.nombre) {
-        document.getElementById('inNombre').value = clienteData.nombre;
-      }
-      banner.innerHTML = `<div class="cliente-banner">👋 ¡Hola, <strong>${clienteData.nombre || nombre}</strong>! Tus promociones activas se aplicaron automáticamente.</div>`;
-      if (promos.length > 0) descuentoAplicado = 1;
+      if (!document.getElementById('inNombre').value.trim() && clienteData.nombre) document.getElementById('inNombre').value = clienteData.nombre;
+      banner.innerHTML = `<div class="cliente-banner" style="background:var(--primary-light);border:1px solid var(--primary-border);color:var(--primary)">👋 ¡Hola, <strong>${clienteData.nombre||''}</strong>! Tus promociones activas se aplican automáticamente.</div>`;
     } else {
-      banner.innerHTML = `<div class="cliente-banner" style="background:#FFF8E1;border-color:#FFD54F;color:#795500">🌟 ¡Bienvenido/a! Con tu próxima compra empezás a acumular beneficios.</div>`;
+      banner.innerHTML = `<div class="cliente-banner" style="background:#FFF8E1;border:1px solid #FFD54F;color:#795500">🌟 ¡Bienvenido/a! Con tu próxima compra empezás a acumular beneficios.</div>`;
     }
-    actualizarTotalConDescuento();
   }, 600);
 }
 
-// ── ENVIAR PEDIDO ─────────────────────────────────────────────────────────────
 async function enviarPedido() {
   const nombre = document.getElementById('inNombre').value.trim();
-  const tel = document.getElementById('inTel').value.trim();
-  const dir = document.getElementById('inDir').value.trim();
-
+  const tel    = document.getElementById('inTel').value.trim();
+  const dir    = document.getElementById('inDir').value.trim();
   if (!nombre) { toast('Ingresá tu nombre'); return; }
-  if (!tel) { toast('Ingresá tu celular'); return; }
-  if (selectedMode === 'delivery' && !dir) { toast('Ingresá la dirección de entrega'); return; }
-
-  const entries = Object.entries(cart).filter(([, gm]) => Object.values(gm).some(q => q > 0));
+  if (!tel)    { toast('Ingresá tu celular'); return; }
+  if (selectedMode === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
+  const entries = Object.entries(cart).filter(([,gm])=>Object.values(gm).some(q=>q>0));
   if (!entries.length) { toast('El carrito está vacío'); return; }
 
   const btn = document.getElementById('btnEnviar');
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
+  btn.disabled = true; btn.textContent = 'Enviando...';
 
-  // Armar items para guardar
   const items = [];
-  entries.forEach(([pid, gm]) => {
-    const prod = productos.find(p => p.id === pid);
-    Object.entries(gm).filter(([, q]) => q > 0).forEach(([gid, q]) => {
-      const g = gustos.find(x => x.id === gid);
-      items.push({
-        prod_id: pid, prod_nombre: prod?.nombre,
-        gusto_id: gid, gusto_nombre: g?.nombre,
-        cantidad: q, precio: listaDatos[gid]?.precio || 0
-      });
+  entries.forEach(([pid,gm]) => {
+    const prod = productos.find(p=>String(p.id)===String(pid));
+    Object.entries(gm).filter(([,q])=>q>0).forEach(([gid,q]) => {
+      items.push({ prod_id:pid, prod_nombre:prod?.nombre||'', gusto_id:gid, gusto_nombre:getNombreGusto(gid), cantidad:q, precio:getPrecioGusto(gid) });
     });
   });
 
   const total = getCartTotal();
-  const base = total;
-
   const pedido = {
-    empresa_id: EMPRESA_ID,
-    cliente_nombre: nombre,
-    cliente_tel: tel,
-    pdv_id: selectedPdv?.id || null,
-    pdv_nombre: selectedPdv?.nombre || '',
-    modalidad: selectedMode,
-    direccion: dir || null,
-    items: items,
-    total: base,
-    descuento: descuentoAplicado > 0 ? (base - parseFloat(document.getElementById('confirmTotal').textContent.replace(/\$|\./g,'').replace(',','.')) || 0) : 0,
-    total_final: parseFloat(document.getElementById('confirmTotal').textContent.replace(/\$/,'').replace(/\./g,'').replace(',','.')) || base,
-    metodo_pago: selectedPay,
-    estado: 'nuevo',
-    origen: 'online'
+    empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: tel,
+    pdv_id: String(selectedPdv?.id||''), pdv_nombre: selectedPdv?.nombre||'',
+    modalidad: selectedMode, direccion: dir||null, items,
+    total, total_final: total, descuento: 0,
+    metodo_pago: selectedPay, estado: 'nuevo', origen: 'online'
   };
 
-  const ok = await sbPost('pedidos_online', pedido);
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online`, {
+      method:'POST', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(pedido)
+    });
+    if (!r.ok) throw new Error(await r.text());
 
-  if (ok) {
-    // Registrar/actualizar cliente
     if (!clienteData) {
-      await sbPost('clientes', {
-        empresa_id: EMPRESA_ID,
-        nombre: nombre,
-        telefono: tel,
-        pdv_nombre: selectedPdv?.nombre || ''
+      await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
+        method:'POST', headers:{...H,'Prefer':'return=minimal'},
+        body: JSON.stringify({ empresa_id:EMPRESA_ID, nombre, telefono:tel.replace(/\s/g,''), pdv_nombre:selectedPdv?.nombre||'' })
       });
     }
 
-    document.getElementById('mainContent') && (document.getElementById('mainContent').style.display = 'none');
-    // Ocultar todo y mostrar éxito
-    document.getElementById('catalogPanel').classList.add('hidden');
-    document.getElementById('cartPanel').classList.remove('visible');
-    document.getElementById('confirmPanel').classList.remove('visible');
+    document.getElementById('mainContent').style.display = 'none';
     document.querySelector('.steps').style.display = 'none';
-
-    const modoStr = selectedMode === 'delivery' ? `Delivery a ${dir}` : `Retiro en ${selectedPdv?.nombre}`;
-    document.getElementById('successMsg').innerHTML = `
-      Tu pedido fue enviado a <strong>${selectedPdv?.nombre || ''}</strong>.<br>
-      <strong>${modoStr}</strong><br><br>
-      Pago: <strong>${selectedPay === 'efectivo' ? 'Efectivo' : 'Transferencia'}</strong><br>
-      Total: <strong>$${pedido.total_final.toLocaleString('es-AR')}</strong><br><br>
-      📱 Te contactamos al <strong>${tel}</strong> cuando esté listo.
-    `;
+    document.getElementById('successMsg').innerHTML = `Tu pedido fue enviado a <strong>${selectedPdv?.nombre||''}</strong>.<br><strong>${selectedMode==='delivery'?'🛵 Delivery a '+dir:'🚶 Retiro en local'}</strong><br><br>Pago: <strong>${selectedPay==='transfe'?'Transferencia':'Efectivo'}</strong> · Total: <strong>$${total.toLocaleString('es-AR')}</strong><br><br>📱 Te avisamos al <strong>${tel}</strong> cuando esté listo.`;
     document.getElementById('successScreen').classList.add('visible');
-  } else {
-    toast('Hubo un error al enviar el pedido. Intentá de nuevo.');
-    btn.disabled = false;
-    btn.textContent = 'Enviar pedido 🚀';
+  } catch(e) {
+    toast('Error al enviar. Intentá de nuevo.');
+    btn.disabled = false; btn.textContent = 'Enviar pedido 🚀';
   }
 }
 
-// ── RESET ─────────────────────────────────────────────────────────────────────
 function resetApp() {
-  Object.keys(cart).forEach(k => delete cart[k]);
+  Object.keys(cart).forEach(k=>delete cart[k]);
   clienteData = null;
-  descuentoAplicado = 0;
-  actualizarBadge();
-  actualizarCartIndicators();
+  actualizarBadge(); actualizarCartIndicators();
   document.getElementById('successScreen').classList.remove('visible');
+  document.getElementById('mainContent').style.display = 'block';
   document.querySelector('.steps').style.display = 'flex';
   document.getElementById('catalogPanel').classList.remove('hidden');
   document.getElementById('cartPanel').classList.remove('visible');
@@ -831,23 +627,18 @@ function resetApp() {
   document.getElementById('inTel').value = '';
   document.getElementById('inDir').value = '';
   document.getElementById('clienteBanner').innerHTML = '';
-  document.getElementById('descuentoBanner').innerHTML = '';
   setStep(1);
 }
 
-// ── WHATSAPP ──────────────────────────────────────────────────────────────────
 function toggleWa() { document.getElementById('waTooltip').classList.toggle('open'); }
 function cerrarWa() { document.getElementById('waTooltip').classList.remove('open'); }
 
-// ── TOAST ─────────────────────────────────────────────────────────────────────
 function toast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2500);
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
 }
 
-// ── START ─────────────────────────────────────────────────────────────────────
 init();
 </script>
 </body>
