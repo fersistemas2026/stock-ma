@@ -15183,7 +15183,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   // ══════════════════════════════════════ PEDIDOS ONLINE ADMIN ══
 
   let _poPedidos=[], _poFiltroEstado='todos', _poProductos=[], _poGustos=[], _poListaDatos={}, _poPromos=[];
-  let _poOpPedidos=[], _poOpFiltro='pendientes', _poOpInterval=null;
+  let _poOpPedidos=[], _poOpFiltro='pendientes', _poOpInterval=null, _poOpIdsConocidos=null;
   let _poTiendaConfig={};
 
   async function initPedidosOnline() {
@@ -15699,16 +15699,54 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if(_poOpInterval)clearInterval(_poOpInterval);
     _poOpInterval=setInterval(async()=>{
       if(isAdmin)return;
-      const prev=(_poOpPedidos||[]).filter(p=>p.estado==='nuevo').length;
-      await poOpCargar();
-      const ahora=(_poOpPedidos||[]).filter(p=>p.estado==='nuevo').length;
-      if(ahora>prev)poOpRecordatorio();
-    },30000);
+      const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+      try{
+        const pdvId=_sesionId||'';
+        let url=`${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&estado=eq.nuevo&order=created_at.desc&limit=50`;
+        if(pdvId)url+=`&pdv_id=eq.${pdvId}`;
+        const r=await fetch(url,{headers:H2});
+        const nuevos=r.ok?await r.json():[];
+        const idsNuevos=nuevos.map(p=>p.id);
+        if(_poOpIdsConocidos!==null){
+          const sinVer=nuevos.filter(p=>!_poOpIdsConocidos.includes(p.id));
+          if(sinVer.length>0){
+            _poOpIdsConocidos=[..._poOpIdsConocidos,...sinVer.map(p=>p.id)];
+            await poOpCargar();
+            poOpSonido();
+            poOpMostrarModalPedido(sinVer[0]);
+            return;
+          }
+        } else {
+          _poOpIdsConocidos=idsNuevos;
+        }
+        await poOpCargar();
+      }catch(e){await poOpCargar();}
+    },20000);
   }
 
   const _origSwitchNegPO=switchNeg;
   switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();if(sub==='pedidos-op')poOpCargar();};
-  setTimeout(()=>{try{if(!isAdmin){poOpCargar();poOpStartPolling();}}catch(e){}},3000);
+  setTimeout(async()=>{
+    try{
+      if(!isAdmin){
+        // Primer carga: registrar IDs existentes SIN avisar (ya estaban antes del login)
+        const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+        const pdvId=_sesionId||'';
+        let url=`${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&estado=eq.nuevo&order=created_at.desc&limit=50`;
+        if(pdvId)url+=`&pdv_id=eq.${pdvId}`;
+        const r=await fetch(url,{headers:H2});
+        const existentes=r.ok?await r.json():[];
+        _poOpIdsConocidos=existentes.map(p=>p.id);
+        await poOpCargar();
+        // Si había pedidos pendientes al entrar, mostrar badge y aviso suave (no modal)
+        if(existentes.length>0){
+          poOpSonido();
+          toast(`📲 Tenés ${existentes.length} pedido${existentes.length>1?'s':''} online pendiente${existentes.length>1?'s':''}. Revisá 📲 Pedidos Online.`,'error');
+        }
+        poOpStartPolling();
+      }
+    }catch(e){}
+  },3000);
 
   // ══════════════════════════════════════ / PEDIDOS ONLINE ══
 
