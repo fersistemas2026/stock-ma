@@ -1405,6 +1405,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div id="po-config-promos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
         </div>
       </div>
+      <!-- PDVs habilitados -->
+      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">🏪 Sucursales habilitadas</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí qué sucursales aparecen disponibles en la tienda online.</p>
+        <div id="po-config-pdvs"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+        <button onclick="poGuardarPdvsOnline()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar sucursales</button>
+      </div>
+
       <!-- Logo y nombre -->
       <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
         <div style="font-size:14px;font-weight:700;margin-bottom:12px">🖼️ Logo y nombre de la tienda</div>
@@ -15104,7 +15112,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function poSwitchTab(tab) {
     document.getElementById('po-panel-pedidos').style.display=tab==='pedidos'?'block':'none';
     document.getElementById('po-panel-config').style.display=tab==='config'?'block':'none';
-    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();}
+    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();}
     document.querySelectorAll('.po-tab').forEach(b=>{
       const a=b.id==='po-tab-'+tab;
       b.style.color=a?'var(--accent)':'var(--text-muted)';
@@ -15216,7 +15224,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           const d=typeof row.datos==='string'?JSON.parse(row.datos):row.datos;
           const gustosArr=d?.gustos||[];
           const activosArr=Array.isArray(row.online_activo)?row.online_activo:[];
-          _poListaDatos[String(row.prod_id)]={gustos:gustosArr,activos:new Set(activosArr.map(String))};
+          const pres = row.online_presentaciones || {};
+          _poListaDatos[String(row.prod_id)]={gustos:gustosArr,activos:new Set(activosArr.map(String)),presentaciones:pres};
         }catch(e){}
       });
     }catch(e){}
@@ -15230,16 +15239,33 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     _poProductos.forEach(p=>{
       const ld=_poListaDatos[String(p.id)];
       if(!ld||!ld.gustos.length)return;
-      html+=`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase">${p.nombre}</div>`;
+      // Presentaciones guardadas: ld.presentaciones = { gustoId: ['250g','500g'] }
+      const pres = ld.presentaciones || {};
+      html+=`<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;padding:12px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text)">${p.nombre}</div>`;
       ld.gustos.forEach(g=>{
         const act=ld.activos.has(String(g.gid));
         const precio=String(g.precio||'').replace(/\./g,'').replace(',','.');
-        html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
+        const precioNum=parseFloat(precio)||0;
+        const gPres = Array.isArray(pres[g.gid]) ? pres[g.gid] : [];
+        const has250 = gPres.includes('250g');
+        const has500 = gPres.includes('500g');
+        html+=`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
             <input type="checkbox" class="po-chk" data-prodid="${p.id}" data-gustoid="${g.gid}" ${act?'checked':''} style="width:16px;height:16px;cursor:pointer">
-            <span style="font-size:13px">${g.nombre}</span>
-          </label>
-          <span style="font-size:12px;color:var(--text-muted)">$${(parseFloat(precio)||0).toLocaleString('es-AR')}</span>
+            <span style="font-size:13px;font-weight:500">${g.nombre}</span>
+            <span style="font-size:12px;color:var(--text-muted);margin-left:auto">$${precioNum.toLocaleString('es-AR')}</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-left:24px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer">
+              <input type="checkbox" class="po-pres" data-prodid="${p.id}" data-gustoid="${g.gid}" data-pres="250g" ${has250?'checked':''} style="width:14px;height:14px">
+              250g ($${(precioNum/2).toLocaleString('es-AR')})
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer">
+              <input type="checkbox" class="po-pres" data-prodid="${p.id}" data-gustoid="${g.gid}" data-pres="500g" ${has500?'checked':''} style="width:14px;height:14px">
+              500g ($${precioNum.toLocaleString('es-AR')})
+            </label>
+          </div>
         </div>`;
       });
       html+='</div>';
@@ -15252,12 +15278,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const porProd={};
     document.querySelectorAll('.po-chk').forEach(chk=>{
       const pid=String(chk.dataset.prodid);
-      if(!porProd[pid])porProd[pid]=[];
-      if(chk.checked)porProd[pid].push(String(chk.dataset.gustoid));
+      if(!porProd[pid])porProd[pid]={activos:[],presentaciones:{}};
+      if(chk.checked)porProd[pid].activos.push(String(chk.dataset.gustoid));
     });
-    for(const [prodId,activos] of Object.entries(porProd)){
+    // Recopilar presentaciones
+    document.querySelectorAll('.po-pres').forEach(chk=>{
+      const pid=String(chk.dataset.prodid);
+      const gid=String(chk.dataset.gustoid);
+      const pres=chk.dataset.pres;
+      if(!porProd[pid])porProd[pid]={activos:[],presentaciones:{}};
+      if(!porProd[pid].presentaciones[gid])porProd[pid].presentaciones[gid]=[];
+      if(chk.checked)porProd[pid].presentaciones[gid].push(pres);
+    });
+    for(const [prodId,data] of Object.entries(porProd)){
       await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}`,{
-        method:'PATCH',headers:H2,body:JSON.stringify({online_activo:activos})
+        method:'PATCH',headers:H2,body:JSON.stringify({online_activo:data.activos, online_presentaciones:data.presentaciones})
       });
     }
     toast('Productos guardados','success');
@@ -15525,6 +15560,37 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   // ══════════════════════════════════════ / FOTOS Y CONFIG TIENDA ══
+
+
+  // ── PDVs online ──────────────────────────────────────────────────────────
+  async function poRenderPdvsOnline() {
+    const el = document.getElementById('po-config-pdvs');
+    if (!el) return;
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    const [pdvsData, cfgData] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/pdvs?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre`, {headers:H2}).then(r=>r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=pdvs_online`, {headers:H2}).then(r=>r.json())
+    ]);
+    const activosPdvs = new Set((cfgData?.[0]?.pdvs_online || []).map(String));
+    el.innerHTML = (pdvsData||[]).map(p => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
+          <input type="checkbox" class="po-pdv-chk" data-pdvid="${p.id}" ${activosPdvs.has(String(p.id))?'checked':''} style="width:16px;height:16px;cursor:pointer">
+          <span style="font-size:14px">${p.nombre}</span>
+        </label>
+      </div>`).join('') || '<div style="color:var(--text-muted);font-size:13px">No hay sucursales</div>';
+  }
+
+  async function poGuardarPdvsOnline() {
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
+    const activos = [];
+    document.querySelectorAll('.po-pdv-chk').forEach(chk => { if(chk.checked) activos.push(String(chk.dataset.pdvid)); });
+    await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`, {
+      method:'POST', headers:H2,
+      body:JSON.stringify({id:'1', empresa_id:String(empresaActual), pdvs_online:activos})
+    });
+    toast('Sucursales guardadas','success');
+  }
 
 </script>
 
