@@ -1367,10 +1367,95 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     </div>
 
     
-      <div id="neg-pedidos-online" class="neg-panel" style="display:none">
+      </div><!-- /neg-content-wrap -->
+    </div><!-- /tab-negocios -->
+
+    <!-- USUARIOS (solo admin) -->
+    <div id="tab-usuarios" class="panel">
+      <div style="margin-bottom:24px;"><div class="form-title">Gestión de usuarios</div><p style="font-size:13px;color:var(--text-muted);margin-top:4px">Cambiá contraseñas y asigná puntos de venta a cada operador.</p></div>
+      <div class="users-grid" id="users-grid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL GUSTOS -->
+<div class="modal-overlay hidden" id="gustos-modal" onclick="closeGustosModal(event)">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div><div class="modal-title" id="modal-prod-name"></div><div class="modal-sub"><span id="modal-gusto-count">0</span> / 20 gustos</div></div>
+      <button class="modal-close" onclick="closeGustosModal(null)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-add-row"><input type="text" id="gusto-input" placeholder="Nombre del gusto..." maxlength="60" onkeydown="if(event.key===&#39;Enter&#39;) addGusto()"><button class="btn-primary" style="padding:10px 16px" onclick="addGusto()">+ Agregar</button></div>
+      <div class="gusto-list" id="gusto-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESUMEN DEL DÍA -->
+<div class="modal-overlay hidden" id="resumen-dia-modal" onclick="closeResumenDia(event)" style="z-index:220">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="resumen-dia-title">📋 Resumen del día</div>
+        <div class="modal-sub" id="resumen-dia-sub"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="exportResumenDiaExcel()">↓ Excel</button>
+        <button class="modal-close" onclick="closeResumenDia(null)">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" id="resumen-dia-body"></div>
+  </div>
+</div>
+<div class="modal-overlay hidden" id="sc-modal" onclick="closeScModal(event)" style="z-index:220">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="sc-modal-title">Stock mínimo y máximo</div>
+        <div class="modal-sub" id="sc-modal-sub">Configurá los valores por día de la semana</div>
+      </div>
+      <button class="modal-close" onclick="closeScModal(null)">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- PDV selector -->
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Sucursal</label>
+        <select id="sc-pdv-select" onchange="loadScForPdv()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;"></select>
+      </div>
+      <div id="sc-modal-body"><div style="text-align:center;padding:24px"><span class="spin"></span></div></div>
+      <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn-outline" onclick="closeScModal(null)">Cancelar</button>
+        <button class="btn-primary" onclick="saveStockConfig()"><span id="sc-save-txt">Guardar configuración</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PDV STOCK -->
+<div class="modal-overlay hidden" id="pdv-modal" onclick="closePdvModal(event)" style="z-index:210">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div><div class="modal-title" id="pdv-modal-name"></div><div class="modal-sub" id="pdv-modal-sub"></div></div>
+      <button class="modal-close" onclick="closePdvModal(null)">✕</button>
+    </div>
+    <div class="modal-body" id="pdv-modal-body"></div>
+    <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">
+      <button class="btn-outline" onclick="closePdvModal(null)">Cerrar</button>
+      <button class="btn-primary" onclick="guardarTodoStock()">💾 Guardar stock</button>
+    </div>
+  </div>
+</div><!-- /pdv-modal -->
+
+
+<!-- ══════════════════════════════════════════ PEDIDOS ONLINE -->
+<div id="neg-pedidos-online" class="neg-panel" style="display:none">
   <div style="padding:20px 24px;max-width:900px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div><div class="form-title">🛒 Pedidos Online</div><p style="font-size:13px;color:var(--text-muted);margin-top:2px">Gestioná los pedidos que llegan desde la tienda online</p></div>
+      <div>
+        <div class="form-title">🛒 Pedidos Online</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:2px">Gestioná los pedidos que llegan desde la tienda online</p>
+      </div>
       <div style="display:flex;gap:8px;align-items:center">
         <span id="po-badge-nuevos" style="display:none;background:#D85A30;color:white;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700"></span>
         <button onclick="initPedidosOnline()" class="btn-outline" style="font-size:13px">🔄 Actualizar</button>
@@ -1405,15 +1490,63 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div id="po-config-promos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
         </div>
       </div>
-      <!-- PDVs habilitados -->
+      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:8px">🔗 Link de la tienda</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" value="https://fersistemas2026.github.io/stock-ma/pedidos.html" readonly style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;min-width:200px">
+          <button onclick="navigator.clipboard.writeText('https://fersistemas2026.github.io/stock-ma/pedidos.html').then(()=>toast('¡Link copiado!','success'))" class="btn-outline" style="font-size:13px">📋 Copiar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- /PEDIDOS ONLINE -->
+
+
+<div id="neg-pedidos-online" class="neg-panel" style="display:none">
+  <div style="padding:20px 24px;max-width:1000px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div><div class="form-title">🛒 Pedidos Online</div><p style="font-size:13px;color:var(--text-muted);margin-top:2px">Gestioná los pedidos que llegan desde la tienda online</p></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="po-badge-nuevos" style="display:none;background:#D85A30;color:white;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700"></span>
+        <button onclick="initPedidosOnline()" class="btn-outline" style="font-size:13px">🔄 Actualizar</button>
+        <a href="https://fersistemas2026.github.io/stock-ma/pedidos.html" target="_blank" class="btn-outline" style="font-size:13px;text-decoration:none">🔗 Ver tienda</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)">
+      <button class="po-tab active" id="po-tab-pedidos" onclick="poSwitchTab('pedidos')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-1px">Pedidos</button>
+      <button class="po-tab" id="po-tab-config" onclick="poSwitchTab('config')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px">⚙️ Configuración</button>
+    </div>
+    <div id="po-panel-pedidos">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="po-estado-btn active" onclick="poFiltrarEstado(this,'todos')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer">Todos</button>
+        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'nuevo')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">🆕 Nuevos</button>
+        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'en_preparacion')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">👨‍🍳 En preparación</button>
+        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'listo')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">✅ Listos</button>
+        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'entregado')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">📦 Entregados</button>
+      </div>
+      <div id="po-lista-pedidos"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
+    </div>
+    <div id="po-panel-config" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">📦 Productos en tienda online</div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Activá los sabores y presentaciones para la tienda.</p>
+          <div id="po-config-productos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+          <button onclick="poGuardarConfigProductos()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar productos</button>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">🏷️ Promociones online</div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Activá las promociones para clientes frecuentes.</p>
+          <div id="po-config-promos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+        </div>
+      </div>
       <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px">🏪 Sucursales habilitadas</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí qué sucursales aparecen disponibles en la tienda online.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí qué sucursales aparecen en la tienda online.</p>
         <div id="po-config-pdvs"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
         <button onclick="poGuardarPdvsOnline()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar sucursales</button>
       </div>
-
-      <!-- Logo y nombre -->
       <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
         <div style="font-size:14px;font-weight:700;margin-bottom:12px">🖼️ Logo y nombre de la tienda</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
@@ -1422,12 +1555,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <input type="text" id="po-tienda-nombre" placeholder="Ej: La Pasta" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
           </div>
           <div>
-            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Número de WhatsApp (con código país)</label>
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">WhatsApp (con código país)</label>
             <input type="text" id="po-tienda-wa" placeholder="Ej: 5491112345678" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
           </div>
         </div>
         <div style="margin-top:12px">
-          <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Logo de la tienda</label>
+          <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Logo</label>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
             <img id="po-logo-preview" src="" style="width:60px;height:60px;border-radius:10px;object-fit:cover;border:1px solid var(--border);display:none">
             <div id="po-logo-placeholder" style="width:60px;height:60px;border-radius:10px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px">🍝</div>
@@ -1440,15 +1573,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
         <button onclick="poGuardarTiendaConfig()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar configuración</button>
       </div>
-
-      <!-- Fotos por producto -->
       <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
         <div style="font-size:14px;font-weight:700;margin-bottom:4px">📸 Fotos de productos</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Subí una foto por producto para mostrar en la tienda online.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Subí una foto por producto para la tienda online.</p>
         <div id="po-config-fotos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
       </div>
-
-      <!-- Link -->
       <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
         <div style="font-size:14px;font-weight:700;margin-bottom:8px">🔗 Link de la tienda</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1460,9 +1589,6 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   </div>
 </div>
 
-<!-- /pdv-modal -->
-
-
 <div id="neg-pedidos-op" class="neg-panel" style="display:none">
   <div style="padding:10px 14px 14px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -1473,7 +1599,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>
       <button onclick="poOpCargar()" class="btn-outline" style="font-size:12px;padding:4px 10px">🔄 Actualizar</button>
     </div>
-    <div id="po-op-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
+    <div id="po-op-lista"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
   </div>
 </div>
 </div><!-- /neg-panels-wrap -->
@@ -15103,7 +15229,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   })();
 
   // ══════════════════════════════════════ PEDIDOS ONLINE ADMIN ══
+
   let _poPedidos=[], _poFiltroEstado='todos', _poProductos=[], _poGustos=[], _poListaDatos={}, _poPromos=[];
+  let _poOpPedidos=[], _poOpFiltro='pendientes', _poOpInterval=null;
+  let _poTiendaConfig={};
 
   async function initPedidosOnline() {
     await Promise.all([poCargarPedidos(), poCargarConfigProductos(), poCargarPromos()]);
@@ -15112,13 +15241,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function poSwitchTab(tab) {
     document.getElementById('po-panel-pedidos').style.display=tab==='pedidos'?'block':'none';
     document.getElementById('po-panel-config').style.display=tab==='config'?'block':'none';
-    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();}
     document.querySelectorAll('.po-tab').forEach(b=>{
       const a=b.id==='po-tab-'+tab;
       b.style.color=a?'var(--accent)':'var(--text-muted)';
       b.style.fontWeight=a?'700':'500';
       b.style.borderBottom=a?'2px solid var(--accent)':'2px solid transparent';
     });
+    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();}
   }
 
   async function poCargarPedidos() {
@@ -15199,7 +15328,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const factor=totalBase>0?(totalFinal/totalBase):1;
     const rows=items.map(it=>({
       empresa_id:String(empresaActual),pdv_id:String(pedido.pdv_id||''),fecha,hora,
-      ticket_id:`ONLINE_${pedido.id}`,prod_id:it.prod_id||'',prod_nombre:it.prod_nombre||'',
+      ticket_id:'ONLINE_'+pedido.id,prod_id:it.prod_id||'',prod_nombre:it.prod_nombre||'',
       gusto_id:it.gusto_id||'',gusto_nombre:it.gusto_nombre||'',cantidad:it.cantidad||1,
       precio:(it.precio||0)*factor,lista:'Lista 1',
       metodo_pago:pedido.metodo_pago==='transfe'?'transferencia':'efectivo',
@@ -15212,9 +15341,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
     try{
       const [prods,gsts,lista]=await Promise.all([
-        fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre,categoria`,{headers:H2}).then(r=>r.json()),
+        fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre,categoria,foto_url`,{headers:H2}).then(r=>r.json()),
         fetch(`${SUPABASE_URL}/rest/v1/gustos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,producto_id,nombre`,{headers:H2}).then(r=>r.json()),
-        fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos,online_activo`,{headers:H2}).then(r=>r.json())
+        fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos,online_activo,online_presentaciones`,{headers:H2}).then(r=>r.json())
       ]);
       _poProductos=prods||[];_poGustos=gsts||[];
       _poListaDatos={};
@@ -15224,7 +15353,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           const d=typeof row.datos==='string'?JSON.parse(row.datos):row.datos;
           const gustosArr=d?.gustos||[];
           const activosArr=Array.isArray(row.online_activo)?row.online_activo:[];
-          const pres = row.online_presentaciones || {};
+          const pres=row.online_presentaciones||{};
           _poListaDatos[String(row.prod_id)]={gustos:gustosArr,activos:new Set(activosArr.map(String)),presentaciones:pres};
         }catch(e){}
       });
@@ -15239,30 +15368,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     _poProductos.forEach(p=>{
       const ld=_poListaDatos[String(p.id)];
       if(!ld||!ld.gustos.length)return;
-      // Presentaciones guardadas: ld.presentaciones = { gustoId: ['250g','500g'] }
-      const pres = ld.presentaciones || {};
-      html+=`<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;padding:12px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text)">${p.nombre}</div>`;
+      const pres=ld.presentaciones||{};
+      html+=`<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;padding:12px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">${p.nombre}</div>`;
       ld.gustos.forEach(g=>{
         const act=ld.activos.has(String(g.gid));
         const precio=String(g.precio||'').replace(/\./g,'').replace(',','.');
         const precioNum=parseFloat(precio)||0;
-        const gPres = Array.isArray(pres[g.gid]) ? pres[g.gid] : [];
-        const has250 = gPres.includes('250g');
-        const has500 = gPres.includes('500g');
+        const gPres=Array.isArray(pres[g.gid])?pres[g.gid]:[];
         html+=`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
             <input type="checkbox" class="po-chk" data-prodid="${p.id}" data-gustoid="${g.gid}" ${act?'checked':''} style="width:16px;height:16px;cursor:pointer">
             <span style="font-size:13px;font-weight:500">${g.nombre}</span>
             <span style="font-size:12px;color:var(--text-muted);margin-left:auto">$${precioNum.toLocaleString('es-AR')}</span>
           </div>
-          <div style="display:flex;gap:8px;margin-left:24px;flex-wrap:wrap">
+          <div style="display:flex;gap:10px;margin-left:24px;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer">
-              <input type="checkbox" class="po-pres" data-prodid="${p.id}" data-gustoid="${g.gid}" data-pres="250g" ${has250?'checked':''} style="width:14px;height:14px">
+              <input type="checkbox" class="po-pres" data-prodid="${p.id}" data-gustoid="${g.gid}" data-pres="250g" ${gPres.includes('250g')?'checked':''} style="width:14px;height:14px">
               250g ($${(precioNum/2).toLocaleString('es-AR')})
             </label>
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer">
-              <input type="checkbox" class="po-pres" data-prodid="${p.id}" data-gustoid="${g.gid}" data-pres="500g" ${has500?'checked':''} style="width:14px;height:14px">
+              <input type="checkbox" class="po-pres" data-prodid="${p.id}" data-gustoid="${g.gid}" data-pres="500g" ${gPres.includes('500g')?'checked':''} style="width:14px;height:14px">
               500g ($${precioNum.toLocaleString('es-AR')})
             </label>
           </div>
@@ -15281,18 +15406,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if(!porProd[pid])porProd[pid]={activos:[],presentaciones:{}};
       if(chk.checked)porProd[pid].activos.push(String(chk.dataset.gustoid));
     });
-    // Recopilar presentaciones
     document.querySelectorAll('.po-pres').forEach(chk=>{
       const pid=String(chk.dataset.prodid);
       const gid=String(chk.dataset.gustoid);
-      const pres=chk.dataset.pres;
       if(!porProd[pid])porProd[pid]={activos:[],presentaciones:{}};
       if(!porProd[pid].presentaciones[gid])porProd[pid].presentaciones[gid]=[];
-      if(chk.checked)porProd[pid].presentaciones[gid].push(pres);
+      if(chk.checked)porProd[pid].presentaciones[gid].push(chk.dataset.pres);
     });
     for(const [prodId,data] of Object.entries(porProd)){
       await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}`,{
-        method:'PATCH',headers:H2,body:JSON.stringify({online_activo:data.activos, online_presentaciones:data.presentaciones})
+        method:'PATCH',headers:H2,body:JSON.stringify({online_activo:data.activos,online_presentaciones:data.presentaciones})
       });
     }
     toast('Productos guardados','success');
@@ -15328,15 +15451,156 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     toast(activo?'Promo habilitada online':'Promo deshabilitada','success');
   }
 
-  // ══════════════════════════════ PEDIDOS ONLINE OPERADOR ══
-  let _poOpPedidos=[], _poOpFiltro='pendientes', _poOpInterval=null;
+  async function poRenderPdvsOnline(){
+    const el=document.getElementById('po-config-pdvs');
+    if(!el)return;
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    const [pdvsData,cfgData]=await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/pdvs?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre`,{headers:H2}).then(r=>r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=pdvs_online`,{headers:H2}).then(r=>r.json())
+    ]);
+    const activosPdvs=new Set((cfgData?.[0]?.pdvs_online||[]).map(String));
+    el.innerHTML=(pdvsData||[]).map(p=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
+          <input type="checkbox" class="po-pdv-chk" data-pdvid="${p.id}" ${activosPdvs.has(String(p.id))?'checked':''} style="width:16px;height:16px;cursor:pointer">
+          <span style="font-size:14px">${p.nombre}</span>
+        </label>
+      </div>`).join('')||'<div style="color:var(--text-muted);font-size:13px">No hay sucursales</div>';
+  }
 
+  async function poGuardarPdvsOnline(){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    const activos=[];
+    document.querySelectorAll('.po-pdv-chk').forEach(chk=>{if(chk.checked)activos.push(String(chk.dataset.pdvid));});
+    const checkR=await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    const ex=checkR.ok?await checkR.json():[];
+    if(ex.length>0){
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:H2,body:JSON.stringify({pdvs_online:activos})});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`,{method:'POST',headers:H2,body:JSON.stringify({id:'1',empresa_id:String(empresaActual),pdvs_online:activos})});
+    }
+    toast('Sucursales guardadas','success');
+  }
+
+  async function poCargarTiendaConfig(){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=*`,{headers:H2});
+      const data=r.ok?await r.json():[];
+      _poTiendaConfig=data[0]||{};
+    }catch(e){_poTiendaConfig={};}
+    const nombre=document.getElementById('po-tienda-nombre');
+    const wa=document.getElementById('po-tienda-wa');
+    if(nombre)nombre.value=_poTiendaConfig.nombre||'';
+    if(wa)wa.value=_poTiendaConfig.whatsapp||'';
+    if(_poTiendaConfig.logo_url){
+      const prev=document.getElementById('po-logo-preview');
+      const ph=document.getElementById('po-logo-placeholder');
+      if(prev){prev.src=_poTiendaConfig.logo_url;prev.style.display='block';}
+      if(ph)ph.style.display='none';
+    }
+  }
+
+  function poPreviewLogo(input){
+    if(!input.files||!input.files[0])return;
+    const file=input.files[0];
+    if(file.size>1024*1024){toast('El logo no puede superar 1MB');input.value='';return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const prev=document.getElementById('po-logo-preview');
+      const ph=document.getElementById('po-logo-placeholder');
+      if(prev){prev.src=e.target.result;prev.style.display='block';}
+      if(ph)ph.style.display='none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function poSubirImagen(file,path){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':file.type,'Cache-Control':'3600','x-upsert':'true'};
+    const r=await fetch(`${SUPABASE_URL}/storage/v1/object/tienda-fotos/${path}`,{method:'POST',headers:H2,body:file});
+    if(!r.ok){const t=await r.text();throw new Error(t);}
+    return `${SUPABASE_URL}/storage/v1/object/public/tienda-fotos/${path}`;
+  }
+
+  async function poGuardarTiendaConfig(){
+    const Hbase={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    const nombre=document.getElementById('po-tienda-nombre')?.value.trim()||'';
+    const wa=document.getElementById('po-tienda-wa')?.value.trim()||'';
+    let logo_url=_poTiendaConfig.logo_url||'';
+    const logoFile=document.getElementById('po-logo-file')?.files?.[0];
+    if(logoFile){
+      try{
+        toast('Subiendo logo...','success');
+        const ext=logoFile.name.split('.').pop();
+        logo_url=await poSubirImagen(logoFile,'empresa_'+empresaActual+'/logo.'+ext);
+      }catch(e){toast('Error al subir el logo: '+e.message);return;}
+    }
+    const payload={nombre,whatsapp:wa,logo_url};
+    const checkR=await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    const ex=checkR.ok?await checkR.json():[];
+    if(ex.length>0){
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:Hbase,body:JSON.stringify(payload)});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`,{method:'POST',headers:Hbase,body:JSON.stringify({id:'1',empresa_id:String(empresaActual),...payload})});
+    }
+    _poTiendaConfig={..._poTiendaConfig,...payload};
+    if(logo_url){
+      const prev=document.getElementById('po-logo-preview');
+      const ph=document.getElementById('po-logo-placeholder');
+      if(prev){prev.src=logo_url;prev.style.display='block';}
+      if(ph)ph.style.display='none';
+    }
+    toast('Configuración guardada','success');
+  }
+
+  async function poCargarFotosProductos(){
+    const el=document.getElementById('po-config-fotos');
+    if(!el)return;
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    const prods=await fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre,foto_url`,{headers:H2}).then(r=>r.json()).catch(()=>[]);
+    el.innerHTML=(prods||[]).map(p=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        ${p.foto_url?`<img src="${p.foto_url}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0">`:`<div style="width:52px;height:52px;border-radius:8px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📦</div>`}
+        <div style="flex:1;font-size:14px;font-weight:500">${p.nombre}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="file" id="foto-file-${p.id}" accept="image/*" style="display:none" onchange="poSubirFotoProducto('${p.id}',this)">
+          <button onclick="document.getElementById('foto-file-${p.id}').click()" class="btn-outline" style="font-size:12px;padding:4px 10px">${p.foto_url?'✏️ Cambiar':'📁 Subir'}</button>
+          ${p.foto_url?`<button onclick="poEliminarFotoProducto('${p.id}')" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer">🗑️</button>`:''}
+        </div>
+      </div>`).join('');
+  }
+
+  async function poSubirFotoProducto(prodId,input){
+    if(!input.files||!input.files[0])return;
+    const file=input.files[0];
+    if(file.size>1024*1024){toast('La foto no puede superar 1MB');input.value='';return;}
+    try{
+      toast('Subiendo foto...','success');
+      const ext=file.name.split('.').pop();
+      const url=await poSubirImagen(file,'empresa_'+empresaActual+'/prod_'+prodId+'.'+ext);
+      const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+      await fetch(`${SUPABASE_URL}/rest/v1/productos?id=eq.${prodId}`,{method:'PATCH',headers:H2,body:JSON.stringify({foto_url:url})});
+      toast('Foto guardada','success');
+      poCargarFotosProductos();
+    }catch(e){toast('Error al subir la foto');}
+  }
+
+  async function poEliminarFotoProducto(prodId){
+    if(!confirm('¿Eliminar la foto?'))return;
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    await fetch(`${SUPABASE_URL}/rest/v1/productos?id=eq.${prodId}`,{method:'PATCH',headers:H2,body:JSON.stringify({foto_url:null})});
+    toast('Foto eliminada','success');
+    poCargarFotosProductos();
+  }
+
+  // ── Operador ──────────────────────────────────────────────────────────────
   async function poOpCargar(){
     const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
     try{
       const pdvId=_sesionId||'';
       let url=`${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&order=created_at.desc&limit=50`;
-      if(pdvId) url+=`&pdv_id=eq.${pdvId}`;
+      if(pdvId)url+=`&pdv_id=eq.${pdvId}`;
       const r=await fetch(url,{headers:H2});
       _poOpPedidos=r.ok?await r.json():[];
     }catch(e){_poOpPedidos=[];}
@@ -15349,7 +15613,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const badge=document.getElementById('po-op-badge');
     if(badge){badge.style.display=n>0?'inline':'none';badge.textContent=n;}
     const btn=document.getElementById('neg-btn-pedidos-op');
-    if(btn) btn.style.color=n>0?'#D85A30':'';
+    if(btn)btn.style.color=n>0?'#D85A30':'';
   }
 
   function poOpFiltrar(btn,filtro){
@@ -15367,7 +15631,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       :_poOpPedidos;
     if(!lista.length){
       el.style.display='block';
-      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:16px">'+(_poOpFiltro==='pendientes'?'✅ No hay pedidos pendientes':'No hay pedidos')+'</div>';
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">'+(_poOpFiltro==='pendientes'?'✅ No hay pedidos pendientes':'No hay pedidos')+'</div>';
       return;
     }
     const ec={nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75',entregado:'#5a6070',cancelado:'#888'};
@@ -15393,7 +15657,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:15px;padding:3px 0;font-weight:500"><span>${it.prod_nombre} · ${it.gusto_nombre} <strong style="color:var(--accent)">×${it.cantidad}</strong></span><span style="color:var(--text-muted);margin-left:8px">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border)">
-          <span style="font-size:16px;font-weight:800">${p.metodo_pago==='transfe'?'🏦 Transfe':'💵 Efectivo'} · $${(p.total_final||p.total||0).toLocaleString('es-AR')}</span>
+          <span style="font-size:16px;font-weight:800">${p.metodo_pago==='transfe'?'🏦':'💵'} $${(p.total_final||p.total||0).toLocaleString('es-AR')}</span>
           ${sig[p.estado]?`<button onclick="poOpAvanzar('${p.id}','${sig[p.estado]}')" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">${sigl[p.estado]}</button>`:'<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>'}
         </div>
       </div>`;
@@ -15421,7 +15685,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         document.body.appendChild(banner);
         setTimeout(()=>{try{banner.remove();}catch(e){}},8000);
       }
-      banner.textContent=(n===1?'📲 1 pedido online nuevo sin atender':`📲 ${n} pedidos online nuevos sin atender`)+' — Tap para ver';
+      banner.textContent=(n===1?'📲 1 pedido online nuevo':'📲 '+n+' pedidos online nuevos')+' — Tap para ver';
     }
   }
 
@@ -15439,175 +15703,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   const _origSwitchNegPO=switchNeg;
   switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();if(sub==='pedidos-op')poOpCargar();};
   setTimeout(()=>{try{if(!isAdmin){poOpCargar();poOpStartPolling();}}catch(e){}},3000);
-  // ══════════════════════════════ / PEDIDOS ONLINE ══
 
-
-  // ══════════════════════════════════════ FOTOS Y CONFIG TIENDA ══
-
-  let _poTiendaConfig = {};
-
-  async function poCargarTiendaConfig() {
-    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=*`, {headers:H2});
-      const data = r.ok ? await r.json() : [];
-      _poTiendaConfig = data[0] || {};
-    } catch(e) { _poTiendaConfig = {}; }
-
-    const nombre = document.getElementById('po-tienda-nombre');
-    const wa = document.getElementById('po-tienda-wa');
-    if (nombre) nombre.value = _poTiendaConfig.nombre || '';
-    if (wa) wa.value = _poTiendaConfig.whatsapp || '';
-
-    if (_poTiendaConfig.logo_url) {
-      const prev = document.getElementById('po-logo-preview');
-      const ph = document.getElementById('po-logo-placeholder');
-      if (prev) { prev.src = _poTiendaConfig.logo_url; prev.style.display = 'block'; }
-      if (ph) ph.style.display = 'none';
-    }
-  }
-
-  function poPreviewLogo(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    if (file.size > 1024 * 1024) { toast('El logo no puede superar 1MB'); input.value = ''; return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      const prev = document.getElementById('po-logo-preview');
-      const ph = document.getElementById('po-logo-placeholder');
-      if (prev) { prev.src = e.target.result; prev.style.display = 'block'; }
-      if (ph) ph.style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-  }
-
-  async function poSubirImagen(file, path) {
-    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':file.type,'Cache-Control':'3600','x-upsert':'true'};
-    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/tienda-fotos/${path}`, {method:'POST', headers:H2, body:file});
-    if (!r.ok) { const t=await r.text(); throw new Error(t); }
-    return `${SUPABASE_URL}/storage/v1/object/public/tienda-fotos/${path}`;
-  }
-
-  async function poGuardarTiendaConfig() {
-    const Hbase = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
-    const nombre = document.getElementById('po-tienda-nombre')?.value.trim() || '';
-    const wa = document.getElementById('po-tienda-wa')?.value.trim() || '';
-    let logo_url = _poTiendaConfig.logo_url || '';
-
-    // Subir logo si hay uno nuevo
-    const logoFile = document.getElementById('po-logo-file')?.files?.[0];
-    if (logoFile) {
-      try {
-        toast('Subiendo logo...', 'success');
-        const ext = logoFile.name.split('.').pop();
-        logo_url = await poSubirImagen(logoFile, `empresa_${empresaActual}/logo.${ext}`);
-      } catch(e) { toast('Error al subir el logo: '+e.message); return; }
-    }
-
-    const payload = { id:'1', empresa_id:String(empresaActual), nombre, whatsapp:wa, logo_url };
-
-    // Intentar PATCH primero (si ya existe), sino POST
-    const checkR = await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`, {headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
-    const existing = checkR.ok ? await checkR.json() : [];
-
-    if (existing.length > 0) {
-      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`, {method:'PATCH', headers:Hbase, body:JSON.stringify({nombre, whatsapp:wa, logo_url})});
-    } else {
-      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`, {method:'POST', headers:Hbase, body:JSON.stringify(payload)});
-    }
-    _poTiendaConfig = payload;
-
-    // Actualizar preview
-    if (logo_url) {
-      const prev = document.getElementById('po-logo-preview');
-      const ph = document.getElementById('po-logo-placeholder');
-      if (prev) { prev.src = logo_url; prev.style.display = 'block'; }
-      if (ph) ph.style.display = 'none';
-    }
-    toast('Configuración guardada', 'success');
-  }
-
-  async function poCargarFotosProductos() {
-    const el = document.getElementById('po-config-fotos');
-    if (!el) return;
-    if (!_poProductos.length) await poCargarConfigProductos();
-
-    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
-    // Recargar productos con foto_url
-    const prods = await fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre,foto_url`, {headers:H2}).then(r=>r.json()).catch(()=>[]);
-
-    el.innerHTML = prods.map(p => `
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="position:relative;flex-shrink:0">
-          ${p.foto_url
-            ? `<img src="${p.foto_url}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid var(--border)">`
-            : `<div style="width:52px;height:52px;border-radius:8px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>`
-          }
-        </div>
-        <div style="flex:1;font-size:14px;font-weight:500">${p.nombre}</div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input type="file" id="foto-file-${p.id}" accept="image/*" style="display:none" onchange="poSubirFotoProducto('${p.id}',this)">
-          <button onclick="document.getElementById('foto-file-${p.id}').click()" class="btn-outline" style="font-size:12px;padding:4px 10px">${p.foto_url?'✏️ Cambiar':'📁 Subir'}</button>
-          ${p.foto_url ? `<button onclick="poEliminarFotoProducto('${p.id}')" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer">🗑️</button>` : ''}
-        </div>
-      </div>`).join('');
-  }
-
-  async function poSubirFotoProducto(prodId, input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    if (file.size > 1024 * 1024) { toast('La foto no puede superar 1MB'); input.value=''; return; }
-    try {
-      toast('Subiendo foto...', 'success');
-      const ext = file.name.split('.').pop();
-      const url = await poSubirImagen(file, `empresa_${empresaActual}/prod_${prodId}.${ext}`);
-      const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
-      await fetch(`${SUPABASE_URL}/rest/v1/productos?id=eq.${prodId}`, {method:'PATCH', headers:H2, body:JSON.stringify({foto_url:url})});
-      toast('Foto guardada', 'success');
-      poCargarFotosProductos();
-    } catch(e) { toast('Error al subir la foto'); }
-  }
-
-  async function poEliminarFotoProducto(prodId) {
-    if (!confirm('¿Eliminar la foto de este producto?')) return;
-    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
-    await fetch(`${SUPABASE_URL}/rest/v1/productos?id=eq.${prodId}`, {method:'PATCH', headers:H2, body:JSON.stringify({foto_url:null})});
-    toast('Foto eliminada', 'success');
-    poCargarFotosProductos();
-  }
-
-  // ══════════════════════════════════════ / FOTOS Y CONFIG TIENDA ══
-
-
-  // ── PDVs online ──────────────────────────────────────────────────────────
-  async function poRenderPdvsOnline() {
-    const el = document.getElementById('po-config-pdvs');
-    if (!el) return;
-    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
-    const [pdvsData, cfgData] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/pdvs?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre`, {headers:H2}).then(r=>r.json()),
-      fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=pdvs_online`, {headers:H2}).then(r=>r.json())
-    ]);
-    const activosPdvs = new Set((cfgData?.[0]?.pdvs_online || []).map(String));
-    el.innerHTML = (pdvsData||[]).map(p => `
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
-          <input type="checkbox" class="po-pdv-chk" data-pdvid="${p.id}" ${activosPdvs.has(String(p.id))?'checked':''} style="width:16px;height:16px;cursor:pointer">
-          <span style="font-size:14px">${p.nombre}</span>
-        </label>
-      </div>`).join('') || '<div style="color:var(--text-muted);font-size:13px">No hay sucursales</div>';
-  }
-
-  async function poGuardarPdvsOnline() {
-    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
-    const activos = [];
-    document.querySelectorAll('.po-pdv-chk').forEach(chk => { if(chk.checked) activos.push(String(chk.dataset.pdvid)); });
-    await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`, {
-      method:'POST', headers:H2,
-      body:JSON.stringify({id:'1', empresa_id:String(empresaActual), pdvs_online:activos})
-    });
-    toast('Sucursales guardadas','success');
-  }
+  // ══════════════════════════════════════ / PEDIDOS ONLINE ══
 
 </script>
 
