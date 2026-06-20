@@ -300,7 +300,10 @@ async function init() {
     sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
   ]);
 
-  pdvs     = pdvsData  || [];
+  // Filtrar PDVs por los habilitados en tienda_config.pdvs_online
+  const pdvsOnline = (cfgData?.[0]?.pdvs_online || []).map(String);
+  const todosLos = pdvsData || [];
+  pdvs = pdvsOnline.length > 0 ? todosLos.filter(p => pdvsOnline.includes(String(p.id))) : todosLos;
   productos = prodsData || [];
   gustos   = gustosData || [];
   promos   = promosData || [];
