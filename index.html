@@ -5192,6 +5192,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <label class="pdv-check-item ${perms.ventas?'checked':''}" id="perm-lbl-${u.username}-ventas">
               <input type="checkbox" ${perms.ventas?'checked':''} onchange="togglePerm('${u.username}','ventas',this.checked)" />🛒 Ventas
             </label>
+            <label class="pdv-check-item ${perms.pedidosOnline?'checked':''}" id="perm-lbl-${u.username}-pedidosOnline">
+              <input type="checkbox" ${perms.pedidosOnline?'checked':''} onchange="togglePerm('${u.username}','pedidosOnline',this.checked)" />🌐 Pedidos Online
+            </label>
 
           </div>
         </div>
@@ -11015,7 +11018,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.monitor !== false) show('neg-btn-monitor'); else hide('neg-btn-monitor');
       if (perms.detalleCliente) show('neg-btn-clientes-op'); else hide('neg-btn-clientes-op');
       show('neg-btn-promociones-op');
-      show('neg-btn-pedidos-op');
+      if (perms.pedidosOnline) show('neg-btn-pedidos-op'); else hide('neg-btn-pedidos-op');
       setupNegLayout(false);
       // Renombrar tab agregar para operadores
       const tabAgregar = document.getElementById('tab-btn-agregar');
@@ -15388,7 +15391,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             </label>
             <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer">
               <input type="checkbox" class="po-pres" data-prodid="${p.id}" data-gustoid="${g.gid}" data-pres="500g" ${gPres.includes('500g')?'checked':''} style="width:14px;height:14px">
-              500g ($${precioNum.toLocaleString('es-AR')})
+              500g ($${(precioNum/2).toLocaleString('es-AR')})
             </label>
           </div>
         </div>`;
