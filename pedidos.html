@@ -257,7 +257,7 @@ async function init() {
     if (logoEl) { logoEl.style.cssText='width:36px;height:36px;border-radius:8px;object-fit:cover;overflow:hidden'; logoEl.innerHTML=`<img src="${cfg.logo_url}" style="width:36px;height:36px;border-radius:8px;object-fit:cover">`; }
   }
   const waNum = cfg.whatsapp || WA_NUMBER;
-  document.getElementById('waLink').href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`; = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
+  document.getElementById('waLink').href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
 
   const [pdvsData, prodsData, gustosData, listaData, promosData] = await Promise.all([
     sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre`),
@@ -348,12 +348,11 @@ function renderCatalogo() {
       ${items.map(({prod, gustosOnline}) => {
         const minPrecio = Math.min(...gustosOnline.map(g => parsePrecioAR(g.precio)||0));
         const catKey = (prod.categoria||'').toLowerCase();
-        const imgContent = prod.foto_url
-          ? `<img src="${prod.foto_url}" style="width:100%;height:100%;object-fit:cover">`
-          : (emojis[catKey]||'🍽️');
-        const imgStyle = prod.foto_url ? '' : ` ${colors[catKey]||'cat-default'}`;
+        const tieneImg = !!prod.foto_url;
+        const imgHtml = tieneImg ? '<img src="'+prod.foto_url+'" style="width:100%;height:100%;object-fit:cover">' : (emojis[catKey]||'🍽️');
+        const imgCls = tieneImg ? 'pcard-img' : ('pcard-img ' + (colors[catKey]||'cat-default'));
         return `<div class="pcard" onclick="abrirModal('${prod.id}')">
-          <div class="pcard-img${imgStyle}">${imgContent}</div>
+          <div class="${imgCls}">${imgHtml}</div>
           <div class="pcard-body">
             <div class="pcard-name">${prod.nombre}</div>
             <div class="pcard-sub">${gustosOnline.length} ${gustosOnline.length===1?'opción':'opciones'}</div>
