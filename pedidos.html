@@ -394,7 +394,21 @@ function renderCatalogo() {
     <div class="slabel">${cat}</div>
     <div class="products">
       ${items.map(({prod, gustosOnline}) => {
-        const minPrecio = Math.min(...gustosOnline.map(g => parsePrecioAR(g.precio)||0));
+        // Calcular precio mínimo considerando presentaciones (250g, 500g)
+        const ld2 = listaDatos[String(prod.id)];
+        const precios = [];
+        gustosOnline.forEach(g => {
+          const presList = Array.isArray((ld2?.pres||{})[String(g.gid)]) ? ld2.pres[String(g.gid)] : [];
+          if (presList.length > 0) {
+            presList.forEach(p => {
+              const factor = p === '250g' ? 0.25 : p === '500g' ? 0.5 : 1;
+              precios.push(Math.round(parsePrecioAR(g.precio) * factor));
+            });
+          } else {
+            precios.push(parsePrecioAR(g.precio)||0);
+          }
+        });
+        const minPrecio = Math.min(...precios);
         const catKey = (prod.categoria||'').toLowerCase();
         const tieneImg = !!prod.foto_url;
         const imgHtml = tieneImg ? '<img src="'+prod.foto_url+'" style="width:100%;height:100%;object-fit:cover">' : (emojis[catKey]||'🍽️');
