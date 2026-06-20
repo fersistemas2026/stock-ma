@@ -15707,7 +15707,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function poOpStartPolling(){
     if(_poOpInterval)clearInterval(_poOpInterval);
     _poOpInterval=setInterval(async()=>{
-      if(isAdmin)return;
+      if(currentUser?.role==='admin')return;
       try{
         const nuevos=await poOpFetchNuevos();
         if(_poOpIdsConocidos!==null){
@@ -15730,10 +15730,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   const _origSwitchNegPO=switchNeg;
   switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();if(sub==='pedidos-op')poOpCargar();};
 
-  // Esperar hasta que _sesionId esté disponible antes de arrancar el polling
   async function poOpIniciarConSesion(){
-    if(isAdmin)return;
-    // Esperar hasta 10 segundos a que _sesionId esté asignado
+    if(currentUser?.role==='admin')return;
+    // Esperar hasta 10s a que _sesionId esté asignado
     let intentos=0;
     while(!_sesionId && intentos<20){ await new Promise(r=>setTimeout(r,500)); intentos++; }
     try{
@@ -15744,8 +15743,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         poOpSonido();
         toast(`📲 Tenés ${existentes.length} pedido${existentes.length>1?'s':''} online pendiente${existentes.length>1?'s':''}. Revisá 📲 Pedidos Online.`,'error');
       }
-      poOpStartPolling();
-    }catch(e){ poOpStartPolling(); }
+    }catch(e){}
+    poOpStartPolling();
   }
   setTimeout(()=>{try{poOpIniciarConSesion();}catch(e){}},2000);
 
