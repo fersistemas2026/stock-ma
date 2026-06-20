@@ -1367,88 +1367,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     </div>
 
     
-      </div><!-- /neg-content-wrap -->
-    </div><!-- /tab-negocios -->
-
-    <!-- USUARIOS (solo admin) -->
-    <div id="tab-usuarios" class="panel">
-      <div style="margin-bottom:24px;"><div class="form-title">Gestión de usuarios</div><p style="font-size:13px;color:var(--text-muted);margin-top:4px">Cambiá contraseñas y asigná puntos de venta a cada operador.</p></div>
-      <div class="users-grid" id="users-grid"></div>
-    </div>
-  </main>
-</div>
-
-<!-- MODAL GUSTOS -->
-<div class="modal-overlay hidden" id="gustos-modal" onclick="closeGustosModal(event)">
-  <div class="modal" style="max-width:580px">
-    <div class="modal-header">
-      <div><div class="modal-title" id="modal-prod-name"></div><div class="modal-sub"><span id="modal-gusto-count">0</span> / 20 gustos</div></div>
-      <button class="modal-close" onclick="closeGustosModal(null)">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-add-row"><input type="text" id="gusto-input" placeholder="Nombre del gusto..." maxlength="60" onkeydown="if(event.key===&#39;Enter&#39;) addGusto()"><button class="btn-primary" style="padding:10px 16px" onclick="addGusto()">+ Agregar</button></div>
-      <div class="gusto-list" id="gusto-list"></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL RESUMEN DEL DÍA -->
-<div class="modal-overlay hidden" id="resumen-dia-modal" onclick="closeResumenDia(event)" style="z-index:220">
-  <div class="modal" style="max-width:520px">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title" id="resumen-dia-title">📋 Resumen del día</div>
-        <div class="modal-sub" id="resumen-dia-sub"></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn-outline" style="padding:6px 12px;font-size:12px" onclick="exportResumenDiaExcel()">↓ Excel</button>
-        <button class="modal-close" onclick="closeResumenDia(null)">✕</button>
-      </div>
-    </div>
-    <div class="modal-body" id="resumen-dia-body"></div>
-  </div>
-</div>
-<div class="modal-overlay hidden" id="sc-modal" onclick="closeScModal(event)" style="z-index:220">
-  <div class="modal" style="max-width:500px">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title" id="sc-modal-title">Stock mínimo y máximo</div>
-        <div class="modal-sub" id="sc-modal-sub">Configurá los valores por día de la semana</div>
-      </div>
-      <button class="modal-close" onclick="closeScModal(null)">✕</button>
-    </div>
-    <div class="modal-body">
-      <!-- PDV selector -->
-      <div style="margin-bottom:16px;">
-        <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Sucursal</label>
-        <select id="sc-pdv-select" onchange="loadScForPdv()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;"></select>
-      </div>
-      <div id="sc-modal-body"><div style="text-align:center;padding:24px"><span class="spin"></span></div></div>
-      <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px;">
-        <button class="btn-outline" onclick="closeScModal(null)">Cancelar</button>
-        <button class="btn-primary" onclick="saveStockConfig()"><span id="sc-save-txt">Guardar configuración</span></button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL PDV STOCK -->
-<div class="modal-overlay hidden" id="pdv-modal" onclick="closePdvModal(event)" style="z-index:210">
-  <div class="modal" style="max-width:600px">
-    <div class="modal-header">
-      <div><div class="modal-title" id="pdv-modal-name"></div><div class="modal-sub" id="pdv-modal-sub"></div></div>
-      <button class="modal-close" onclick="closePdvModal(null)">✕</button>
-    </div>
-    <div class="modal-body" id="pdv-modal-body"></div>
-    <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">
-      <button class="btn-outline" onclick="closePdvModal(null)">Cerrar</button>
-      <button class="btn-primary" onclick="guardarTodoStock()">💾 Guardar stock</button>
-    </div>
-  </div>
-</div><!-- /pdv-modal -->
-
-
-<div id="neg-pedidos-online" class="neg-panel" style="display:none">
+      <div id="neg-pedidos-online" class="neg-panel" style="display:none">
   <div style="padding:20px 24px;max-width:900px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
       <div><div class="form-title">🛒 Pedidos Online</div><p style="font-size:13px;color:var(--text-muted);margin-top:2px">Gestioná los pedidos que llegan desde la tienda online</p></div>
@@ -1497,66 +1416,20 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   </div>
 </div>
 
-<div id="neg-pedidos-online" class="neg-panel" style="display:none">
-  <div style="padding:20px 24px;max-width:900px;margin:0 auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div><div class="form-title">🛒 Pedidos Online</div><p style="font-size:13px;color:var(--text-muted);margin-top:2px">Gestioná los pedidos que llegan desde la tienda online</p></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="po-badge-nuevos" style="display:none;background:#D85A30;color:white;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700"></span>
-        <button onclick="initPedidosOnline()" class="btn-outline" style="font-size:13px">🔄 Actualizar</button>
-        <a href="https://fersistemas2026.github.io/stock-ma/pedidos.html" target="_blank" class="btn-outline" style="font-size:13px;text-decoration:none">🔗 Ver tienda</a>
-      </div>
-    </div>
-    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)">
-      <button class="po-tab active" id="po-tab-pedidos" onclick="poSwitchTab('pedidos')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-1px">Pedidos</button>
-      <button class="po-tab" id="po-tab-config" onclick="poSwitchTab('config')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px">⚙️ Configuración</button>
-    </div>
-    <div id="po-panel-pedidos">
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="po-estado-btn active" onclick="poFiltrarEstado(this,'todos')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer">Todos</button>
-        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'nuevo')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">🆕 Nuevos</button>
-        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'en_preparacion')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">👨‍🍳 En preparación</button>
-        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'listo')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">✅ Listos</button>
-        <button class="po-estado-btn" onclick="poFiltrarEstado(this,'entregado')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">📦 Entregados</button>
-      </div>
-      <div id="po-lista-pedidos"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
-    </div>
-    <div id="po-panel-config" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">📦 Productos en tienda online</div>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Activá los sabores que querés mostrar con su precio de Lista 1.</p>
-          <div id="po-config-productos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
-          <button onclick="poGuardarConfigProductos()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar</button>
-        </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">🏷️ Promociones online</div>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Activá las promociones que aplican a clientes frecuentes.</p>
-          <div id="po-config-promos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
-        </div>
-      </div>
-      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:8px">🔗 Link de la tienda</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" value="https://fersistemas2026.github.io/stock-ma/pedidos.html" readonly style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;min-width:200px">
-          <button onclick="navigator.clipboard.writeText('https://fersistemas2026.github.io/stock-ma/pedidos.html').then(()=>toast('¡Link copiado!','success'))" class="btn-outline" style="font-size:13px">📋 Copiar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- /pdv-modal -->
+
 
 <div id="neg-pedidos-op" class="neg-panel" style="display:none">
-  <div style="padding:16px;max-width:700px;margin:0 auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-      <div><div class="form-title">📲 Pedidos Online</div><p style="font-size:13px;color:var(--text-muted);margin-top:2px">Pedidos recibidos para tu sucursal</p></div>
-      <button onclick="poOpCargar()" class="btn-outline" style="font-size:13px">🔄 Actualizar</button>
+  <div style="padding:10px 14px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="form-title" style="margin:0">📲 Pedidos Online</div>
+        <button class="po-op-fbtn active" onclick="poOpFiltrar(this,'pendientes')" style="padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;cursor:pointer">⏳ Pendientes</button>
+        <button class="po-op-fbtn" onclick="poOpFiltrar(this,'todos')" style="padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:12px;cursor:pointer">Todos</button>
+      </div>
+      <button onclick="poOpCargar()" class="btn-outline" style="font-size:12px;padding:4px 10px">🔄 Actualizar</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <button class="po-op-fbtn active" onclick="poOpFiltrar(this,'pendientes')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer">⏳ Pendientes</button>
-      <button class="po-op-fbtn" onclick="poOpFiltrar(this,'todos')" style="padding:6px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:13px;cursor:pointer">Todos</button>
-    </div>
-    <div id="po-op-lista"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
+    <div id="po-op-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
   </div>
 </div>
 </div><!-- /neg-panels-wrap -->
@@ -15421,30 +15294,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       ?_poOpPedidos.filter(p=>p.estado==='nuevo'||p.estado==='en_preparacion')
       :_poOpPedidos;
     if(!lista.length){
-      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">'+(_poOpFiltro==='pendientes'?'✅ No hay pedidos pendientes':'No hay pedidos')+'</div>';
+      el.style.display='block';
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:16px">'+(_poOpFiltro==='pendientes'?'✅ No hay pedidos pendientes':'No hay pedidos')+'</div>';
       return;
     }
     const ec={nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75',entregado:'#5a6070',cancelado:'#888'};
     const el2={nuevo:'🆕 Nuevo',en_preparacion:'👨‍🍳 En preparación',listo:'✅ Listo',entregado:'📦 Entregado',cancelado:'❌ Cancelado'};
     const sig={nuevo:'en_preparacion',en_preparacion:'listo',listo:'entregado'};
     const sigl={nuevo:'👨‍🍳 Iniciar preparación',en_preparacion:'✅ Marcar listo',listo:'📦 Entregar'};
+    el.style.display='grid';
+    el.style.gridTemplateColumns='repeat(auto-fill,minmax(320px,1fr))';
+    el.style.gap='14px';
     el.innerHTML=lista.map(p=>{
       const items=Array.isArray(p.items)?p.items:[];
       const hora=new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+      return `<div style="background:var(--surface);border:3px solid ${ec[p.estado]||'var(--border)'};border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div>
-            <div style="font-size:15px;font-weight:700">${p.cliente_nombre||'Sin nombre'} <span style="font-size:13px;font-weight:400;color:var(--text-muted)">· ${p.cliente_tel||''}</span></div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${p.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'} · ${hora}${p.direccion?' · 📍 '+p.direccion:''}</div>
+            <div style="font-size:18px;font-weight:800">${p.cliente_nombre||'Sin nombre'}</div>
+            <div style="font-size:15px;color:var(--text-muted);margin-top:2px">📱 ${p.cliente_tel||''}</div>
           </div>
-          <span style="padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:white;background:${ec[p.estado]||'#888'}">${el2[p.estado]||p.estado}</span>
+          <span style="padding:5px 14px;border-radius:999px;font-size:13px;font-weight:800;color:white;background:${ec[p.estado]||'#888'};white-space:nowrap">${el2[p.estado]||p.estado}</span>
         </div>
-        <div style="border-top:1px solid var(--border);padding-top:8px;margin-bottom:10px">
-          ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>${it.prod_nombre} · ${it.gusto_nombre} × ${it.cantidad}</span><span style="color:var(--text-muted)">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
+        <div style="font-size:14px;color:var(--text-muted)">${p.modalidad==='delivery'?'🛵 <strong>Delivery</strong>':'🚶 <strong>Retiro</strong>'} · ${hora}${p.direccion?'<br>📍 <strong>'+p.direccion+'</strong>':''}</div>
+        <div style="border-top:1px solid var(--border);padding-top:10px">
+          ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:15px;padding:3px 0;font-weight:500"><span>${it.prod_nombre} · ${it.gusto_nombre} <strong style="color:var(--accent)">×${it.cantidad}</strong></span><span style="color:var(--text-muted);margin-left:8px">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <span style="font-size:13px">${p.metodo_pago==='transfe'?'🏦 Transferencia':'💵 Efectivo'} · <strong>$${(p.total_final||p.total||0).toLocaleString('es-AR')}</strong></span>
-          ${sig[p.estado]?`<button onclick="poOpAvanzar('${p.id}','${sig[p.estado]}')" class="neg-stab-vertical" style="padding:8px 14px;font-size:13px">${sigl[p.estado]}</button>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border)">
+          <span style="font-size:16px;font-weight:800">${p.metodo_pago==='transfe'?'🏦 Transfe':'💵 Efectivo'} · $${(p.total_final||p.total||0).toLocaleString('es-AR')}</span>
+          ${sig[p.estado]?`<button onclick="poOpAvanzar('${p.id}','${sig[p.estado]}')" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">${sigl[p.estado]}</button>`:'<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>'}
         </div>
       </div>`;
     }).join('');
