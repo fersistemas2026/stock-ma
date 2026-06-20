@@ -296,11 +296,14 @@ async function init() {
     sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre`),
     sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria,foto_url`),
     sbGet(`gustos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,producto_id,nombre`),
-    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,online_activo`),
+    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,online_activo,online_presentaciones`),
     sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
   ]);
 
-  pdvs     = pdvsData  || [];
+  // Filtrar PDVs por los habilitados en tienda_config.pdvs_online
+  const pdvsOnline = (cfg.pdvs_online || []).map(String);
+  const todosPdvs = pdvsData || [];
+  pdvs = pdvsOnline.length > 0 ? todosPdvs.filter(p => pdvsOnline.includes(String(p.id))) : todosPdvs;
   productos = prodsData || [];
   gustos   = gustosData || [];
   promos   = promosData || [];
@@ -317,7 +320,8 @@ async function init() {
       // online_activo puede ser array de gids o null
       const activosArr = Array.isArray(row.online_activo) ? row.online_activo : [];
       const activosSet = new Set(activosArr.map(String));
-      listaDatos[String(row.prod_id)] = { gustos: gustosArr, activosSet };
+      const pres = row.online_presentaciones || {};
+      listaDatos[String(row.prod_id)] = { gustos: gustosArr, activosSet, pres };
     } catch(e) {}
   });
 
@@ -436,8 +440,34 @@ function abrirModal(prodId) {
   modalQtys = {};
   if (cart[prodId]) Object.assign(modalQtys, cart[prodId]);
 
-  document.getElementById('flavorRows').innerHTML = gustosOnline.map(g => `
-    <div class="flavor-row">
+  // Expandir gustos con presentaciones (250g / 500g)
+  const filas = [];
+  const modalGustosExp = [];
+  gustosOnline.forEach(g => {
+    const presList = Array.isArray((ld.pres||{})[String(g.gid)]) ? ld.pres[String(g.gid)] : [];
+    if (presList.length > 0) {
+      presList.forEach(p => {
+        const factor = p === '250g' ? 0.25 : p === '500g' ? 0.5 : 1;
+        const precioBase = parsePrecioAR(g.precio);
+        const precio = Math.round(precioBase * factor);
+        const uid = g.gid + '__' + p;
+        const nombre = g.nombre + ' (' + p + ')';
+        modalGustosExp.push({ gid: uid, nombre, precio });
+        filas.push(`<div class="flavor-row">
+      <div>
+        <div class="flavor-name">${nombre}</div>
+        <div class="flavor-price">$${precio.toLocaleString('es-AR')} c/u</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="chgGusto('${uid}',-1)">−</button>
+        <span class="qty-num" id="fq-${uid}">${modalQtys[uid]||0}</span>
+        <button class="qty-btn" onclick="chgGusto('${uid}',1)">+</button>
+      </div>
+    </div>`);
+      });
+    } else {
+      modalGustosExp.push(g);
+      filas.push(`<div class="flavor-row">
       <div>
         <div class="flavor-name">${g.nombre}</div>
         <div class="flavor-price">$${parsePrecioAR(g.precio).toLocaleString('es-AR')} c/u</div>
@@ -447,10 +477,13 @@ function abrirModal(prodId) {
         <span class="qty-num" id="fq-${g.gid}">${modalQtys[g.gid]||0}</span>
         <button class="qty-btn" onclick="chgGusto('${g.gid}',1)">+</button>
       </div>
-    </div>`).join('');
+    </div>`);
+    }
+  });
+  document.getElementById('flavorRows').innerHTML = filas.join('');
 
   // Guardar referencia de gustos del modal para precios
-  window._modalGustos = gustosOnline;
+  window._modalGustos = modalGustosExp;
   actualizarModalSubtotal();
   document.getElementById('overlay').classList.add('open');
 }
@@ -497,17 +530,34 @@ function parsePrecioAR(v) {
 }
 
 function getPrecioGusto(gid) {
+  // Buscar en modalGustos expandidos (soporta uid con presentaciones como '123__250g')
+  const mg = (window._modalGustos||[]).find(g => String(g.gid) === String(gid));
+  if (mg) return typeof mg.precio === 'number' ? mg.precio : parsePrecioAR(mg.precio);
+  // Fallback: buscar en listaDatos por gid base
+  const baseGid = String(gid).split('__')[0];
   for (const ld of Object.values(listaDatos)) {
-    const g = ld.gustos.find(x => String(x.gid) === String(gid));
-    if (g) return parsePrecioAR(g.precio);
+    const g = ld.gustos.find(x => String(x.gid) === baseGid);
+    if (g) {
+      const p = String(gid).includes('__') ? String(gid).split('__')[1] : null;
+      const base = parsePrecioAR(g.precio);
+      if (p === '250g') return Math.round(base * 0.25);
+      if (p === '500g') return Math.round(base * 0.5);
+      return base;
+    }
   }
   return 0;
 }
 
 function getNombreGusto(gid) {
+  // Buscar en modalGustos expandidos
+  const mg = (window._modalGustos||[]).find(g => String(g.gid) === String(gid));
+  if (mg) return mg.nombre||'';
+  // Fallback: buscar en listaDatos
+  const baseGid = String(gid).split('__')[0];
+  const p = String(gid).includes('__') ? ' (' + String(gid).split('__')[1] + ')' : '';
   for (const ld of Object.values(listaDatos)) {
-    const g = ld.gustos.find(x => String(x.gid) === String(gid));
-    if (g) return g.nombre||'';
+    const g = ld.gustos.find(x => String(x.gid) === baseGid);
+    if (g) return (g.nombre||'') + p;
   }
   return '';
 }
