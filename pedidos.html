@@ -366,8 +366,7 @@ function renderCatalogo() {
     const ld = listaDatos[String(p.id)];
     if (!ld) return;
     // Filtrar gustos habilitados online con precio > 0
-    const todosConPrecio = ld.gustos.filter(g => parsePrecioAR(g.precio) > 0);
-    const gustosOnline = ld.activosSet.size > 0 ? todosConPrecio.filter(g => ld.activosSet.has(String(g.gid))) : todosConPrecio;
+    const gustosOnline = ld.gustos.filter(g => ld.activosSet.has(String(g.gid)) && parsePrecioAR(g.precio) > 0);
     if (gustosOnline.length > 0) catItems.push({ prod: p, gustosOnline });
   });
 
@@ -416,10 +415,7 @@ function abrirModal(prodId) {
   const prod = productos.find(p => String(p.id) === String(prodId));
   const ld = listaDatos[String(prodId)];
   if (!prod || !ld) return;
-  const _todosConPrecio = ld.gustos.filter(g => parsePrecioAR(g.precio) > 0);
-  const gustosOnline = ld.activosSet.size > 0
-    ? _todosConPrecio.filter(g => ld.activosSet.has(String(g.gid)))
-    : _todosConPrecio;
+  const gustosOnline = ld.gustos.filter(g => ld.activosSet.has(String(g.gid)) && parsePrecioAR(g.precio) > 0);
   if (!gustosOnline.length) return;
 
   const catKey = (prod.categoria||'').toLowerCase();
