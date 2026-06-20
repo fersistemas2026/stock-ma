@@ -248,11 +248,20 @@ async function sbGet(path) {
 }
 
 async function init() {
-  document.getElementById('waLink').href = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
+  // Cargar config de tienda (nombre, logo, whatsapp)
+  const cfgData = await sbGet(`tienda_config?id=eq.1&empresa_id=eq.${EMPRESA_ID}&select=*`);
+  const cfg = cfgData?.[0] || {};
+  if (cfg.nombre) document.getElementById('headerNombre').textContent = cfg.nombre;
+  if (cfg.logo_url) {
+    const logoEl = document.querySelector('.header-logo .emoji');
+    if (logoEl) { logoEl.style.cssText='width:36px;height:36px;border-radius:8px;object-fit:cover;overflow:hidden'; logoEl.innerHTML=`<img src="${cfg.logo_url}" style="width:36px;height:36px;border-radius:8px;object-fit:cover">`; }
+  }
+  const waNum = cfg.whatsapp || WA_NUMBER;
+  document.getElementById('waLink').href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`; = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
 
   const [pdvsData, prodsData, gustosData, listaData, promosData] = await Promise.all([
     sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre`),
-    sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria`),
+    sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria,foto_url`),
     sbGet(`gustos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,producto_id,nombre`),
     sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,online_activo`),
     sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
@@ -339,8 +348,12 @@ function renderCatalogo() {
       ${items.map(({prod, gustosOnline}) => {
         const minPrecio = Math.min(...gustosOnline.map(g => parsePrecioAR(g.precio)||0));
         const catKey = (prod.categoria||'').toLowerCase();
+        const imgContent = prod.foto_url
+          ? `<img src="${prod.foto_url}" style="width:100%;height:100%;object-fit:cover">`
+          : (emojis[catKey]||'🍽️');
+        const imgStyle = prod.foto_url ? '' : ` ${colors[catKey]||'cat-default'}`;
         return `<div class="pcard" onclick="abrirModal('${prod.id}')">
-          <div class="pcard-img ${colors[catKey]||'cat-default'}">${emojis[catKey]||'🍽️'}</div>
+          <div class="pcard-img${imgStyle}">${imgContent}</div>
           <div class="pcard-body">
             <div class="pcard-name">${prod.nombre}</div>
             <div class="pcard-sub">${gustosOnline.length} ${gustosOnline.length===1?'opción':'opciones'}</div>
@@ -366,8 +379,14 @@ function abrirModal(prodId) {
   const catColors = {'pasta seca':'#E1F5EE','pasta rellena':'#EEEDFE','rellena':'#EEEDFE','salsa':'#FAEEDA','salsas':'#FAEEDA'};
   const catEmojis = {'pasta seca':'🍝','pasta rellena':'🥟','rellena':'🥟','salsa':'🍅','salsas':'🍅'};
 
-  document.getElementById('modalIcon').style.background = catColors[catKey]||'#F0F2F5';
-  document.getElementById('modalIcon').textContent = catEmojis[catKey]||'🍽️';
+  const modalIconEl = document.getElementById('modalIcon');
+  if (prod.foto_url) {
+    modalIconEl.style.background = 'none';
+    modalIconEl.innerHTML = `<img src="${prod.foto_url}" style="width:54px;height:54px;border-radius:10px;object-fit:cover">`;
+  } else {
+    modalIconEl.style.background = catColors[catKey]||'#F0F2F5';
+    modalIconEl.textContent = catEmojis[catKey]||'🍽️';
+  }
   document.getElementById('modalTitle').textContent = prod.nombre;
   document.getElementById('modalDesc').textContent = prod.categoria||'';
 

@@ -1405,6 +1405,42 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div id="po-config-promos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
         </div>
       </div>
+      <!-- Logo y nombre -->
+      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">🖼️ Logo y nombre de la tienda</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Nombre de la tienda</label>
+            <input type="text" id="po-tienda-nombre" placeholder="Ej: La Pasta" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Número de WhatsApp (con código país)</label>
+            <input type="text" id="po-tienda-wa" placeholder="Ej: 5491112345678" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Logo de la tienda</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <img id="po-logo-preview" src="" style="width:60px;height:60px;border-radius:10px;object-fit:cover;border:1px solid var(--border);display:none">
+            <div id="po-logo-placeholder" style="width:60px;height:60px;border-radius:10px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px">🍝</div>
+            <div>
+              <input type="file" id="po-logo-file" accept="image/*" style="display:none" onchange="poPreviewLogo(this)">
+              <button onclick="document.getElementById('po-logo-file').click()" class="btn-outline" style="font-size:13px;margin-bottom:6px">📁 Elegir logo</button>
+              <div style="font-size:11px;color:var(--text-muted)">JPG, PNG o WebP · Máx 1MB</div>
+            </div>
+          </div>
+        </div>
+        <button onclick="poGuardarTiendaConfig()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar configuración</button>
+      </div>
+
+      <!-- Fotos por producto -->
+      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">📸 Fotos de productos</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Subí una foto por producto para mostrar en la tienda online.</p>
+        <div id="po-config-fotos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+      </div>
+
+      <!-- Link -->
       <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
         <div style="font-size:14px;font-weight:700;margin-bottom:8px">🔗 Link de la tienda</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -15068,6 +15104,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function poSwitchTab(tab) {
     document.getElementById('po-panel-pedidos').style.display=tab==='pedidos'?'block':'none';
     document.getElementById('po-panel-config').style.display=tab==='config'?'block':'none';
+    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();}
     document.querySelectorAll('.po-tab').forEach(b=>{
       const a=b.id==='po-tab-'+tab;
       b.style.color=a?'var(--accent)':'var(--text-muted)';
@@ -15368,6 +15405,126 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();if(sub==='pedidos-op')poOpCargar();};
   setTimeout(()=>{try{if(!isAdmin){poOpCargar();poOpStartPolling();}}catch(e){}},3000);
   // ══════════════════════════════ / PEDIDOS ONLINE ══
+
+
+  // ══════════════════════════════════════ FOTOS Y CONFIG TIENDA ══
+
+  let _poTiendaConfig = {};
+
+  async function poCargarTiendaConfig() {
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=*`, {headers:H2});
+      const data = r.ok ? await r.json() : [];
+      _poTiendaConfig = data[0] || {};
+    } catch(e) { _poTiendaConfig = {}; }
+
+    const nombre = document.getElementById('po-tienda-nombre');
+    const wa = document.getElementById('po-tienda-wa');
+    if (nombre) nombre.value = _poTiendaConfig.nombre || '';
+    if (wa) wa.value = _poTiendaConfig.whatsapp || '';
+
+    if (_poTiendaConfig.logo_url) {
+      const prev = document.getElementById('po-logo-preview');
+      const ph = document.getElementById('po-logo-placeholder');
+      if (prev) { prev.src = _poTiendaConfig.logo_url; prev.style.display = 'block'; }
+      if (ph) ph.style.display = 'none';
+    }
+  }
+
+  function poPreviewLogo(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    if (file.size > 1024 * 1024) { toast('El logo no puede superar 1MB'); input.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = document.getElementById('po-logo-preview');
+      const ph = document.getElementById('po-logo-placeholder');
+      if (prev) { prev.src = e.target.result; prev.style.display = 'block'; }
+      if (ph) ph.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function poSubirImagen(file, path) {
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':file.type,'Cache-Control':'3600','x-upsert':'true'};
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/tienda-fotos/${path}`, {method:'POST', headers:H2, body:file});
+    if (!r.ok) { const t=await r.text(); throw new Error(t); }
+    return `${SUPABASE_URL}/storage/v1/object/public/tienda-fotos/${path}`;
+  }
+
+  async function poGuardarTiendaConfig() {
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
+    const nombre = document.getElementById('po-tienda-nombre')?.value.trim() || '';
+    const wa = document.getElementById('po-tienda-wa')?.value.trim() || '';
+    let logo_url = _poTiendaConfig.logo_url || '';
+
+    // Subir logo si hay uno nuevo
+    const logoFile = document.getElementById('po-logo-file')?.files?.[0];
+    if (logoFile) {
+      try {
+        toast('Subiendo logo...', 'success');
+        const ext = logoFile.name.split('.').pop();
+        logo_url = await poSubirImagen(logoFile, `empresa_${empresaActual}/logo.${ext}`);
+      } catch(e) { toast('Error al subir el logo'); return; }
+    }
+
+    const payload = { id:'1', empresa_id:String(empresaActual), nombre, whatsapp:wa, logo_url };
+    await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`, {method:'POST', headers:H2, body:JSON.stringify(payload)});
+    _poTiendaConfig = payload;
+    toast('Configuración guardada', 'success');
+  }
+
+  async function poCargarFotosProductos() {
+    const el = document.getElementById('po-config-fotos');
+    if (!el) return;
+    if (!_poProductos.length) await poCargarConfigProductos();
+
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    // Recargar productos con foto_url
+    const prods = await fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre,foto_url`, {headers:H2}).then(r=>r.json()).catch(()=>[]);
+
+    el.innerHTML = prods.map(p => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="position:relative;flex-shrink:0">
+          ${p.foto_url
+            ? `<img src="${p.foto_url}" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid var(--border)">`
+            : `<div style="width:52px;height:52px;border-radius:8px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>`
+          }
+        </div>
+        <div style="flex:1;font-size:14px;font-weight:500">${p.nombre}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="file" id="foto-file-${p.id}" accept="image/*" style="display:none" onchange="poSubirFotoProducto('${p.id}',this)">
+          <button onclick="document.getElementById('foto-file-${p.id}').click()" class="btn-outline" style="font-size:12px;padding:4px 10px">${p.foto_url?'✏️ Cambiar':'📁 Subir'}</button>
+          ${p.foto_url ? `<button onclick="poEliminarFotoProducto('${p.id}')" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:none;color:var(--text-muted);font-size:12px;cursor:pointer">🗑️</button>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  async function poSubirFotoProducto(prodId, input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    if (file.size > 1024 * 1024) { toast('La foto no puede superar 1MB'); input.value=''; return; }
+    try {
+      toast('Subiendo foto...', 'success');
+      const ext = file.name.split('.').pop();
+      const url = await poSubirImagen(file, `empresa_${empresaActual}/prod_${prodId}.${ext}`);
+      const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+      await fetch(`${SUPABASE_URL}/rest/v1/productos?id=eq.${prodId}`, {method:'PATCH', headers:H2, body:JSON.stringify({foto_url:url})});
+      toast('Foto guardada', 'success');
+      poCargarFotosProductos();
+    } catch(e) { toast('Error al subir la foto'); }
+  }
+
+  async function poEliminarFotoProducto(prodId) {
+    if (!confirm('¿Eliminar la foto de este producto?')) return;
+    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    await fetch(`${SUPABASE_URL}/rest/v1/productos?id=eq.${prodId}`, {method:'PATCH', headers:H2, body:JSON.stringify({foto_url:null})});
+    toast('Foto eliminada', 'success');
+    poCargarFotosProductos();
+  }
+
+  // ══════════════════════════════════════ / FOTOS Y CONFIG TIENDA ══
 
 </script>
 
