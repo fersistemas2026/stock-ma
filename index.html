@@ -15624,21 +15624,75 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     poOpCargar();
   }
 
+  function poOpSonido(){
+    try{
+      const ctx=new(window.AudioContext||window.webkitAudioContext)();
+      [523,659,784].forEach((f,i)=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);
+        o.frequency.value=f;o.type='sine';
+        g.gain.setValueAtTime(0,ctx.currentTime+i*0.18);
+        g.gain.linearRampToValueAtTime(0.3,ctx.currentTime+i*0.18+0.05);
+        g.gain.linearRampToValueAtTime(0,ctx.currentTime+i*0.18+0.25);
+        o.start(ctx.currentTime+i*0.18);o.stop(ctx.currentTime+i*0.18+0.3);
+      });
+    }catch(e){}
+  }
+
+  function poOpMostrarModalPedido(ped){
+    const items=(Array.isArray(ped.items)?ped.items:[]);
+    const itemsHtml=items.map(it=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span>${it.cantidad}x ${it.prod_nombre||''} ${it.gusto_nombre?'('+it.gusto_nombre+')':''}</span>
+      <span style="color:var(--text-muted)">$${((it.precio||0)*(it.cantidad||1)).toLocaleString('es-AR')}</span>
+    </div>`).join('');
+    const modalId='po-nuevo-pedido-modal';
+    let m=document.getElementById(modalId);
+    if(m)m.remove();
+    m=document.createElement('div');
+    m.id=modalId;
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+    const sig={nuevo:'en_preparacion',en_preparacion:'listo',listo:'entregado'};
+    const sigl={nuevo:'👨‍🍳 Iniciar preparación',en_preparacion:'✅ Listo para entregar',listo:'📦 Entregar'};
+    const estadoColor={nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75'};
+    const hora=new Date(ped.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    m.innerHTML=`<div style="background:var(--surface);border-radius:16px;max-width:400px;width:100%;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:18px;font-weight:700">🆕 Nuevo pedido</div>
+        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted)">✕</button>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:15px;font-weight:600">${ped.cliente_nombre||'Sin nombre'} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">· ${ped.cliente_tel||''}</span></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${hora} · ${ped.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'} · ${ped.metodo_pago==='transfe'?'🏦 Transferencia':'💵 Efectivo'}</div>
+        ${ped.direccion?`<div style="font-size:12px;color:var(--text-muted);margin-top:2px">📍 ${ped.direccion}</div>`:''}
+      </div>
+      <div style="margin-bottom:14px">${itemsHtml}</div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;margin-bottom:18px">
+        <span>Total</span><span style="color:var(--accent)">$${(ped.total||0).toLocaleString('es-AR')}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${sig[ped.estado]?`<button onclick="poOpAvanzarDesdeModal('${ped.id}','${sig[ped.estado]}','${modalId}')" style="flex:1;padding:12px;background:${estadoColor[ped.estado]||'var(--accent)'};color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">${sigl[ped.estado]}</button>`:''}
+        <button onclick="switchNeg('pedidos-op');document.getElementById('${modalId}').remove()" style="flex:1;padding:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer">Ver todos</button>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+  }
+
+  async function poOpAvanzarDesdeModal(id,nuevoEstado,modalId){
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${id}`,{method:'PATCH',headers:H2,body:JSON.stringify({estado:nuevoEstado})});
+    if(nuevoEstado==='entregado'){const ped=_poOpPedidos.find(p=>p.id===id);if(ped)await poGenerarVenta(ped);}
+    document.getElementById(modalId)?.remove();
+    await poOpCargar();
+    toast(nuevoEstado==='entregado'?'📦 Entregado':'✅ Estado actualizado','success');
+  }
+
   function poOpRecordatorio(){
     if(isAdmin)return;
-    const n=(_poOpPedidos||[]).filter(p=>p.estado==='nuevo').length;
-    if(n>0){
-      let banner=document.getElementById('po-op-recordatorio');
-      if(!banner){
-        banner=document.createElement('div');
-        banner.id='po-op-recordatorio';
-        banner.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#D85A30;color:white;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap';
-        banner.onclick=()=>{banner.remove();switchNeg('pedidos-op');};
-        document.body.appendChild(banner);
-        setTimeout(()=>{try{banner.remove();}catch(e){}},8000);
-      }
-      banner.textContent=(n===1?'📲 1 pedido online nuevo':'📲 '+n+' pedidos online nuevos')+' — Tap para ver';
-    }
+    const nuevos=(_poOpPedidos||[]).filter(p=>p.estado==='nuevo');
+    if(nuevos.length===0)return;
+    poOpSonido();
+    // Mostrar modal del pedido más reciente
+    poOpMostrarModalPedido(nuevos[0]);
   }
 
   function poOpStartPolling(){
