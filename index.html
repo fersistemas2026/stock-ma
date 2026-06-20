@@ -15489,7 +15489,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   async function poGuardarTiendaConfig() {
-    const H2 = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
+    const Hbase = {'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
     const nombre = document.getElementById('po-tienda-nombre')?.value.trim() || '';
     const wa = document.getElementById('po-tienda-wa')?.value.trim() || '';
     let logo_url = _poTiendaConfig.logo_url || '';
@@ -15501,12 +15501,29 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         toast('Subiendo logo...', 'success');
         const ext = logoFile.name.split('.').pop();
         logo_url = await poSubirImagen(logoFile, `empresa_${empresaActual}/logo.${ext}`);
-      } catch(e) { toast('Error al subir el logo'); return; }
+      } catch(e) { toast('Error al subir el logo: '+e.message); return; }
     }
 
     const payload = { id:'1', empresa_id:String(empresaActual), nombre, whatsapp:wa, logo_url };
-    await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`, {method:'POST', headers:H2, body:JSON.stringify(payload)});
+
+    // Intentar PATCH primero (si ya existe), sino POST
+    const checkR = await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`, {headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    const existing = checkR.ok ? await checkR.json() : [];
+
+    if (existing.length > 0) {
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`, {method:'PATCH', headers:Hbase, body:JSON.stringify({nombre, whatsapp:wa, logo_url})});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`, {method:'POST', headers:Hbase, body:JSON.stringify(payload)});
+    }
     _poTiendaConfig = payload;
+
+    // Actualizar preview
+    if (logo_url) {
+      const prev = document.getElementById('po-logo-preview');
+      const ph = document.getElementById('po-logo-placeholder');
+      if (prev) { prev.src = logo_url; prev.style.display = 'block'; }
+      if (ph) ph.style.display = 'none';
+    }
     toast('Configuración guardada', 'success');
   }
 
