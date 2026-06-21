@@ -132,7 +132,7 @@
     .neg-stab-vertical { padding:13px 18px; border:1px solid #e6b800; background:#ffd700; color:#000; font-family:var(--font); font-size:16px; font-weight:700; cursor:pointer; border-radius:10px; transition:all .15s; white-space:nowrap; letter-spacing:-.01em; text-align:left; width:100%; display:block; margin-bottom:3px; }
     .neg-stab-vertical:hover { color:#000; background:#ffe033; border-color:#e6b800; box-shadow:0 2px 8px rgba(255,215,0,.4); }
     .neg-stab-vertical.active { background:#fff176; color:#000; font-weight:800; font-size:16px; border-color:#e6b800; box-shadow:0 2px 10px rgba(255,215,0,.5); }
-    .neg-panel { display:none; animation:fadeIn .2s ease; }
+    .neg-panel { display:none; animation:fadeIn .2s ease; width:100%; }
     #neg-layout > div:last-child { flex:1; min-width:0; }
     #neg-content-wrap { flex:1; min-width:0; }
     #neg-layout.is-flex-layout { display:flex !important; flex-direction:row; align-items:flex-start; gap:20px; }
@@ -1587,7 +1587,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   </div>
 </div>
 
-<div id="neg-pedidos-op" class="neg-panel" style="display:none">
+<div id="neg-pedidos-op" class="neg-panel" style="display:none;width:100%;min-height:400px">
   <div style="padding:10px 14px 14px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
