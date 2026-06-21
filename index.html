@@ -2346,7 +2346,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           getPdv().then(allPdvs => {
             const primerPdv = allPdvs.find(p => myPdvsOp.includes(p.id));
             const pdvNombre = primerPdv ? (primerPdv.nombre||primerPdv.name||myPdvsOp[0]) : myPdvsOp[0];
-            registrarSesionActiva(myPdvsOp[0], pdvNombre).catch(()=>{});
+            registrarSesionActiva(myPdvsOp[0], pdvNombre).catch(()=>{}).finally(()=>{
+              try { poOpIniciarConSesion(); } catch(e) {}
+            });
           }).catch(()=>{});
         } else if (myPdvsOp.length > 1) {
           getPdv().then(allPdvs => {
@@ -15849,8 +15851,6 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }catch(e){}
     poOpStartPolling();
   }
-  setTimeout(()=>{try{poOpIniciarConSesion();}catch(e){}},2000);
-
   // ══════════════════════════════════════ / PEDIDOS ONLINE ══
 
 </script>
