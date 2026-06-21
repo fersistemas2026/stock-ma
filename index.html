@@ -1769,6 +1769,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       btn.disabled = true;
       await registrarSesionActiva(pdvId, pdvNombre).catch(()=>{});
       document.getElementById('modal-sel-sucursal')?.remove();
+      // Iniciar polling ahora que _sesionId está asignado
+      try { poOpIniciarConSesion(); } catch(e) {}
     };
   }
 
@@ -15767,6 +15769,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function poOpIniciarConSesion(){
     if(currentUser?.role==='admin')return;
+    if(_poOpInterval)return; // ya está corriendo
     // Esperar hasta 10s a que _sesionId esté asignado
     let intentos=0;
     while(!_sesionId && intentos<20){ await new Promise(r=>setTimeout(r,500)); intentos++; }
