@@ -1833,8 +1833,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json'
       };
-      // Borrar registro viejo del mismo PDV (evita conflicto de unicidad)
-      await fetch(`${SUPABASE_URL}/rest/v1/sesiones_activas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}`, {
+      // Borrar sesión previa del mismo usuario (puede haber quedado de una sesión anterior)
+      await fetch(`${SUPABASE_URL}/rest/v1/sesiones_activas?empresa_id=eq.${empresaActual}&username=eq.${currentUser.username}`, {
         method: 'DELETE', headers: H
       });
       // Insertar sesión nueva
