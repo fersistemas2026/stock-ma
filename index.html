@@ -388,7 +388,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;recuento&#39;)" id="neg-btn-recuento" style="display:none">🔢 Recuento</button>
         <button class="neg-stab" onclick="switchNeg(&#39;lista-precios-op&#39;)" id="neg-btn-lista-precios-op" style="display:none">💰 Lista de precios</button>
         <button class="neg-stab" onclick="switchNeg(&#39;ventas&#39;)" id="neg-btn-ventas-op" style="display:none">🛒 Ventas</button>
-        <button class="neg-stab" onclick="switchNeg('pedidos-op')" id="neg-btn-pedidos-op" style="display:none">📲 Pedidos Online <span id="po-op-badge" style="display:none;background:#D85A30;color:white;border-radius:999px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:4px">0</span></button>
+        <button class="neg-stab" onclick="poOpAbrirModal()" id="neg-btn-pedidos-op" style="display:none">📲 Pedidos Online <span id="po-op-badge" style="display:none;background:#D85A30;color:white;border-radius:999px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:4px">0</span></button>
         <button class="neg-stab" onclick="switchNeg(&#39;clientes-op&#39;)" id="neg-btn-clientes-op" style="display:none">👥 Clientes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;lista-prod&#39;)" id="neg-btn-lista-prod" style="display:none">📋 Lista de productos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;envio-pedido&#39;)" id="neg-btn-envio-pedido" style="display:none">📦 Envío pedido</button>
@@ -1587,15 +1587,19 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   </div>
 </div>
 
-<div id="neg-pedidos-op" class="neg-panel" style="display:none;width:100%;min-height:400px">
-  <div style="padding:10px 14px 14px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+<!-- MODAL PEDIDOS OPERADOR -->
+<div id="modal-pedidos-op" style="display:none;position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;">
+  <div style="padding:16px;max-width:1000px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--border);padding-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px">
         <div class="form-title" style="margin:0">📲 Pedidos Online</div>
         <button class="po-op-fbtn active" onclick="poOpFiltrar(this,'pendientes')" style="padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;cursor:pointer">⏳ Pendientes</button>
         <button class="po-op-fbtn" onclick="poOpFiltrar(this,'todos')" style="padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:12px;cursor:pointer">Todos</button>
       </div>
-      <button onclick="poOpCargar()" class="btn-outline" style="font-size:12px;padding:4px 10px">🔄 Actualizar</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="poOpCargar()" class="btn-outline" style="font-size:12px;padding:4px 10px">🔄 Actualizar</button>
+        <button onclick="poOpCerrarModal()" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer">✕ Cerrar</button>
+      </div>
     </div>
     <div id="po-op-lista"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
   </div>
@@ -15773,7 +15777,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${sig[ped.estado]?`<button onclick="poOpAvanzarDesdeModal('${ped.id}','${sig[ped.estado]}','${modalId}')" style="flex:1;padding:12px;background:${estadoColor[ped.estado]||'var(--accent)'};color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">${sigl[ped.estado]}</button>`:''}
-        <button onclick="switchNeg('pedidos-op');document.getElementById('${modalId}').remove()" style="flex:1;padding:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer">Ver todos</button>
+        <button onclick="poOpAbrirModal();document.getElementById('${modalId}').remove()" style="flex:1;padding:12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer">Ver todos</button>
       </div>
     </div>`;
     document.body.appendChild(m);
@@ -15829,8 +15833,20 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     },20000);
   }
 
+  function poOpAbrirModal(){
+    document.getElementById('modal-pedidos-op').style.display='block';
+    poOpCargar();
+  }
+  function poOpCerrarModal(){
+    document.getElementById('modal-pedidos-op').style.display='none';
+  }
+
   const _origSwitchNegPO=switchNeg;
-  switchNeg=function(sub){_origSwitchNegPO(sub);if(sub==='pedidos-online')initPedidosOnline();if(sub==='pedidos-op')poOpCargar();};
+  switchNeg=function(sub){
+    if(sub==='pedidos-op'){ poOpAbrirModal(); return; }
+    _origSwitchNegPO(sub);
+    if(sub==='pedidos-online')initPedidosOnline();
+  };
 
   async function poOpIniciarConSesion(){
     if(currentUser?.role==='admin')return;
