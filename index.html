@@ -1477,62 +1477,111 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       <div id="po-lista-pedidos"><div style="text-align:center;padding:40px;color:var(--text-muted)">Cargando...</div></div>
     </div>
     <div id="po-panel-config" style="display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">📦 Productos en tienda online</div>
+      <style>
+        .po-acc { border:1px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; }
+        .po-acc-hdr { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer; background:var(--surface); user-select:none; }
+        .po-acc-hdr:hover { background:var(--surface2); }
+        .po-acc-title { font-size:14px; font-weight:700; }
+        .po-acc-arrow { font-size:12px; color:var(--text-muted); transition:transform .2s; }
+        .po-acc-body { display:none; padding:16px; border-top:1px solid var(--border); background:var(--surface); }
+        .po-acc.open .po-acc-arrow { transform:rotate(180deg); }
+        .po-acc.open .po-acc-body { display:block; }
+      </style>
+
+      <!-- Sucursales -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">🏪 Sucursales habilitadas</span>
+          <span class="po-acc-arrow">▼</span>
+        </div>
+        <div class="po-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí qué sucursales aparecen en la tienda online y cargá su dirección.</p>
+          <div id="po-config-pdvs"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+          <button onclick="poGuardarPdvsOnline()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar sucursales</button>
+        </div>
+      </div>
+
+      <!-- Tienda -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">🖼️ Logo y nombre de la tienda</span>
+          <span class="po-acc-arrow">▼</span>
+        </div>
+        <div class="po-acc-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Nombre de la tienda</label>
+              <input type="text" id="po-tienda-nombre" placeholder="Ej: La Pasta" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">WhatsApp (con código país)</label>
+              <input type="text" id="po-tienda-wa" placeholder="Ej: 5491112345678" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Logo</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <img id="po-logo-preview" src="" style="width:60px;height:60px;border-radius:10px;object-fit:cover;border:1px solid var(--border);display:none">
+              <div id="po-logo-placeholder" style="width:60px;height:60px;border-radius:10px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px">🍝</div>
+              <div>
+                <input type="file" id="po-logo-file" accept="image/*" style="display:none" onchange="poPreviewLogo(this)">
+                <button onclick="document.getElementById('po-logo-file').click()" class="btn-outline" style="font-size:13px;margin-bottom:6px">📁 Elegir logo</button>
+                <div style="font-size:11px;color:var(--text-muted)">JPG, PNG o WebP · Máx 1MB</div>
+              </div>
+            </div>
+          </div>
+          <button onclick="poGuardarTiendaConfig()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar configuración</button>
+        </div>
+      </div>
+
+      <!-- Productos -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">📦 Productos en tienda online</span>
+          <span class="po-acc-arrow">▼</span>
+        </div>
+        <div class="po-acc-body">
           <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Activá los sabores y presentaciones para la tienda.</p>
           <div id="po-config-productos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
           <button onclick="poGuardarConfigProductos()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar productos</button>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">🏷️ Promociones online</div>
+      </div>
+
+      <!-- Promos -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">🏷️ Promociones online</span>
+          <span class="po-acc-arrow">▼</span>
+        </div>
+        <div class="po-acc-body">
           <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Activá las promociones para clientes frecuentes.</p>
           <div id="po-config-promos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
         </div>
       </div>
-      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:4px">🏪 Sucursales habilitadas</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí qué sucursales aparecen en la tienda online.</p>
-        <div id="po-config-pdvs"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
-        <button onclick="poGuardarPdvsOnline()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar sucursales</button>
-      </div>
-      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:12px">🖼️ Logo y nombre de la tienda</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
-          <div>
-            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Nombre de la tienda</label>
-            <input type="text" id="po-tienda-nombre" placeholder="Ej: La Pasta" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
-          </div>
-          <div>
-            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">WhatsApp (con código país)</label>
-            <input type="text" id="po-tienda-wa" placeholder="Ej: 5491112345678" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
-          </div>
+
+      <!-- Fotos -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">📸 Fotos de productos</span>
+          <span class="po-acc-arrow">▼</span>
         </div>
-        <div style="margin-top:12px">
-          <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Logo</label>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <img id="po-logo-preview" src="" style="width:60px;height:60px;border-radius:10px;object-fit:cover;border:1px solid var(--border);display:none">
-            <div id="po-logo-placeholder" style="width:60px;height:60px;border-radius:10px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px">🍝</div>
-            <div>
-              <input type="file" id="po-logo-file" accept="image/*" style="display:none" onchange="poPreviewLogo(this)">
-              <button onclick="document.getElementById('po-logo-file').click()" class="btn-outline" style="font-size:13px;margin-bottom:6px">📁 Elegir logo</button>
-              <div style="font-size:11px;color:var(--text-muted)">JPG, PNG o WebP · Máx 1MB</div>
-            </div>
+        <div class="po-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Subí una foto por producto para la tienda online.</p>
+          <div id="po-config-fotos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+        </div>
+      </div>
+
+      <!-- Link -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">🔗 Link de la tienda</span>
+          <span class="po-acc-arrow">▼</span>
+        </div>
+        <div class="po-acc-body">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" value="https://fersistemas2026.github.io/stock-ma/pedidos.html" readonly style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;min-width:200px">
+            <button onclick="navigator.clipboard.writeText('https://fersistemas2026.github.io/stock-ma/pedidos.html').then(()=>toast('¡Link copiado!','success'))" class="btn-outline" style="font-size:13px">📋 Copiar</button>
           </div>
-        </div>
-        <button onclick="poGuardarTiendaConfig()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar configuración</button>
-      </div>
-      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:4px">📸 Fotos de productos</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Subí una foto por producto para la tienda online.</p>
-        <div id="po-config-fotos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
-      </div>
-      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
-        <div style="font-size:14px;font-weight:700;margin-bottom:8px">🔗 Link de la tienda</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" value="https://fersistemas2026.github.io/stock-ma/pedidos.html" readonly style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;min-width:200px">
-          <button onclick="navigator.clipboard.writeText('https://fersistemas2026.github.io/stock-ma/pedidos.html').then(()=>toast('¡Link copiado!','success'))" class="btn-outline" style="font-size:13px">📋 Copiar</button>
-        </div>
       </div>
     </div>
   </div>
@@ -15229,6 +15278,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function initPedidosOnline() {
     await Promise.all([poCargarPedidos(), poCargarConfigProductos(), poCargarPromos()]);
+  }
+
+  function poToggleAcc(hdr) {
+    const acc = hdr.closest('.po-acc');
+    const isOpen = acc.classList.contains('open');
+    acc.classList.toggle('open', !isOpen);
   }
 
   function poSwitchTab(tab) {
