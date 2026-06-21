@@ -1748,13 +1748,37 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   // );
   // ALTER TABLE sesiones_activas DISABLE ROW LEVEL SECURITY;
 
+  function mostrarSelectorSucursal(pdvs) {
+    let m = document.getElementById('modal-sel-sucursal');
+    if (m) m.remove();
+    m = document.createElement('div');
+    m.id = 'modal-sel-sucursal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px';
+    m.innerHTML = `<div style="background:var(--surface);border-radius:18px;max-width:400px;width:100%;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+      <div style="font-size:20px;font-weight:800;margin-bottom:6px">🏪 ¿En qué sucursal estás?</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:22px">Seleccioná el punto de venta donde vas a trabajar hoy.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${pdvs.map(p=>`<button onclick="window._elegirSucursal('${p.id}','${(p.nombre||p.name||p.id).replace(/'/g,"\\'")}',this)" style="padding:14px 18px;border-radius:12px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:16px;font-weight:700;cursor:pointer;text-align:left;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.background='rgba(200,240,74,.08)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">${p.nombre||p.name||p.id}</button>`).join('')}
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+    window._elegirSucursal = async function(pdvId, pdvNombre, btn) {
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.background = 'rgba(200,240,74,.15)';
+      btn.textContent = '⏳ Conectando...';
+      btn.disabled = true;
+      await registrarSesionActiva(pdvId, pdvNombre).catch(()=>{});
+      document.getElementById('modal-sel-sucursal')?.remove();
+    };
+  }
+
   let _sesionId = null;
   let _sesionPingInterval = null;
 
   async function registrarSesionActiva(pdvId, pdvNombre) {
     try {
       // Upsert directo con fetch para controlar header Prefer correctamente
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/sesiones_activas`, {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/sesiones_activas?on_conflict=empresa_id,pdv_id`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
@@ -2263,11 +2287,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const opPerms = currentUser.perms||{};
         // Registrar sesión activa en Supabase para control de acceso único por PDV
         const myPdvsOp = (currentUser.pdvs||[]);
-        if (myPdvsOp.length) {
+        if (myPdvsOp.length === 1) {
           getPdv().then(allPdvs => {
             const primerPdv = allPdvs.find(p => myPdvsOp.includes(p.id));
-            const pdvNombre = myPdvsOp.length === 1 && primerPdv ? (primerPdv.nombre||primerPdv.name||myPdvsOp[0]) : myPdvsOp.join(',');
+            const pdvNombre = primerPdv ? (primerPdv.nombre||primerPdv.name||myPdvsOp[0]) : myPdvsOp[0];
             registrarSesionActiva(myPdvsOp[0], pdvNombre).catch(()=>{});
+          }).catch(()=>{});
+        } else if (myPdvsOp.length > 1) {
+          getPdv().then(allPdvs => {
+            const misPdvs = allPdvs.filter(p => myPdvsOp.includes(p.id));
+            mostrarSelectorSucursal(misPdvs);
           }).catch(()=>{});
         }
         if (opPerms.caja) {
