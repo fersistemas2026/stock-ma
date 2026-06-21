@@ -1753,10 +1753,15 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function registrarSesionActiva(pdvId, pdvNombre) {
     try {
-      // Upsert: si ya existe para este pdv_id, sobreescribe (solo si es el mismo user que vuelve)
-      await sbApi('sesiones_activas', {
+      // Upsert directo con fetch para controlar header Prefer correctamente
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/sesiones_activas`, {
         method: 'POST',
-        headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
+        },
         body: JSON.stringify({
           empresa_id: String(empresaActual),
           pdv_id: String(pdvId),
@@ -1766,6 +1771,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           last_ping: new Date().toISOString()
         })
       });
+      if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.message || `Error ${r.status}`); }
       _sesionId = pdvId;
       // Ping cada 60s para mantener sesión activa
       if (_sesionPingInterval) clearInterval(_sesionPingInterval);
@@ -15687,7 +15693,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function poOpRecordatorio(){
-    if(isAdmin)return;
+    if(currentUser?.role==='admin')return;
     const nuevos=(_poOpPedidos||[]).filter(p=>p.estado==='nuevo');
     if(nuevos.length===0)return;
     poOpSonido();
@@ -15735,6 +15741,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // Esperar hasta 10s a que _sesionId esté asignado
     let intentos=0;
     while(!_sesionId && intentos<20){ await new Promise(r=>setTimeout(r,500)); intentos++; }
+    // Si no se asignó _sesionId, no iniciar polling (evita traer pedidos sin filtro de PDV)
+    if(!_sesionId){ console.warn('[PO] Sin _sesionId, polling no iniciado'); return; }
     try{
       const existentes=await poOpFetchNuevos();
       _poOpIdsConocidos=existentes.map(p=>p.id);
