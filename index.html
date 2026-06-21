@@ -115,6 +115,7 @@
     .role-op { color: var(--text-muted); }
     .role-prod { color: #8ab4f8; }
     .role-viewer { color: #c084fc; }
+    .role-visor-pedidos { color: #34d399; }
     .user-actions { display: flex; gap: 8px; align-items: center; }
     .pass-input { width: 160px; }
     .user-pdv-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
@@ -1371,7 +1372,27 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     <!-- USUARIOS (solo admin) -->
     <div id="tab-usuarios" class="panel">
-      <div style="margin-bottom:24px;"><div class="form-title">Gestión de usuarios</div><p style="font-size:13px;color:var(--text-muted);margin-top:4px">Cambiá contraseñas y asigná puntos de venta a cada operador.</p></div>
+      <div style="margin-bottom:24px;">
+        <div class="form-title">Gestión de usuarios</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:4px">Cambiá contraseñas y asigná puntos de venta a cada operador.</p>
+        <div style="margin-top:14px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-width:560px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text);">📲 Agregar Visor de Pedidos</div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Un visor de pedidos puede ver y gestionar pedidos online de un PDV sin bloquear la sesión del operador principal.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Usuario</label>
+              <input type="text" id="new-visor-username" placeholder="Ej: visor1" maxlength="30"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;font-family:var(--font);color:var(--text);outline:none;width:140px;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Contraseña</label>
+              <input type="text" id="new-visor-password" placeholder="Contraseña" maxlength="30"
+                style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;font-family:var(--font);color:var(--text);outline:none;width:140px;" />
+            </div>
+            <button class="btn-primary" style="padding:9px 18px;font-size:13px;white-space:nowrap;" onclick="crearVisorPedidos()">+ Crear visor</button>
+          </div>
+        </div>
+      </div>
       <div class="users-grid" id="users-grid"></div>
     </div>
   </main>
@@ -2089,8 +2110,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       // Normalize turno: manana -> mañana
       if (found.perms && found.perms.turno === 'manana') found.perms.turno = 'mañana';
 
-      // ── Verificar sesión duplicada (solo para operadores, no admin) ──
-      if (found.role !== 'admin') {
+      // ── Verificar sesión duplicada (solo para operadores, no admin ni visor-pedidos) ──
+      if (found.role !== 'admin' && found.role !== 'visor-pedidos') {
         const pdvsDelUser = found.pdvs || [];
         if (pdvsDelUser.length) {
           const sesionConflicto = await verificarSesionDuplicada(pdvsDelUser);
@@ -2274,7 +2295,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const isAdmin = currentUser.role==='admin';
       const isProduccion = currentUser.role==='produccion';
       const isViewer = currentUser.role==='viewer';
-      const roleLabel = isAdmin?'admin':isProduccion?'producción':isViewer?'usuario':'operador';
+      const isVisorPedidos = currentUser.role==='visor-pedidos';
+      const roleLabel = isAdmin?'admin':isProduccion?'producción':isViewer?'usuario':isVisorPedidos?'visor pedidos':'operador';
       document.getElementById('user-badge').innerHTML = `<b>${currentUser.displayName||currentUser.username}</b> · ${roleLabel}`;
       updateHeaderEmpresa();
 
@@ -2331,6 +2353,36 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         hide(document.getElementById('tab-btn-empresa'));
         hide(document.getElementById('btn-export'));
         switchTab('negocios');
+      } else if (isVisorPedidos) {
+        // Visor de pedidos: solo ve el modal de pedidos online, sin bloquear sesión
+        hide(document.getElementById('tab-btn-agregar'));
+        hide(document.getElementById('tab-btn-ver'));
+        show(document.getElementById('tab-btn-negocios'));
+        hide(document.getElementById('tab-btn-usuarios'));
+        hide(document.getElementById('tab-btn-stock-resumen'));
+        hide(document.getElementById('tab-btn-pedido'));
+        hide(document.getElementById('tab-btn-stock-produccion'));
+        hide(document.getElementById('tab-btn-productos'));
+        hide(document.getElementById('tab-btn-empresa'));
+        hide(document.getElementById('btn-export'));
+        switchTab('negocios');
+        // Registrar sesión SIN bloqueo y abrir pedidos
+        const myPdvsVp = (currentUser.pdvs||[]);
+        if (myPdvsVp.length === 1) {
+          getPdv().then(allPdvs => {
+            const primerPdv = allPdvs.find(p => myPdvsVp.includes(p.id));
+            const pdvNombre = primerPdv ? (primerPdv.nombre||primerPdv.name||myPdvsVp[0]) : myPdvsVp[0];
+            registrarSesionActiva(myPdvsVp[0], pdvNombre).catch(()=>{}).finally(()=>{
+              try { poOpIniciarConSesion(); } catch(e) {}
+              setTimeout(()=>{ try { poOpAbrirModal(); } catch(e) {} }, 800);
+            });
+          }).catch(()=>{});
+        } else if (myPdvsVp.length > 1) {
+          getPdv().then(allPdvs => {
+            const misPdvs = allPdvs.filter(p => myPdvsVp.includes(p.id));
+            mostrarSelectorSucursal(misPdvs);
+          }).catch(()=>{});
+        }
       } else {
         show(document.getElementById('tab-btn-agregar'));
         hide(document.getElementById('tab-btn-ver'));
@@ -5139,7 +5191,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const grid=document.getElementById('users-grid'); if (!grid) return;
     // Sort: operadores desc by number, then produccion, then viewer
     const sorted = [...users.filter(u=>u.role!=='admin')].sort((a,b)=>{
-      const roleOrder = {operador:0, produccion:1, viewer:2};
+      const roleOrder = {operador:0, produccion:1, viewer:2, 'visor-pedidos':3};
       if (roleOrder[a.role] !== roleOrder[b.role]) return roleOrder[a.role]-roleOrder[b.role];
       // Sort operadores by number descending
       if (a.role==='operador') {
@@ -5152,8 +5204,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     grid.innerHTML=sorted.map(u=>{
       const myPdvIds=u.pdvs||[];
       const perms=u.perms||{};
-      const roleColor = u.role==='produccion'?'role-prod':u.role==='viewer'?'role-viewer':'role-op';
-      const roleLabel = u.role==='produccion'?'producción':u.role==='viewer'?'usuario':'operador';
+      const roleColor = u.role==='produccion'?'role-prod':u.role==='viewer'?'role-viewer':u.role==='visor-pedidos'?'role-visor-pedidos':'role-op';
+      const roleLabel = u.role==='produccion'?'producción':u.role==='viewer'?'usuario':u.role==='visor-pedidos'?'visor pedidos':'operador';
 
       const pdvSection=u.role==='operador'?`
         <div class="user-pdv-row">
@@ -5278,6 +5330,30 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </div>
         </div>`:'';
 
+      const visorPedidosSection=u.role==='visor-pedidos'?`
+        <div class="user-pdv-row">
+          <div class="user-pdv-label">Nombre visible</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+            <input type="text" id="vpname-${u.username}" value="${u.displayName||u.username}" placeholder="Nombre visible" maxlength="40"
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;font-family:var(--font);color:var(--text);outline:none;width:200px;" />
+            <button class="btn-outline" style="padding:7px 14px;font-size:12px" onclick="saveVisorPedidosName('${u.username}')">Guardar nombre</button>
+          </div>
+          <div class="user-pdv-label">Punto de venta asignado</div>
+          <div class="pdv-checks">
+            ${pdvs.length?pdvs.map(p=>{
+              const checked=myPdvIds.map(String).includes(String(p.id));
+              const pNombre=p.nombre||p.name||'Sin nombre';
+              return `<label class="pdv-check-item ${checked?'checked':''}" id="pdv-lbl-${u.username}-${p.id}">
+                <input type="checkbox" ${checked?'checked':''} onchange="togglePdv('${u.username}','${p.id}',this.checked)" />${pNombre}
+              </label>`;
+            }).join(''):'<span style="font-size:13px;color:var(--text-dim)">No hay PDV creados</span>'}
+          </div>
+          <div style="margin-top:10px;padding:10px 14px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);border-radius:8px;font-size:12px;color:#34d399;">
+            ✅ Solo puede ver y gestionar pedidos online del PDV asignado. No bloquea la sesión del operador principal.
+          </div>
+        </div>`:
+        '';
+
       const viewerSection=u.role==='viewer'?`
         <div class="user-pdv-row">
           <div class="user-pdv-label">Nombre visible</div>
@@ -5313,7 +5389,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <input type="password" class="pass-input" id="np-${u.username}" placeholder="Nueva contraseña" />
             <button class="btn-outline" onclick="changePassword('${u.username}')">Cambiar</button>
           </div>
-        </div>${pdvSection}${permSection}${viewerSection}
+        </div>${pdvSection}${permSection}${viewerSection}${visorPedidosSection}
       </div>`;
     }).join('');
 
@@ -5332,6 +5408,39 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (currentUser.username===username) currentUser.displayName=name;
     saveUserToSupabase(users[idx]);
     toast(`Nombre actualizado: ${name}`,'success');
+  }
+
+  async function crearVisorPedidos() {
+    const username = (document.getElementById('new-visor-username')?.value||'').trim().toLowerCase().replace(/\s+/g,'');
+    const password = (document.getElementById('new-visor-password')?.value||'').trim();
+    if (!username) { toast('Ingresá un nombre de usuario','error'); return; }
+    if (!password) { toast('Ingresá una contraseña','error'); return; }
+    const users = getUsers();
+    if (users.find(u=>u.username===username)) { toast('Ese usuario ya existe','error'); return; }
+    const nuevoUser = {
+      username, password, role:'visor-pedidos',
+      displayName: username, perms:{}, pdvs:[]
+    };
+    users.push(nuevoUser);
+    saveUsers(users);
+    await saveUserToSupabase(nuevoUser);
+    document.getElementById('new-visor-username').value='';
+    document.getElementById('new-visor-password').value='';
+    toast('Visor creado: '+username,'success');
+    renderUsersPanel();
+  }
+
+  function saveVisorPedidosName(username) {
+    const input = document.getElementById('vpname-'+username);
+    const name = input?.value.trim();
+    if (!name) { toast('Ingresá un nombre','error'); return; }
+    const users = getUsers();
+    const idx = users.findIndex(u=>u.username===username);
+    if (idx===-1) return;
+    users[idx].displayName = name;
+    saveUsers(users);
+    saveUserToSupabase(users[idx]);
+    toast('Nombre actualizado: '+name,'success');
   }
 
   function saveViewerName(username) {
@@ -11012,6 +11121,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const isAdmin = currentUser && currentUser.role==='admin';
     const isProduccion = currentUser && currentUser.role==='produccion';
     const isViewer = currentUser && currentUser.role==='viewer';
+    const isVisorPedidos = currentUser && currentUser.role==='visor-pedidos';
     const perms = currentUser?.perms || {};
     const show = id => { const el=document.getElementById(id); if(el) el.style.display=''; };
     const hide = id => { const el=document.getElementById(id); if(el) el.style.display='none'; };
@@ -11041,6 +11151,19 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (perms.pedidoSuc)  show('neg-btn-pedido-suc');  else hide('neg-btn-pedido-suc');
       hide('neg-btn-empresa'); hide('neg-btn-elaboracion'); hide('neg-btn-informes'); hide('neg-btn-caja');
       hide('neg-btn-avisos');
+    } else if (isVisorPedidos) {
+      // Solo muestra el botón de pedidos online
+      hide('neg-btn-stock'); hide('neg-btn-pedido'); hide('neg-btn-pedido-suc');
+      hide('neg-btn-productos'); hide('neg-btn-empresa'); hide('neg-btn-elaboracion');
+      hide('neg-btn-informes'); hide('neg-btn-caja'); hide('neg-btn-config');
+      hide('neg-btn-ingresos'); hide('neg-btn-cashflow'); hide('neg-btn-egresos-op');
+      hide('neg-btn-mensajes'); hide('neg-btn-desperdicios'); hide('neg-btn-recuento');
+      hide('neg-btn-lista-precios-op'); hide('neg-btn-lista-prod'); hide('neg-btn-envio-pedido');
+      hide('neg-btn-recibo-pedido'); hide('neg-btn-ventas'); hide('neg-btn-monitor');
+      hide('neg-btn-ventas-op'); hide('neg-btn-clientes-op'); hide('neg-btn-promociones-op');
+      hide('neg-btn-avisos'); hide('neg-btn-pedido-recibido');
+      show('neg-btn-pedidos-op');
+      setupNegLayout(false);
     } else {
       // Operador
       if (perms.stock)      show('neg-btn-stock');       else hide('neg-btn-stock');
