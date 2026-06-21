@@ -15,14 +15,14 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg2); color: var(--text); min-height: 100vh; }
 .app { max-width: 600px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; }
-.header { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 50; text-align: center; position: relative; }
-.header-logo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.header { padding: 10px 16px 10px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 50; text-align: center; position: relative; }
+.header-logo { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .header-logo .emoji { font-size: 26px; }
-.header-logo h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+.header-logo h1 { font-size: 20px; font-weight: 700; color: var(--text); margin-top: 2px; }
 .header-logo p { font-size: 13px; color: var(--text2); }
-.header-cart-wrap { position: absolute; top: 16px; right: 16px; }
-.cart-btn { position: relative; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--text); font-weight: 500; }
-.cart-badge { position: absolute; top: -7px; right: -7px; background: var(--danger); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.header-cart-wrap { position: absolute; top: 50%; right: 16px; transform: translateY(-50%); }
+.cart-btn { position: relative; background: var(--primary); border: none; border-radius: var(--radius); padding: 12px 18px; cursor: pointer; font-size: 22px; display: flex; align-items: center; gap: 6px; color: white; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.cart-badge { position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .steps { display: flex; border-bottom: 1px solid var(--border); background: var(--bg); }
 .step { flex: 1; padding: 10px 4px; text-align: center; font-size: 12px; color: var(--text3); border-bottom: 2px solid transparent; }
 .step.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
@@ -261,7 +261,7 @@ const WA_NUMBER = '5491100000000';
 const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
 
 // Estado
-let pdvs = [], productos = [], gustos = [], promos = [];
+let pdvs = [], productos = [], gustos = [], promos = [], pdvDirs = {};
 // prodId → { gustos: [{gid, nombre, precio}], activosSet: Set<gid> }
 let listaDatos = {};
 let selectedPdv = null, selectedMode = 'retiro', selectedPay = 'efectivo', selectedEnvio = 'manana', selectedHorario = 'manana';
@@ -304,6 +304,7 @@ async function init() {
   const pdvsOnline = (cfg.pdvs_online || []).map(String);
   const todosPdvs = pdvsData || [];
   pdvs = pdvsOnline.length > 0 ? todosPdvs.filter(p => pdvsOnline.includes(String(p.id))) : todosPdvs;
+  pdvDirs = cfg.pdvs_direcciones || {};
   productos = prodsData || [];
   gustos   = gustosData || [];
   promos   = promosData || [];
@@ -337,7 +338,13 @@ async function init() {
 function renderPdvs() {
   const row = document.getElementById('pdvRow');
   if (!pdvs.length) { row.innerHTML = '<span style="color:var(--text3);font-size:13px">No hay sucursales</span>'; return; }
-  row.innerHTML = pdvs.map((p,i) => `<div class="chip ${i===0?'active':''}" onclick="selPdv(this,'${p.id}','${p.nombre}')">${p.nombre}</div>`).join('');
+  row.innerHTML = pdvs.map((p,i) => {
+    const dir = pdvDirs[String(p.id)] || '';
+    return `<div class="chip ${i===0?'active':''}" onclick="selPdv(this,'${p.id}','${p.nombre}')" style="display:flex;flex-direction:column;align-items:flex-start;padding:8px 14px">
+      <span>${p.nombre}</span>
+      ${dir ? `<span style="font-size:11px;color:var(--text3);margin-top:2px">${dir}</span>` : ''}
+    </div>`;
+  }).join('');
   selectedPdv = pdvs[0];
 }
 
@@ -663,29 +670,34 @@ function renderConfirm() {
 const DIAS_NOMBRE = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
 function diaHabilSiguiente(dow, saltos) {
-  // Retorna {diaNum, esDomingo} avanzando "saltos" días hábiles (omite lunes)
+  // Retorna {diaNum} avanzando "saltos" días (sin omitir ninguno para retiro/delivery)
   let d = dow;
-  let s = 0;
-  while (s < saltos) {
+  for (let s = 0; s < saltos; s++) {
     d = (d + 1) % 7;
-    if (d !== 1) s++; // lunes (1) no cuenta
   }
   return { diaNum: d, esDomingo: d === 0 };
 }
 
 function calcularOpciones(mode) {
-  const hoy = new Date().getDay(); // 0=Dom..6=Sáb
+  const ahora = new Date();
+  const hoy = ahora.getDay(); // 0=Dom..6=Sáb
+  const horaActual = ahora.getHours() * 60 + ahora.getMinutes(); // minutos desde medianoche
   const esModoRetiro = mode === 'retiro';
 
   // Para retiro: hoy y mañana. Para delivery: mañana y pasado mañana
   let dia1, dia2;
   if (esModoRetiro) {
     dia1 = { diaNum: hoy, esDomingo: hoy === 0 };
-    dia2 = diaHabilSiguiente(hoy, 1);
+    dia2 = { diaNum: (hoy + 1) % 7, esDomingo: ((hoy + 1) % 7) === 0 };
   } else {
-    dia1 = diaHabilSiguiente(hoy, 1);
-    dia2 = diaHabilSiguiente(hoy, 2);
+    dia1 = { diaNum: (hoy + 1) % 7, esDomingo: ((hoy + 1) % 7) === 0 };
+    dia2 = { diaNum: (hoy + 2) % 7, esDomingo: ((hoy + 2) % 7) === 0 };
   }
+
+  // Domingo: turno mañana cierra a las 13:30 (810 minutos)
+  const CIERRE_DOM_MANANA = 13 * 60 + 30;
+  const esHoyDomingo = hoy === 0;
+  const domingoMananaVencido = esHoyDomingo && horaActual >= CIERRE_DOM_MANANA;
 
   function opcionesHorario(dia, esHoy) {
     const esDom = dia.esDomingo;
@@ -694,8 +706,15 @@ function calcularOpciones(mode) {
     const labelManana = esModoRetiro && esHoy
       ? (esDom ? '🌤️ Hoy · hasta 13:30 hs' : '🌤️ Hoy · 10 a 14 hs')
       : ('🌤️ ' + prefDia + (esDom ? 'hasta 13:30 hs' : '10 a 14 hs'));
+
+    // Turno mañana no disponible si: es domingo y ya pasaron las 13:30
+    const mananaDisponible = !(esHoy && domingoMananaVencido);
+
     return {
-      manana: { label: labelManana, disponible: true },
+      manana: {
+        label: mananaDisponible ? labelManana : '🌤️ No disponible (cerrado)',
+        disponible: mananaDisponible
+      },
       tarde: {
         label: esDom ? '🌇 No disponible (domingo)' : ('🌇 ' + (esModoRetiro && esHoy ? 'Hoy' : nombreDia) + ' · 16:30 a 20:30 hs'),
         disponible: !esDom
@@ -736,7 +755,12 @@ function actualizarHorarios(mode) {
   // Turno mañana
   document.getElementById('horario-m-label').textContent = diaOpts.manana.label;
   const btnM = document.getElementById('horario-m');
-  btnM.style.opacity = '1'; btnM.style.pointerEvents = 'auto';
+  if (!diaOpts.manana.disponible) {
+    btnM.style.opacity = '0.4'; btnM.style.pointerEvents = 'none';
+    if (selectedHorario === 'manana') selHorario('tarde');
+  } else {
+    btnM.style.opacity = '1'; btnM.style.pointerEvents = 'auto';
+  }
 
   // Turno tarde
   document.getElementById('horario-t-label').textContent = diaOpts.tarde.label;
@@ -880,6 +904,9 @@ function resetApp() {
   document.getElementById('inNombre').value = '';
   document.getElementById('inTel').value = '';
   document.getElementById('inDir').value = '';
+  // Rehabilitar botón enviar
+  const btnEnviar = document.getElementById('btnEnviar');
+  if (btnEnviar) { btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar pedido 🚀'; }
   selectedEnvio = 'manana'; selectedHorario = 'manana';
   selEnvio('manana'); selHorario('manana');
   document.getElementById('addressRow').style.display = 'block';

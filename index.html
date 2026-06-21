@@ -15450,15 +15450,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
     const [pdvsData,cfgData]=await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/pdvs?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre`,{headers:H2}).then(r=>r.json()),
-      fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=pdvs_online`,{headers:H2}).then(r=>r.json())
+      fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=pdvs_online,pdvs_direcciones`,{headers:H2}).then(r=>r.json())
     ]);
     const activosPdvs=new Set((cfgData?.[0]?.pdvs_online||[]).map(String));
+    const dirs=cfgData?.[0]?.pdvs_direcciones||{};
     el.innerHTML=(pdvsData||[]).map(p=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
+      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <input type="checkbox" class="po-pdv-chk" data-pdvid="${p.id}" ${activosPdvs.has(String(p.id))?'checked':''} style="width:16px;height:16px;cursor:pointer">
-          <span style="font-size:14px">${p.nombre}</span>
-        </label>
+          <span style="font-size:14px;font-weight:600">${p.nombre}</span>
+        </div>
+        <input type="text" class="po-pdv-dir" data-pdvid="${p.id}" value="${dirs[String(p.id)]||''}" placeholder="Dirección (ej: San Martín 1234)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;">
       </div>`).join('')||'<div style="color:var(--text-muted);font-size:13px">No hay sucursales</div>';
   }
 
@@ -15466,12 +15468,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
     const activos=[];
     document.querySelectorAll('.po-pdv-chk').forEach(chk=>{if(chk.checked)activos.push(String(chk.dataset.pdvid));});
+    const dirs={};
+    document.querySelectorAll('.po-pdv-dir').forEach(inp=>{if(inp.value.trim())dirs[inp.dataset.pdvid]=inp.value.trim();});
     const checkR=await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
     const ex=checkR.ok?await checkR.json():[];
     if(ex.length>0){
-      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:H2,body:JSON.stringify({pdvs_online:activos})});
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:H2,body:JSON.stringify({pdvs_online:activos,pdvs_direcciones:dirs})});
     } else {
-      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`,{method:'POST',headers:H2,body:JSON.stringify({id:'1',empresa_id:String(empresaActual),pdvs_online:activos})});
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`,{method:'POST',headers:H2,body:JSON.stringify({id:'1',empresa_id:String(empresaActual),pdvs_online:activos,pdvs_direcciones:dirs})});
     }
     toast('Sucursales guardadas','success');
   }
