@@ -1010,8 +1010,10 @@ function actualizarHorarios(mode) {
     document.getElementById('label-envio-48').textContent = '📦 En 2 días (' + opts.nombreDia2 + ')';
   } else {
     document.getElementById('labelPlazo').textContent = '¿Cuándo retirás?';
-    document.getElementById('label-envio-24').textContent = '🏃 Hoy (' + opts.nombreDia1 + ')';
-    document.getElementById('label-envio-48').textContent = '📅 Mañana (' + opts.nombreDia2 + ')';
+    document.getElementById('label-envio-24').textContent = opts.nombreDia1 === 'Hoy'
+      ? '🏃 Hoy (' + DIAS_NOMBRE[new Date().getDay()] + ')'
+      : '📅 ' + opts.nombreDia1;
+    document.getElementById('label-envio-48').textContent = '📅 ' + opts.nombreDia2;
   }
 
   // Horario según plazo seleccionado
