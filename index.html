@@ -1605,6 +1605,45 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </div>
       </div>
     </div>
+
+      <!-- Novedades -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">🔔 Novedades para clientes</span>
+          <span class="po-acc-arrow">▼</span>
+        </div>
+        <div class="po-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Las novedades aparecen en la campanita de la tienda online. Podés escribir texto libre y/o subir una imagen.</p>
+          <div id="po-novedades-lista" style="margin-bottom:14px"></div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text)">➕ Nueva novedad</div>
+            <div style="margin-bottom:10px">
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:5px;display:block">Título</label>
+              <input type="text" id="po-nov-titulo" placeholder="Ej: ¡Nuevos sabores disponibles!" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:5px;display:block">Texto</label>
+              <textarea id="po-nov-texto" placeholder="Escribí el mensaje para tus clientes..." rows="3" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;resize:vertical"></textarea>
+            </div>
+            <div style="margin-bottom:12px">
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:5px;display:block">Imagen (opcional)</label>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <img id="po-nov-img-preview" src="" style="width:80px;height:60px;border-radius:8px;object-fit:cover;border:1px solid var(--border);display:none">
+                <div id="po-nov-img-placeholder" style="width:80px;height:60px;border-radius:8px;background:var(--surface);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--text-muted)">🖼️</div>
+                <div>
+                  <input type="file" id="po-nov-img-file" accept="image/*" style="display:none" onchange="poNovPreviewImg(this)">
+                  <button onclick="document.getElementById('po-nov-img-file').click()" class="btn-outline" style="font-size:12px;margin-bottom:4px">📁 Subir imagen</button>
+                  <button onclick="poNovQuitarImg()" id="po-nov-img-quitar" class="btn-outline" style="font-size:12px;display:none;color:#D85A30;border-color:#D85A30">✕ Quitar</button>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">JPG, PNG · Máx 1MB</div>
+                </div>
+              </div>
+            </div>
+            <button onclick="poGuardarNovedad()" class="btn-primary" style="width:100%;font-size:13px">💾 Guardar novedad</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -15425,7 +15464,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       b.style.fontWeight=a?'700':'500';
       b.style.borderBottom=a?'2px solid var(--accent)':'2px solid transparent';
     });
-    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();}
+    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();poCargarNovedades();}
   }
 
   async function poCargarPedidos() {
@@ -15798,6 +15837,111 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
     toast('Configuración guardada','success');
   }
+
+
+  // ── NOVEDADES ────────────────────────────────────────────────────────
+  let _poNovImgFile = null;
+
+  function poNovPreviewImg(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (file.size > 1.2 * 1024 * 1024) { toast("La imagen supera 1MB"); input.value=""; return; }
+    _poNovImgFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = document.getElementById("po-nov-img-preview");
+      const ph = document.getElementById("po-nov-img-placeholder");
+      const btn = document.getElementById("po-nov-img-quitar");
+      if (prev) { prev.src = e.target.result; prev.style.display = "block"; }
+      if (ph) ph.style.display = "none";
+      if (btn) btn.style.display = "";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function poNovQuitarImg() {
+    _poNovImgFile = null;
+    const prev = document.getElementById("po-nov-img-preview");
+    const ph = document.getElementById("po-nov-img-placeholder");
+    const btn = document.getElementById("po-nov-img-quitar");
+    const inp = document.getElementById("po-nov-img-file");
+    if (prev) { prev.src=""; prev.style.display="none"; }
+    if (ph) ph.style.display="";
+    if (btn) btn.style.display="none";
+    if (inp) inp.value="";
+  }
+
+  async function poCargarNovedades() {
+    const el = document.getElementById("po-novedades-lista");
+    if (!el) return;
+    const H2 = {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY};
+    const r = await fetch(SUPABASE_URL + "/rest/v1/tienda_config?id=eq.1&empresa_id=eq." + empresaActual + "&select=novedades", {headers: H2});
+    const data = r.ok ? await r.json() : [];
+    const novedades = data?.[0]?.novedades || [];
+    if (!novedades.length) {
+      el.innerHTML = "<div style=\"font-size:13px;color:var(--text-muted);padding:10px 0\">No hay novedades publicadas.</div>";
+      return;
+    }
+    el.innerHTML = novedades.map((n, i) => {
+      const imgHtml = n.imagen_url ? "<img src=\"" + n.imagen_url + "\" style=\"width:64px;height:50px;border-radius:6px;object-fit:cover;flex-shrink:0\">" : "";
+      const fecha = n.fecha ? new Date(n.fecha).toLocaleDateString("es-AR") : "";
+      return "<div style=\"background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start\">" +
+        imgHtml +
+        "<div style=\"flex:1\">" +
+          "<div style=\"font-size:13px;font-weight:700;color:var(--text)\">" + (n.titulo||"") + "</div>" +
+          "<div style=\"font-size:12px;color:var(--text-muted);margin-top:2px;white-space:pre-wrap\">" + (n.texto||"") + "</div>" +
+          "<div style=\"font-size:11px;color:var(--text-muted);margin-top:4px\">" + fecha + "</div>" +
+        "</div>" +
+        "<button onclick=\"poEliminarNovedad(" + i + ")\" style=\"flex-shrink:0;background:none;border:none;color:#D85A30;cursor:pointer;font-size:18px;padding:0 4px\" title=\"Eliminar\">&#x2715;</button>" +
+      "</div>";
+    }).join("");
+  }
+
+  async function poGuardarNovedad() {
+    const titulo = document.getElementById("po-nov-titulo")?.value.trim() || "";
+    const texto = document.getElementById("po-nov-texto")?.value.trim() || "";
+    if (!titulo && !texto) { toast("Escribi al menos un titulo o texto"); return; }
+    const Hbase = {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal"};
+    const H2 = {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY};
+    let imagen_url = "";
+    if (_poNovImgFile) {
+      try {
+        toast("Subiendo imagen...", "success");
+        const ext = _poNovImgFile.name.split(".").pop();
+        imagen_url = await poSubirImagen(_poNovImgFile, "empresa_" + empresaActual + "/novedades/nov_" + Date.now() + "." + ext);
+      } catch(e) { toast("Error al subir imagen: " + e.message); return; }
+    }
+    const r = await fetch(SUPABASE_URL + "/rest/v1/tienda_config?id=eq.1&empresa_id=eq." + empresaActual + "&select=novedades", {headers: H2});
+    const data = r.ok ? await r.json() : [];
+    const novedades = data?.[0]?.novedades || [];
+    novedades.unshift({ titulo, texto, imagen_url, fecha: new Date().toISOString() });
+    const checkR = await fetch(SUPABASE_URL + "/rest/v1/tienda_config?id=eq.1&empresa_id=eq." + empresaActual, {headers: H2});
+    const ex = checkR.ok ? await checkR.json() : [];
+    if (ex.length > 0) {
+      await fetch(SUPABASE_URL + "/rest/v1/tienda_config?id=eq.1&empresa_id=eq." + empresaActual, {method:"PATCH", headers:Hbase, body:JSON.stringify({novedades})});
+    } else {
+      await fetch(SUPABASE_URL + "/rest/v1/tienda_config", {method:"POST", headers:Hbase, body:JSON.stringify({id:"1", empresa_id:String(empresaActual), novedades})});
+    }
+    if (document.getElementById("po-nov-titulo")) document.getElementById("po-nov-titulo").value = "";
+    if (document.getElementById("po-nov-texto")) document.getElementById("po-nov-texto").value = "";
+    poNovQuitarImg();
+    toast("Novedad publicada!", "success");
+    poCargarNovedades();
+  }
+
+  async function poEliminarNovedad(idx) {
+    if (!confirm("Eliminar esta novedad?")) return;
+    const Hbase = {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal"};
+    const H2 = {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY};
+    const r = await fetch(SUPABASE_URL + "/rest/v1/tienda_config?id=eq.1&empresa_id=eq." + empresaActual + "&select=novedades", {headers: H2});
+    const data = r.ok ? await r.json() : [];
+    const novedades = data?.[0]?.novedades || [];
+    novedades.splice(idx, 1);
+    await fetch(SUPABASE_URL + "/rest/v1/tienda_config?id=eq.1&empresa_id=eq." + empresaActual, {method:"PATCH", headers:Hbase, body:JSON.stringify({novedades})});
+    toast("Novedad eliminada", "success");
+    poCargarNovedades();
+  }
+  // ── FIN NOVEDADES ─────────────────────────────────────────────────────
 
   async function poCargarFotosProductos(){
     const el=document.getElementById('po-config-fotos');
