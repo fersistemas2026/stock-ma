@@ -164,6 +164,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .wa-close-btn { background: none; border: none; font-size: 12px; color: var(--text3); cursor: pointer; width: 100%; padding-top: 8px; }
 .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1a1d23; color: white; padding: 10px 20px; border-radius: 999px; font-size: 13px; font-weight: 500; z-index: 999; display: none; white-space: nowrap; }
 .toast.show { display: block; }
+.fe-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.fe-card:hover { border-color: var(--primary-border); }
+.fe-card.active { border-color: var(--primary); background: var(--primary-light); }
+.fe-card-titulo { font-size: 14px; font-weight: 700; color: var(--text); }
+.fe-card-info { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.fe-badge { display: inline-block; background: #FF6B00; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
 </style>
 </head>
 <body>
@@ -349,8 +355,58 @@ let pdvs = [], productos = [], gustos = [], promos = [], pdvDirs = {};
 // prodId → { gustos: [{gid, nombre, precio}], activosSet: Set<gid> }
 let listaDatos = {};
 let selectedPdv = null, selectedMode = 'retiro', selectedPay = 'efectivo', selectedEnvio = 'manana', selectedHorario = 'manana';
+let _fechasEspeciales = []; // fechas especiales desde Supabase
+let selectedFechaEsp = null; // fecha especial seleccionada {fecha, nombre, desde, hasta, ...}
 let cart = {}; // prodId → { gustoId → qty }
 let currentProdId = null, modalQtys = {};
+/* ===== FECHAS ESPECIALES ===== */
+function renderFechasEspeciales() {
+  const row = document.getElementById('rowFechasEsp');
+  const cont = document.getElementById('fechasEspOpciones');
+  if (!row || !cont) return;
+  if (!_fechasEspeciales.length) { row.style.display = 'none'; return; }
+  row.style.display = 'block';
+  cont.innerHTML = _fechasEspeciales.map((f, i) => {
+    const fechaFmt = new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
+    const horario = f.desde + ' a ' + f.hasta + ' hs';
+    const cierre = f.cierre_fecha ? ('Pedí antes del ' + new Date(f.cierre_fecha+'T12:00:00').toLocaleDateString('es-AR') + ' ' + (f.cierre_hora||'') + ' hs') : '';
+    return '<div class="fe-card" id="fe-card-' + i + '" onclick="selFechaEsp(' + i + ')">' +
+      '<div class="fe-card-titulo">🎉 ' + (f.nombre||'Fecha especial') + '<span class="fe-badge">PRE-PEDIDO</span></div>' +
+      '<div class="fe-card-info">📅 ' + fechaFmt + ' · 🕐 ' + horario + '</div>' +
+      (cierre ? '<div class="fe-card-info">⏰ ' + cierre + '</div>' : '') +
+      (f.mensaje ? '<div class="fe-card-info" style="color:var(--primary);margin-top:4px">' + f.mensaje + '</div>' : '') +
+      '</div>';
+  }).join('') +
+  '<div class="fe-card" id="fe-card-normal" onclick="selFechaEsp(null)">' +
+    '<div class="fe-card-titulo">📆 Pedido normal (días habituales)</div>' +
+    '<div class="fe-card-info">Entrega según los horarios regulares</div>' +
+  '</div>';
+}
+
+window.selFechaEsp = function(idx) {
+  selectedFechaEsp = idx !== null ? _fechasEspeciales[idx] : null;
+  // highlight
+  _fechasEspeciales.forEach((_, i) => {
+    const c = document.getElementById('fe-card-' + i);
+    if (c) c.classList.toggle('active', i === idx);
+  });
+  const cn = document.getElementById('fe-card-normal');
+  if (cn) cn.classList.toggle('active', idx === null);
+  // Si es fecha especial: mostrar modo retiro/delivery según config de la fecha, ocultar plazo normal
+  const rowPlazo = document.getElementById('rowPlazo');
+  const rowHorario = document.getElementById('rowHorario');
+  const modeRow = document.querySelector('.mode-row');
+  if (selectedFechaEsp) {
+    if (rowPlazo) rowPlazo.style.display = 'none';
+    if (rowHorario) rowHorario.style.display = 'none';
+    if (modeRow) modeRow.style.display = selectedFechaEsp.delivery ? '' : 'none';
+  } else {
+    if (rowPlazo) rowPlazo.style.display = '';
+    if (rowHorario) rowHorario.style.display = '';
+    if (modeRow) modeRow.style.display = '';
+    actualizarHorarios(selectedMode);
+  }
+};
 /* ===== BUSCADOR ===== */
 let _busquedaActual = '';
 window.filtrarBusqueda = function(val) {
@@ -424,6 +480,19 @@ async function init() {
   sliderInit(cfg.slider_imagenes || []);
   // Horarios desde config
   _horariosCfg = cfg.horarios || null;
+  // Fechas especiales
+  _fechasEspeciales = (cfg.fechas_especiales || []).filter(f => {
+    // Solo futuras y dentro del plazo de aceptación
+    const hoy = new Date().toISOString().split('T')[0];
+    if (f.fecha < hoy) return false;
+    if (f.cierre_fecha) {
+      const ahora = new Date();
+      const cierreDT = new Date(f.cierre_fecha + 'T' + (f.cierre_hora || '23:59') + ':00');
+      if (ahora > cierreDT) return false;
+    }
+    return true;
+  });
+  renderFechasEspeciales();
   const waNum = cfg.whatsapp || WA_NUMBER;
   document.getElementById('waLink').href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
 
@@ -1051,7 +1120,12 @@ async function enviarPedido() {
   const pedido = {
     empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: tel,
     pdv_id: String(selectedPdv?.id||''), pdv_nombre: selectedPdv?.nombre||'',
-    modalidad: selectedMode, direccion: dir||null, envio_plazo: selectedEnvio==='manana'?(selectedMode==='retiro'?'hoy':'mañana'):(selectedMode==='retiro'?'mañana':'2-dias'), envio_horario: selectedHorario==='manana'?(selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta-13:30':'10:00-14:00'):'16:30-20:30', items,
+    modalidad: selectedMode, direccion: dir||null,
+    envio_plazo: selectedFechaEsp ? ('fecha-especial:' + selectedFechaEsp.fecha) : (selectedEnvio==='manana'?(selectedMode==='retiro'?'hoy':'mañana'):(selectedMode==='retiro'?'mañana':'2-dias')),
+    envio_horario: selectedFechaEsp ? (selectedFechaEsp.desde + '-' + selectedFechaEsp.hasta) : (selectedHorario==='manana'?(selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta-13:30':'10:00-14:00'):'16:30-20:30'),
+    fecha_especial: selectedFechaEsp ? selectedFechaEsp.fecha : null,
+    fecha_especial_nombre: selectedFechaEsp ? selectedFechaEsp.nombre : null,
+    items,
     total, total_final: total, descuento: 0,
     metodo_pago: selectedPay, estado: 'nuevo', origen: 'online'
   };
@@ -1071,18 +1145,25 @@ async function enviarPedido() {
 
     document.getElementById('mainContent').style.display = 'none';
     document.querySelector('.steps').style.display = 'none';
-    const opts = calcularOpciones(selectedMode);
-    const esHoy = selectedEnvio === 'manana' && selectedMode === 'retiro';
-    const nombreDia = selectedEnvio === 'pasado' ? opts.nombreDia2 : opts.nombreDia1;
-    const horarioLabel = selectedHorario === 'manana'
-      ? (selectedMode === 'retiro' && selectedEnvio === 'manana' ? 'hasta las 13:30 hs' : '10:00 a 14:00 hs')
-      : '16:30 a 20:30 hs';
-    const plazoLabel = selectedMode === 'delivery'
-      ? (selectedEnvio === 'manana' ? 'Mañana' : 'En 2 días')
-      : (selectedEnvio === 'manana' ? 'Hoy' : 'Mañana');
-    const envioInfo = selectedMode === 'delivery'
-      ? `🛵 Delivery a <strong>${dir}</strong><br>📦 <strong>${plazoLabel} (${nombreDia})</strong> · Horario: <strong>${horarioLabel}</strong>`
-      : `🚶 Retiro en local · <strong>${plazoLabel} (${nombreDia})</strong> · Horario: <strong>${horarioLabel}</strong>`;
+
+    let envioInfo;
+    if (selectedFechaEsp) {
+      const fechaFmt = new Date(selectedFechaEsp.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
+      const horario = selectedFechaEsp.desde + ' a ' + selectedFechaEsp.hasta + ' hs';
+      envioInfo = `🎉 <strong>${selectedFechaEsp.nombre}</strong><br>📅 <strong>${fechaFmt}</strong> · 🕐 <strong>${horario}</strong><br>${selectedMode==='delivery'?`🛵 Delivery a <strong>${dir}</strong>`:'🚶 Retiro en local'}`;
+    } else {
+      const opts = calcularOpciones(selectedMode);
+      const nombreDia = selectedEnvio === 'pasado' ? opts.nombreDia2 : opts.nombreDia1;
+      const horarioLabel = selectedHorario === 'manana'
+        ? (selectedMode === 'retiro' && selectedEnvio === 'manana' ? 'hasta las 13:30 hs' : '10:00 a 14:00 hs')
+        : '16:30 a 20:30 hs';
+      const plazoLabel = selectedMode === 'delivery'
+        ? (selectedEnvio === 'manana' ? 'Mañana' : 'En 2 días')
+        : (selectedEnvio === 'manana' ? 'Hoy' : 'Mañana');
+      envioInfo = selectedMode === 'delivery'
+        ? `🛵 Delivery a <strong>${dir}</strong><br>📦 <strong>${plazoLabel} (${nombreDia})</strong> · Horario: <strong>${horarioLabel}</strong>`
+        : `🚶 Retiro en local · <strong>${plazoLabel} (${nombreDia})</strong> · Horario: <strong>${horarioLabel}</strong>`;
+    }
     document.getElementById('successMsg').innerHTML = `Tu pedido fue enviado a <strong>${selectedPdv?.nombre||''}</strong>.<br>${envioInfo}<br><br>Pago: <strong>${selectedPay==='transfe'?'Transferencia':'Efectivo'}</strong> · Total: <strong>$${total.toLocaleString('es-AR')}</strong><br><br>📱 Te avisamos al <strong>${tel}</strong> cuando esté listo.`;
     document.getElementById('successScreen').classList.add('visible');
   } catch(e) {
