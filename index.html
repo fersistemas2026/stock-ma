@@ -15800,11 +15800,56 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     reader.readAsDataURL(file);
   }
 
-  async function poSubirImagen(file,path){
-    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':file.type,'Cache-Control':'3600','x-upsert':'true'};
-    const r=await fetch(`${SUPABASE_URL}/storage/v1/object/tienda-fotos/${path}`,{method:'POST',headers:H2,body:file});
-    if(!r.ok){const t=await r.text();throw new Error(t);}
-    return `${SUPABASE_URL}/storage/v1/object/public/tienda-fotos/${path}`;
+  // Recorta y redimensiona una imagen a un cuadrado (cover) antes de subir
+  function poEncuadrarImagen(file, size = 600) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // cover: recortar centrado
+        const ratio = img.width / img.height;
+        let sx, sy, sw, sh;
+        if (ratio > 1) {
+          // más ancho que alto: recortar los costados
+          sh = img.height;
+          sw = img.height;
+          sx = (img.width - sw) / 2;
+          sy = 0;
+        } else {
+          // más alto que ancho: recortar arriba/abajo
+          sw = img.width;
+          sh = img.width;
+          sx = 0;
+          sy = (img.height - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+        canvas.toBlob(blob => {
+          if (!blob) reject(new Error('No se pudo procesar la imagen'));
+          else resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.88);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo cargar la imagen')); };
+      img.src = url;
+    });
+  }
+
+  async function poSubirImagen(file, path) {
+    // Encuadrar antes de subir (excepto logo que puede ser rectangular)
+    let fileToUpload = file;
+    if (!path.includes('/logo.')) {
+      try { fileToUpload = await poEncuadrarImagen(file, 600); } catch(e) { /* si falla, sube original */ }
+    }
+    const H2 = {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': fileToUpload.type, 'Cache-Control': '3600', 'x-upsert': 'true'};
+    // Ajustar extensión a .jpg si fue procesada
+    const finalPath = fileToUpload !== file ? path.replace(/\.[^.]+$/, '.jpg') : path;
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/tienda-fotos/${finalPath}`, {method: 'POST', headers: H2, body: fileToUpload});
+    if (!r.ok) { const t = await r.text(); throw new Error(t); }
+    return `${SUPABASE_URL}/storage/v1/object/public/tienda-fotos/${finalPath}`;
   }
 
   async function poGuardarTiendaConfig(){

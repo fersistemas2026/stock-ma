@@ -1109,7 +1109,7 @@ window.abrirAvisos = async function() {
     } else {
       content.innerHTML = novedades.map(n => `
         <div class="aviso-item">
-          ${n.imagen_url ? `<img src="${n.imagen_url}" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:8px">` : ''}
+          ${n.imagen_url ? `<div style="width:100%;height:160px;border-radius:8px;overflow:hidden;margin-bottom:8px"><img src="${n.imagen_url}" style="width:100%;height:100%;object-fit:cover;display:block"></div>` : ''}
           ${n.titulo ? `<div class="aviso-item-titulo">${n.titulo}</div>` : ''}
           ${n.texto ? `<div class="aviso-item-body">${n.texto}</div>` : ''}
           ${n.fecha ? `<div style="font-size:11px;color:var(--text3);margin-top:6px">${new Date(n.fecha).toLocaleDateString('es-AR')}</div>` : ''}
