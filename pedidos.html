@@ -422,6 +422,8 @@ async function init() {
   if (cfg.logo_url && logoImg) logoImg.src = cfg.logo_url;
   // Slider
   sliderInit(cfg.slider_imagenes || []);
+  // Horarios desde config
+  _horariosCfg = cfg.horarios || null;
   const waNum = cfg.whatsapp || WA_NUMBER;
   document.getElementById('waLink').href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
 
@@ -495,6 +497,11 @@ function selPdv(el, id, nombre) {
 }
 
 function selMode(el, mode) {
+  // No permitir delivery si está deshabilitado
+  if (mode === 'delivery' && _horariosCfg && _horariosCfg.delivery_activo === false) {
+    toast('Delivery no disponible por el momento');
+    return;
+  }
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   selectedMode = mode;
@@ -833,54 +840,93 @@ function diaHabilSiguiente(dow, saltos) {
 }
 
 function calcularOpciones(mode) {
+  const h = _horariosCfg || {};
+  const diasActivos = new Set(h.dias_activos || [1,2,3,4,5,6]);
+  const mDesde = h.manana_desde || '10:00';
+  const mHasta = h.manana_hasta || '13:30';
+  const mActivo = h.manana_activo !== false;
+  const tDesde = h.tarde_desde || '16:30';
+  const tHasta = h.tarde_hasta || '20:30';
+  const tActivo = h.tarde_activo !== false;
+  const deliveryPlazo = h.delivery_plazo || 1;
+
   const ahora = new Date();
   const hoy = ahora.getDay(); // 0=Dom..6=Sáb
-  const horaActual = ahora.getHours() * 60 + ahora.getMinutes(); // minutos desde medianoche
+  const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
   const esModoRetiro = mode === 'retiro';
 
-  // Para retiro: hoy y mañana. Para delivery: mañana y pasado mañana
-  let dia1, dia2;
-  if (esModoRetiro) {
-    dia1 = { diaNum: hoy, esDomingo: hoy === 0 };
-    dia2 = { diaNum: (hoy + 1) % 7, esDomingo: ((hoy + 1) % 7) === 0 };
-  } else {
-    dia1 = { diaNum: (hoy + 1) % 7, esDomingo: ((hoy + 1) % 7) === 0 };
-    dia2 = { diaNum: (hoy + 2) % 7, esDomingo: ((hoy + 2) % 7) === 0 };
+  // Avanzar días hasta encontrar uno habilitado
+  function proximoDia(desde, saltos) {
+    let d = desde;
+    for (let s = 0; s < saltos; s++) {
+      d = (d + 1) % 7;
+      // avanzar mientras el día no esté activo
+      let guard = 0;
+      while (!diasActivos.has(d) && guard++ < 7) d = (d + 1) % 7;
+    }
+    return d;
   }
 
-  // Domingo: turno mañana cierra a las 13:30 (810 minutos)
-  const CIERRE_DOM_MANANA = 13 * 60 + 30;
-  const esHoyDomingo = hoy === 0;
-  const domingoMananaVencido = esHoyDomingo && horaActual >= CIERRE_DOM_MANANA;
+  let diaNum1, diaNum2;
+  if (esModoRetiro) {
+    // Día 1: hoy si está activo, si no el próximo activo
+    diaNum1 = diasActivos.has(hoy) ? hoy : proximoDia(hoy, 1);
+    diaNum2 = proximoDia(diaNum1, 1);
+  } else {
+    // Delivery: el próximo día activo según plazo
+    diaNum1 = proximoDia(hoy, deliveryPlazo);
+    diaNum2 = proximoDia(diaNum1, 1);
+  }
 
-  function opcionesHorario(dia, esHoy) {
-    const esDom = dia.esDomingo;
-    const nombreDia = DIAS_NOMBRE[dia.diaNum];
+  function parseMin(hhmm) {
+    const [hh, mm] = (hhmm||'00:00').split(':').map(Number);
+    return hh * 60 + mm;
+  }
+
+  function formatHora(hhmm) {
+    const [hh, mm] = (hhmm||'00:00').split(':');
+    return mm === '00' ? hh + ' hs' : hh + ':' + mm + ' hs';
+  }
+
+  function opcionesHorario(diaNum, esHoy) {
+    const nombreDia = DIAS_NOMBRE[diaNum];
     const prefDia = nombreDia + ' · ';
-    const labelManana = esModoRetiro && esHoy
-      ? (esDom ? '🌤️ Hoy · hasta 13:30 hs' : '🌤️ Hoy · 10 a 14 hs')
-      : ('🌤️ ' + prefDia + (esDom ? 'hasta 13:30 hs' : '10 a 14 hs'));
+    const diaHabilitado = diasActivos.has(diaNum);
 
-    // Turno mañana no disponible si: es domingo y ya pasaron las 13:30
-    const mananaDisponible = !(esHoy && domingoMananaVencido);
+    // Turno mañana
+    const mVencido = esHoy && horaActual >= parseMin(mHasta);
+    const mananaDisponible = mActivo && diaHabilitado && !mVencido;
+    const labelManana = !diaHabilitado
+      ? ('🌤️ No disponible')
+      : !mActivo
+        ? ('🌤️ No disponible')
+        : mVencido
+          ? ('🌤️ No disponible (cerrado)')
+          : ('🌤️ ' + (esModoRetiro && esHoy ? 'Hoy' : prefDia) + formatHora(mDesde) + ' a ' + formatHora(mHasta));
+
+    // Turno tarde
+    const tVencido = esHoy && horaActual >= parseMin(tHasta);
+    const tardeDisponible = tActivo && diaHabilitado && !tVencido;
+    const labelTarde = !diaHabilitado
+      ? ('🌇 No disponible')
+      : !tActivo
+        ? ('🌇 No disponible')
+        : tVencido
+          ? ('🌇 No disponible (cerrado)')
+          : ('🌇 ' + (esModoRetiro && esHoy ? 'Hoy' : prefDia) + formatHora(tDesde) + ' a ' + formatHora(tHasta));
 
     return {
-      manana: {
-        label: mananaDisponible ? labelManana : '🌤️ No disponible (cerrado)',
-        disponible: mananaDisponible
-      },
-      tarde: {
-        label: esDom ? '🌇 No disponible (domingo)' : ('🌇 ' + (esModoRetiro && esHoy ? 'Hoy' : nombreDia) + ' · 16:30 a 20:30 hs'),
-        disponible: !esDom
-      }
+      manana: { label: labelManana, disponible: mananaDisponible, desde: mDesde, hasta: mHasta },
+      tarde:  { label: labelTarde,  disponible: tardeDisponible,  desde: tDesde, hasta: tHasta }
     };
   }
 
   return {
-    dia1: opcionesHorario(dia1, true),
-    dia2: opcionesHorario(dia2, false),
-    nombreDia1: esModoRetiro ? 'Hoy' : DIAS_NOMBRE[dia1.diaNum],
-    nombreDia2: DIAS_NOMBRE[dia2.diaNum]
+    dia1: opcionesHorario(diaNum1, esModoRetiro && diaNum1 === hoy),
+    dia2: opcionesHorario(diaNum2, false),
+    nombreDia1: (esModoRetiro && diaNum1 === hoy) ? 'Hoy' : DIAS_NOMBRE[diaNum1],
+    nombreDia2: DIAS_NOMBRE[diaNum2],
+    deliveryActivo: h.delivery_activo !== false,
   };
 }
 

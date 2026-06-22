@@ -1606,6 +1606,86 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>
     </div>
 
+      <!-- Dias y Horarios -->
+      <div class="po-acc">
+        <div class="po-acc-hdr" onclick="poToggleAcc(this)">
+          <span class="po-acc-title">🕐 Días y horarios de atención</span>
+          <span class="po-acc-arrow">▼</span>
+        </div>
+        <div class="po-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Configurá los días habilitados y los turnos de retiro/delivery para la tienda online.</p>
+
+          <!-- Dias habilitados -->
+          <div style="margin-bottom:18px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 Días habilitados</div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center" id="po-dias-checks">
+              <!-- generado por JS -->
+            </div>
+          </div>
+
+          <!-- Turno mañana -->
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">🌤️ Turno mañana</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+              <div>
+                <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Apertura</label>
+                <input type="time" id="po-turno-m-desde" value="10:00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Cierre</label>
+                <input type="time" id="po-turno-m-hasta" value="13:30" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+              </div>
+            </div>
+            <div style="margin-top:10px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="po-turno-m-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">
+                Turno mañana habilitado
+              </label>
+            </div>
+          </div>
+
+          <!-- Turno tarde -->
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">🌇 Turno tarde</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+              <div>
+                <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Apertura</label>
+                <input type="time" id="po-turno-t-desde" value="16:30" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Cierre</label>
+                <input type="time" id="po-turno-t-hasta" value="20:30" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+              </div>
+            </div>
+            <div style="margin-top:10px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                <input type="checkbox" id="po-turno-t-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">
+                Turno tarde habilitado
+              </label>
+            </div>
+          </div>
+
+          <!-- Delivery -->
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">🛵 Delivery</div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:10px">
+              <input type="checkbox" id="po-delivery-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">
+              Delivery habilitado
+            </label>
+            <div>
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Plazo mínimo (días hábiles desde hoy)</label>
+              <select id="po-delivery-plazo" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+                <option value="1">1 día (mañana)</option>
+                <option value="2">2 días</option>
+                <option value="3">3 días</option>
+              </select>
+            </div>
+          </div>
+
+          <button onclick="poGuardarHorarios()" class="btn-primary" style="width:100%;font-size:13px">💾 Guardar días y horarios</button>
+        </div>
+      </div>
+
       <!-- Novedades -->
       <div class="po-acc">
         <div class="po-acc-hdr" onclick="poToggleAcc(this)">
@@ -15464,7 +15544,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       b.style.fontWeight=a?'700':'500';
       b.style.borderBottom=a?'2px solid var(--accent)':'2px solid transparent';
     });
-    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();poCargarNovedades();}
+    if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();poCargarNovedades();poCargarHorarios();}
   }
 
   async function poCargarPedidos() {
@@ -15883,6 +15963,84 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     toast('Configuración guardada','success');
   }
 
+
+
+  // ── DÍAS Y HORARIOS ──────────────────────────────────────────────────
+  const PO_DIAS_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const PO_DIAS_FULL   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  function poRenderDiasChecks(diasActivos) {
+    const el = document.getElementById('po-dias-checks');
+    if (!el) return;
+    // diasActivos: array de números 0-6 (0=Dom)
+    const activos = new Set(diasActivos || [1,2,3,4,5,6]);
+    el.innerHTML = PO_DIAS_LABELS.map((d, i) => {
+      const chk = activos.has(i) ? 'checked' : '';
+      return `<label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:8px 4px;border:1px solid var(--border);border-radius:8px;background:${activos.has(i)?'var(--accent-soft, #e0f2fe)':'var(--surface)'};font-size:12px;font-weight:600;user-select:none" onclick="this.querySelector('input').click();event.preventDefault()">
+        <input type="checkbox" data-dia="${i}" ${chk} style="display:none" onchange="poActualizarDiaCheck(this)">
+        ${d}
+      </label>`;
+    }).join('');
+  }
+
+  function poActualizarDiaCheck(input) {
+    const lbl = input.closest('label');
+    if (input.checked) {
+      lbl.style.background = 'var(--accent-soft, #e0f2fe)';
+    } else {
+      lbl.style.background = 'var(--surface)';
+    }
+  }
+
+  async function poCargarHorarios() {
+    const H2 = {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`};
+    const r = await fetch(SUPABASE_URL + '/rest/v1/tienda_config?id=eq.1&empresa_id=eq.' + empresaActual + '&select=horarios', {headers: H2});
+    const data = r.ok ? await r.json() : [];
+    const h = data?.[0]?.horarios || {};
+    // Días
+    poRenderDiasChecks(h.dias_activos);
+    // Turno mañana
+    if (document.getElementById('po-turno-m-desde')) document.getElementById('po-turno-m-desde').value = h.manana_desde || '10:00';
+    if (document.getElementById('po-turno-m-hasta')) document.getElementById('po-turno-m-hasta').value = h.manana_hasta || '13:30';
+    if (document.getElementById('po-turno-m-activo')) document.getElementById('po-turno-m-activo').checked = h.manana_activo !== false;
+    // Turno tarde
+    if (document.getElementById('po-turno-t-desde')) document.getElementById('po-turno-t-desde').value = h.tarde_desde || '16:30';
+    if (document.getElementById('po-turno-t-hasta')) document.getElementById('po-turno-t-hasta').value = h.tarde_hasta || '20:30';
+    if (document.getElementById('po-turno-t-activo')) document.getElementById('po-turno-t-activo').checked = h.tarde_activo !== false;
+    // Delivery
+    if (document.getElementById('po-delivery-activo')) document.getElementById('po-delivery-activo').checked = h.delivery_activo !== false;
+    if (document.getElementById('po-delivery-plazo')) document.getElementById('po-delivery-plazo').value = String(h.delivery_plazo || 1);
+  }
+
+  async function poGuardarHorarios() {
+    const Hbase = {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'};
+    const H2 = {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`};
+    // Días activos
+    const dias_activos = [];
+    document.querySelectorAll('#po-dias-checks input[type=checkbox]').forEach(inp => {
+      if (inp.checked) dias_activos.push(Number(inp.dataset.dia));
+    });
+    const horarios = {
+      dias_activos,
+      manana_desde: document.getElementById('po-turno-m-desde')?.value || '10:00',
+      manana_hasta: document.getElementById('po-turno-m-hasta')?.value || '13:30',
+      manana_activo: document.getElementById('po-turno-m-activo')?.checked !== false,
+      tarde_desde: document.getElementById('po-turno-t-desde')?.value || '16:30',
+      tarde_hasta: document.getElementById('po-turno-t-hasta')?.value || '20:30',
+      tarde_activo: document.getElementById('po-turno-t-activo')?.checked !== false,
+      delivery_activo: document.getElementById('po-delivery-activo')?.checked !== false,
+      delivery_plazo: Number(document.getElementById('po-delivery-plazo')?.value || 1),
+    };
+    const checkR = await fetch(SUPABASE_URL + '/rest/v1/tienda_config?id=eq.1&empresa_id=eq.' + empresaActual, {headers: H2});
+    const ex = checkR.ok ? await checkR.json() : [];
+    if (ex.length > 0) {
+      await fetch(SUPABASE_URL + '/rest/v1/tienda_config?id=eq.1&empresa_id=eq.' + empresaActual, {method:'PATCH', headers:Hbase, body:JSON.stringify({horarios})});
+    } else {
+      await fetch(SUPABASE_URL + '/rest/v1/tienda_config', {method:'POST', headers:Hbase, body:JSON.stringify({id:'1', empresa_id:String(empresaActual), horarios})});
+    }
+    toast('Horarios guardados', 'success');
+  }
+  // ── FIN DÍAS Y HORARIOS ───────────────────────────────────────────────
 
   // ── NOVEDADES ────────────────────────────────────────────────────────
   let _poNovImgFile = null;
