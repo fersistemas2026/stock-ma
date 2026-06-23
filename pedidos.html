@@ -241,7 +241,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <input class="form-input" type="tel" placeholder="Ej: 11 1234-5678" id="inTel" oninput="onTelInput()">
           <div class="form-hint">Con tu celular accedés a descuentos y promociones</div>
         </div>
-        <div id="clienteBanner"></div>
+        <div id=\"clienteBanner\"></div>
         <div id="addressRow" style="display:none">
           <div class="form-row">
             <label class="form-label">Dirección de entrega</label>
@@ -333,12 +333,90 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <span class="bb-label">Novedades</span>
     <span class="bb-badge" id="bellBadge" style="display:none"></span>
   </button>
+  <button class="bb-btn bb-prp" id="btnPrePedido" onclick="abrirPrePedido()">
+    <span class="bb-icon">🗓️</span>
+    <span class="bb-label" style="color:#9333ea;font-weight:700">Pre-pedido</span>
+    <span class="bb-badge" id="prpBadge" style="display:none;background:#9333ea"></span>
+  </button>
   <button class="bb-btn bb-wa" onclick="toggleWa()">
     <span class="bb-icon">
       <svg viewBox="0 0 24 24" style="width:26px;height:26px;fill:white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.523 5.824L.057 23.213a.75.75 0 0 0 .93.93l5.389-1.466A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.925 0-3.736-.518-5.295-1.424l-.378-.22-3.927 1.069 1.069-3.927-.22-.378A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
     </span>
     <span class="bb-label">WhatsApp</span>
   </button>
+</div>
+
+<!-- MODAL PRE-PEDIDO -->
+<div id="prpOverlay" onclick="cerrarPrePedidoFuera(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg);border-radius:18px 18px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:20px 16px">
+    <div style="width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="font-size:28px">🗓️</span>
+      <div>
+        <div style="font-size:17px;font-weight:700;color:var(--text)">Pre-pedido fecha especial</div>
+        <div style="font-size:12px;color:var(--text2)">Hacé tu pedido con anticipación</div>
+      </div>
+    </div>
+    <!-- Selector de fecha especial -->
+    <div id="prpFechaSelector" style="margin-bottom:14px"></div>
+    <!-- Datos del cliente -->
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Nombre</label>
+      <input type="text" id="prpNombre" placeholder="¿Cómo te llamás?" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+    </div>
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Celular</label>
+      <input type="tel" id="prpTel" placeholder="Ej: 11 1234-5678" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+    </div>
+    <!-- Sucursal -->
+    <div style="margin-bottom:10px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:6px;display:block">Sucursal</label>
+      <div id="prpPdvRow" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <!-- Modalidad -->
+    <div id="prpModoRow" style="margin-bottom:10px;display:none">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:6px;display:block">Modalidad</label>
+      <div style="display:flex;gap:8px">
+        <div class="pay-opt active" id="prp-modo-retiro" onclick="prpSelModo('retiro')" style="flex:1;padding:10px 12px">
+          <div class="pay-radio" id="prp-radio-retiro" style="background:var(--primary);border-color:var(--primary)"></div>
+          🚶 Retiro en local
+        </div>
+        <div class="pay-opt" id="prp-modo-delivery" onclick="prpSelModo('delivery')" style="flex:1;padding:10px 12px">
+          <div class="pay-radio" id="prp-radio-delivery"></div>
+          🛵 Delivery
+        </div>
+      </div>
+    </div>
+    <div id="prpDirRow" style="display:none;margin-bottom:10px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Dirección de entrega</label>
+      <input type="text" id="prpDir" placeholder="Calle y número" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+    </div>
+    <!-- Pago -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:6px;display:block">Forma de pago</label>
+      <div style="display:flex;gap:8px">
+        <div class="pay-opt active" id="prp-pay-efectivo" onclick="prpSelPay('efectivo')" style="flex:1;padding:10px 12px">
+          <div class="pay-radio" id="prp-radio-efectivo" style="background:var(--primary);border-color:var(--primary)"></div>
+          💵 Efectivo
+        </div>
+        <div class="pay-opt" id="prp-pay-transfe" onclick="prpSelPay('transfe')" style="flex:1;padding:10px 12px">
+          <div class="pay-radio" id="prp-radio-transfe"></div>
+          🏦 Transferencia
+        </div>
+      </div>
+    </div>
+    <!-- Carrito del pre-pedido -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">Productos del pre-pedido</div>
+    <div id="prpCartItems" style="margin-bottom:10px">
+      <div style="font-size:13px;color:var(--text2);padding:10px 0">El carrito actual se usará para este pre-pedido.</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;padding:10px 0;border-top:1px solid var(--border);margin-bottom:14px">
+      <span>Total</span>
+      <span id="prpTotal" style="color:#9333ea">$0</span>
+    </div>
+    <button onclick="enviarPrePedido()" style="width:100%;padding:14px;background:#9333ea;color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">📅 Confirmar pre-pedido</button>
+    <button onclick="cerrarPrePedido()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text2);cursor:pointer">Cancelar</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -361,26 +439,14 @@ let cart = {}; // prodId → { gustoId → qty }
 let currentProdId = null, modalQtys = {};
 /* ===== FECHAS ESPECIALES ===== */
 function renderFechasEspeciales() {
-  const row = document.getElementById('rowFechasEsp');
-  const cont = document.getElementById('fechasEspOpciones');
-  if (!row || !cont) return;
-  if (!_fechasEspeciales.length) { row.style.display = 'none'; return; }
-  row.style.display = 'block';
-  cont.innerHTML = _fechasEspeciales.map((f, i) => {
-    const fechaFmt = new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
-    const horario = f.desde + ' a ' + f.hasta + ' hs';
-    const cierre = f.cierre_fecha ? ('Pedí antes del ' + new Date(f.cierre_fecha+'T12:00:00').toLocaleDateString('es-AR') + ' ' + (f.cierre_hora||'') + ' hs') : '';
-    return '<div class="fe-card" id="fe-card-' + i + '" onclick="selFechaEsp(' + i + ')">' +
-      '<div class="fe-card-titulo">🎉 ' + (f.nombre||'Fecha especial') + '<span class="fe-badge">PRE-PEDIDO</span></div>' +
-      '<div class="fe-card-info">📅 ' + fechaFmt + ' · 🕐 ' + horario + '</div>' +
-      (cierre ? '<div class="fe-card-info">⏰ ' + cierre + '</div>' : '') +
-      (f.mensaje ? '<div class="fe-card-info" style="color:var(--primary);margin-top:4px">' + f.mensaje + '</div>' : '') +
-      '</div>';
-  }).join('') +
-  '<div class="fe-card" id="fe-card-normal" onclick="selFechaEsp(null)">' +
-    '<div class="fe-card-titulo">📆 Pedido normal (días habituales)</div>' +
-    '<div class="fe-card-info">Entrega según los horarios regulares</div>' +
-  '</div>';
+  const btn = document.getElementById('btnPrePedido');
+  const badge = document.getElementById('prpBadge');
+  if (!_fechasEspeciales.length) {
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  if (btn) { btn.style.display = ''; }
+  if (badge) { badge.textContent = _fechasEspeciales.length; badge.style.display = 'flex'; }
 }
 
 window.selFechaEsp = function(idx) {
@@ -407,6 +473,189 @@ window.selFechaEsp = function(idx) {
     actualizarHorarios(selectedMode);
   }
 };
+
+  // ══════════════════════════════════════════════
+  // PRE-PEDIDO FECHAS ESPECIALES
+  // ══════════════════════════════════════════════
+  let _prpFechaSeleccionada = null;
+  let _prpModo = 'retiro';
+  let _prpPay = 'efectivo';
+  let _prpPdvSeleccionado = null;
+
+  window.abrirPrePedido = function() {
+    // Abrir siempre el overlay, luego verificar fechas
+    const ov = document.getElementById('prpOverlay');
+    if (!ov) { toast('Error: modal no encontrado'); return; }
+
+    // Si no hay fechas, mostrar mensaje dentro del modal
+    const sel = document.getElementById('prpFechaSelector');
+    if (!_fechasEspeciales || !_fechasEspeciales.length) {
+      sel.innerHTML = '<div style="font-size:13px;color:var(--text2);padding:12px;text-align:center">No hay fechas especiales disponibles por el momento.</div>';
+    } else {
+      _prpFechaSeleccionada = _fechasEspeciales[0];
+      sel.innerHTML = _fechasEspeciales.map(function(f, i) {
+        const fechaFmt = new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
+        const horario = (f.desde || '10:00') + ' a ' + (f.hasta || '13:00') + ' hs';
+        const cierre = f.cierre_fecha ? 'Pedí antes del ' + new Date(f.cierre_fecha+'T12:00:00').toLocaleDateString('es-AR') + ' ' + (f.cierre_hora||'') + ' hs' : '';
+        const activo = i === 0;
+        return '<div onclick="prpSelFecha(' + i + ')" id="prp-fe-' + i + '" style="border:2px solid ' + (activo ? '#9333ea' : 'var(--border)') + ';border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;cursor:pointer;background:' + (activo ? '#f5f3ff' : 'var(--bg2)') + '">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--text)">🎉 ' + (f.nombre||'Fecha especial') + '</div>' +
+          '<div style="font-size:12px;color:var(--text2);margin-top:3px">📅 ' + fechaFmt + ' · 🕐 ' + horario + '</div>' +
+          (cierre ? '<div style="font-size:11px;color:var(--text2)">⏰ ' + cierre + '</div>' : '') +
+          (f.mensaje ? '<div style="font-size:12px;color:#9333ea;margin-top:3px">' + f.mensaje + '</div>' : '') +
+          '</div>';
+      }).join('');
+      document.getElementById('prpModoRow').style.display = _prpFechaSeleccionada.delivery ? '' : 'none';
+      _prpModo = 'retiro';
+      document.getElementById('prpDirRow').style.display = 'none';
+    }
+    prpRenderPdvs();
+    prpRenderCarrito();
+    ov.style.display = 'flex';
+  };
+
+  window.prpSelFecha = function(idx) {
+    _prpFechaSeleccionada = _fechasEspeciales[idx];
+    _fechasEspeciales.forEach(function(_, i) {
+      const el = document.getElementById('prp-fe-' + i);
+      if (!el) return;
+      el.style.borderColor = i === idx ? '#9333ea' : 'var(--border)';
+      el.style.background = i === idx ? '#f5f3ff' : 'var(--bg2)';
+    });
+    document.getElementById('prpModoRow').style.display = _prpFechaSeleccionada.delivery ? '' : 'none';
+    if (!_prpFechaSeleccionada.delivery) {
+      _prpModo = 'retiro';
+      document.getElementById('prpDirRow').style.display = 'none';
+    }
+  };
+
+  function prpRenderPdvs() {
+    const row = document.getElementById('prpPdvRow');
+    if (!row) return;
+    const pdvs = window._pdvsData || [];
+    if (!_prpPdvSeleccionado && pdvs.length) _prpPdvSeleccionado = pdvs[0];
+    row.innerHTML = pdvs.map(function(p, i) {
+      const activo = _prpPdvSeleccionado && p.id === _prpPdvSeleccionado.id;
+      return '<div onclick="prpSelPdv(' + i + ')" id="prp-pdv-' + i + '" style="padding:8px 14px;border:2px solid ' + (activo?'#9333ea':'var(--border)') + ';border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;background:' + (activo?'#f5f3ff':'none') + ';color:' + (activo?'#9333ea':'var(--text)') + '">' + p.nombre + '</div>';
+    }).join('');
+  }
+
+  window.prpSelPdv = function(idx) {
+    const pdvs = window._pdvsData || [];
+    _prpPdvSeleccionado = pdvs[idx];
+    pdvs.forEach(function(_, i) {
+      const el = document.getElementById('prp-pdv-' + i);
+      if (!el) return;
+      const activo = i === idx;
+      el.style.borderColor = activo ? '#9333ea' : 'var(--border)';
+      el.style.background = activo ? '#f5f3ff' : 'none';
+      el.style.color = activo ? '#9333ea' : 'var(--text)';
+    });
+  };
+
+  window.prpSelModo = function(modo) {
+    _prpModo = modo;
+    ['retiro','delivery'].forEach(function(m) {
+      document.getElementById('prp-modo-' + m).classList.toggle('active', m === modo);
+      const r = document.getElementById('prp-radio-' + m);
+      r.style.background = m === modo ? 'var(--primary)' : '';
+      r.style.borderColor = m === modo ? 'var(--primary)' : '';
+    });
+    document.getElementById('prpDirRow').style.display = modo === 'delivery' ? '' : 'none';
+  };
+
+  window.prpSelPay = function(pay) {
+    _prpPay = pay;
+    ['efectivo','transfe'].forEach(function(p) {
+      document.getElementById('prp-pay-' + p).classList.toggle('active', p === pay);
+      const r = document.getElementById('prp-radio-' + p);
+      r.style.background = p === pay ? 'var(--primary)' : '';
+      r.style.borderColor = p === pay ? 'var(--primary)' : '';
+    });
+  };
+
+  function prpRenderCarrito() {
+    const items = getCartItems();
+    const total = getCartTotal();
+    const el = document.getElementById('prpCartItems');
+    const totalEl = document.getElementById('prpTotal');
+    if (!items.length) {
+      el.innerHTML = '<div style="font-size:13px;color:#D85A30;padding:10px 0">El carrito está vacío. Primero elegí tus productos.</div>';
+      if (totalEl) totalEl.textContent = '$0';
+      return;
+    }
+    el.innerHTML = items.map(function(it) {
+      return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+        '<span>' + it.nombre + ' x' + it.qty + '</span>' +
+        '<span style="font-weight:600">$' + (it.precio * it.qty).toLocaleString('es-AR') + '</span>' +
+        '</div>';
+    }).join('');
+    if (totalEl) totalEl.textContent = '$' + total.toLocaleString('es-AR');
+  }
+
+  window.cerrarPrePedido = function() {
+    document.getElementById('prpOverlay').style.display = 'none';
+  };
+  window.cerrarPrePedidoFuera = function(e) {
+    if (e.target === document.getElementById('prpOverlay')) window.cerrarPrePedido();
+  };
+
+  window.enviarPrePedido = async function() {
+    const nombre = (document.getElementById('prpNombre')?.value || '').trim();
+    const tel = (document.getElementById('prpTel')?.value || '').trim();
+    const dir = (document.getElementById('prpDir')?.value || '').trim();
+    if (!nombre) { toast('Ingresá tu nombre'); return; }
+    if (!tel) { toast('Ingresá tu celular'); return; }
+    if (!_prpFechaSeleccionada) { toast('Elegí una fecha especial'); return; }
+    if (!_prpPdvSeleccionado) { toast('Elegí una sucursal'); return; }
+    if (_prpModo === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
+    const items = getCartItems();
+    if (!items.length) { toast('El carrito está vacío'); return; }
+    const total = getCartTotal();
+    const pedido = {
+      empresa_id: EMPRESA_ID,
+      cliente_nombre: nombre,
+      cliente_tel: tel,
+      pdv_id: String(_prpPdvSeleccionado.id || ''),
+      pdv_nombre: _prpPdvSeleccionado.nombre || '',
+      modalidad: _prpModo,
+      direccion: dir || null,
+      envio_plazo: 'fecha-especial:' + _prpFechaSeleccionada.fecha,
+      envio_horario: (_prpFechaSeleccionada.desde || '10:00') + '-' + (_prpFechaSeleccionada.hasta || '13:00'),
+      fecha_especial: _prpFechaSeleccionada.fecha,
+      fecha_especial_nombre: _prpFechaSeleccionada.nombre,
+      items: JSON.stringify(items),
+      total: total, total_final: total, descuento: 0,
+      metodo_pago: _prpPay,
+      estado: 'nuevo',
+      origen: 'online'
+    };
+    try {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/pedidos_online', {
+        method: 'POST',
+        headers: Object.assign({}, H, {'Prefer':'return=minimal'}),
+        body: JSON.stringify(pedido)
+      });
+      if (!r.ok) throw new Error('Error al enviar');
+      window.cerrarPrePedido();
+      const fechaFmt = new Date(_prpFechaSeleccionada.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
+      const horario = (_prpFechaSeleccionada.desde||'10:00') + ' a ' + (_prpFechaSeleccionada.hasta||'13:00') + ' hs';
+      document.getElementById('mainContent').style.display = 'none';
+      document.querySelector('.steps').style.display = 'none';
+      document.getElementById('successMsg').innerHTML =
+        'Tu pre-pedido fue enviado a <strong>' + (_prpPdvSeleccionado.nombre||'') + '</strong>.<br>' +
+        '🎉 <strong>' + (_prpFechaSeleccionada.nombre||'Fecha especial') + '</strong><br>' +
+        '📅 <strong>' + fechaFmt + '</strong> · 🕐 <strong>' + horario + '</strong><br>' +
+        (_prpModo === 'delivery' ? '🛵 Delivery a <strong>' + dir + '</strong><br>' : '🚶 Retiro en local<br>') +
+        '<br>Pago: <strong>' + (_prpPay === 'transfe' ? 'Transferencia' : 'Efectivo') + '</strong> · Total: <strong>$' + total.toLocaleString('es-AR') + '</strong><br><br>' +
+        '📱 Te avisamos al <strong>' + tel + '</strong> cuando esté listo.';
+      document.getElementById('successScreen').classList.add('visible');
+    } catch(e) {
+      toast('Error al enviar. Intentá de nuevo.');
+    }
+  };
+  // ══════════════════════════════════════════════
+
 /* ===== BUSCADOR ===== */
 let _busquedaActual = '';
 window.filtrarBusqueda = function(val) {
@@ -508,6 +757,7 @@ async function init() {
   const pdvsOnline = (cfg.pdvs_online || []).map(String);
   const todosPdvs = pdvsData || [];
   pdvs = pdvsOnline.length > 0 ? todosPdvs.filter(p => pdvsOnline.includes(String(p.id))) : todosPdvs;
+  window._pdvsData = pdvs; // guardar para el modal de pre-pedido
   pdvDirs = cfg.pdvs_direcciones || {};
   productos = prodsData || [];
   gustos   = gustosData || [];
