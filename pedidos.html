@@ -477,6 +477,20 @@ window.selFechaEsp = function(idx) {
   // ══════════════════════════════════════════════
   // PRE-PEDIDO FECHAS ESPECIALES
   // ══════════════════════════════════════════════
+  function getCartItemsList() {
+    const items = [];
+    Object.entries(cart).forEach(([pid, gm]) => {
+      const prod = productos.find(p => String(p.id) === String(pid));
+      Object.entries(gm).forEach(([gid, qty]) => {
+        if (qty > 0) items.push({
+          prod_id: pid, prod_nombre: prod ? prod.nombre : '',
+          gid: gid, nombre: (prod ? prod.nombre + ' - ' : '') + getNombreGusto(gid),
+          precio: getPrecioGusto(gid), qty: qty
+        });
+      });
+    });
+    return items;
+  }
   let _prpFechaSeleccionada = null;
   let _prpModo = 'retiro';
   let _prpPay = 'efectivo';
@@ -575,21 +589,30 @@ window.selFechaEsp = function(idx) {
   };
 
   function prpRenderCarrito() {
-    const items = getCartItems();
-    const total = getCartTotal();
     const el = document.getElementById('prpCartItems');
     const totalEl = document.getElementById('prpTotal');
-    if (!items.length) {
+    const total = getCartTotal();
+    const entries = Object.entries(cart).filter(([,gm]) => Object.values(gm).some(q=>q>0));
+    if (!entries.length) {
       el.innerHTML = '<div style="font-size:13px;color:#D85A30;padding:10px 0">El carrito está vacío. Primero elegí tus productos.</div>';
       if (totalEl) totalEl.textContent = '$0';
       return;
     }
-    el.innerHTML = items.map(function(it) {
-      return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">' +
-        '<span>' + it.nombre + ' x' + it.qty + '</span>' +
-        '<span style="font-weight:600">$' + (it.precio * it.qty).toLocaleString('es-AR') + '</span>' +
-        '</div>';
-    }).join('');
+    let html = '';
+    entries.forEach(([pid, gm]) => {
+      const prod = productos.find(p => String(p.id) === String(pid));
+      Object.entries(gm).forEach(([gid, qty]) => {
+        if (qty > 0) {
+          const nombre = (prod ? prod.nombre + ' - ' : '') + getNombreGusto(gid);
+          const precio = getPrecioGusto(gid);
+          html += '<div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+            '<span>' + nombre + ' x' + qty + '</span>' +
+            '<span style="font-weight:600">$' + (precio * qty).toLocaleString('es-AR') + '</span>' +
+            '</div>';
+        }
+      });
+    });
+    el.innerHTML = html;
     if (totalEl) totalEl.textContent = '$' + total.toLocaleString('es-AR');
   }
 
@@ -609,7 +632,7 @@ window.selFechaEsp = function(idx) {
     if (!_prpFechaSeleccionada) { toast('Elegí una fecha especial'); return; }
     if (!_prpPdvSeleccionado) { toast('Elegí una sucursal'); return; }
     if (_prpModo === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
-    const items = getCartItems();
+    const items = getCartItemsList();
     if (!items.length) { toast('El carrito está vacío'); return; }
     const total = getCartTotal();
     const pedido = {
@@ -1063,6 +1086,26 @@ function getCartTotal() {
   let t = 0;
   Object.values(cart).forEach(gm => Object.entries(gm).forEach(([gid,q]) => t += getPrecioGusto(gid)*q));
   return t;
+}
+
+function getCartItems() {
+  const items = [];
+  Object.entries(cart).forEach(([pid, gm]) => {
+    const prod = productos.find(p => String(p.id) === String(pid));
+    Object.entries(gm).forEach(([gid, qty]) => {
+      if (qty > 0) {
+        items.push({
+          prod_id: pid,
+          prod_nombre: prod ? prod.nombre : '',
+          gid: gid,
+          nombre: (prod ? prod.nombre + ' - ' : '') + getNombreGusto(gid),
+          precio: getPrecioGusto(gid),
+          qty: qty
+        });
+      }
+    });
+  });
+  return items;
 }
 
 function actualizarBadge() {
