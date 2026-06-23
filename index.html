@@ -5026,18 +5026,24 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const {desde,hasta}=range;
     const body=document.getElementById('inf-body');
     body.innerHTML=`<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Consultando datos...</p></div>`;
+    // Limpiar caché para asegurar datos frescos
+    _prodCache=null; _pdvCache=null; _asigCache=null;
     const prods=await getProd(), pdvs=await getPdv(), asigs=await getAsig();
 
     // Fetch elaboracion for range
     let elabRecs=[];
     try { 
-      console.log('Elaboracion query desde:', desde, 'hasta:', hasta);
-      elabRecs=await sbApi(`elaboracion?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=prod_id,gusto_id,cantidad,fecha`)||[]; 
-      console.log('Elaboracion records:', elabRecs.length, elabRecs.slice(0,3));
-      // Filtrar por si acaso el backend no respeta el filtro
-      elabRecs = elabRecs.filter(r => r.fecha >= desde && r.fecha <= hasta);
-      console.log('Elaboracion filtrados:', elabRecs.length);
-    } catch(e){ console.error('elab error', e); }
+      console.log('[Informes Elab] Consultando desde:', desde, 'hasta:', hasta);
+      // Traer todos y filtrar en cliente para evitar problemas con tipo de columna en Supabase
+      const todosElab=await sbApi(`elaboracion?empresa_id=eq.${empresaActual}&select=prod_id,gusto_id,cantidad,fecha`)||[];
+      console.log('[Informes Elab] Total registros en DB:', todosElab.length);
+      elabRecs = todosElab.filter(r => {
+        if (!r.fecha) return false;
+        const f = r.fecha.slice(0,10); // normalizar a YYYY-MM-DD por si es timestamp
+        return f >= desde && f <= hasta;
+      });
+      console.log('[Informes Elab] Filtrados para rango:', elabRecs.length, elabRecs.slice(0,3));
+    } catch(e){ console.error('[Informes Elab] Error:', e); }
 
     // Fetch current stock
     const allStock=await getAllStock();
