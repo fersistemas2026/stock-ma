@@ -16413,31 +16413,53 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     el.style.gap='14px';
     el.innerHTML=lista.map(p=>{
       const items=Array.isArray(p.items)?p.items:[];
-      const hora=new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      return `<div style="background:var(--surface);border:3px solid ${ec[p.estado]||'var(--border)'};border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-          <div>
-            <div style="font-size:18px;font-weight:800">${p.cliente_nombre||'Sin nombre'}</div>
-            <div style="font-size:15px;color:var(--text-muted);margin-top:2px">📱 ${p.cliente_tel||''}</div>
-          </div>
-          <span style="padding:5px 14px;border-radius:999px;font-size:13px;font-weight:800;color:white;background:${ec[p.estado]||'#888'};white-space:nowrap">${el2[p.estado]||p.estado}</span>
-        </div>
-        <div>
-          <span style="font-size:12px;background:rgba(200,240,74,.12);color:var(--accent);font-weight:800;padding:2px 10px;border-radius:5px">🏪 ${p.pdv_nombre||p.pdv_id||'—'}</span>
-        </div>
-        <div style="font-size:14px;color:var(--text-muted)">${p.modalidad==='delivery'?'🛵 <strong>Delivery</strong>':'🚶 <strong>Retiro</strong>'} · ${hora}${p.direccion?'<br>📍 <strong>'+p.direccion+'</strong>':''}</div>
-        <div style="border-top:1px solid var(--border);padding-top:10px">
-          ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:15px;padding:3px 0;font-weight:500"><span>${it.prod_nombre} · ${it.gusto_nombre} <strong style="color:var(--accent)">×${it.cantidad}</strong></span><span style="color:var(--text-muted);margin-left:8px">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
-        </div>
-        ${p.estado==='cancelado'&&p.motivo_cancelacion?`<div style="font-size:13px;color:#ff5a5a;background:rgba(255,90,90,.08);border-radius:7px;padding:8px 10px">❌ ${p.motivo_cancelacion}</div>`:''}
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border)">
-          <span style="font-size:16px;font-weight:800">${p.metodo_pago==='transfe'?'🏦':'💵'} $${(p.total_final||p.total||0).toLocaleString('es-AR')}</span>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            ${sig[p.estado]?`<button onclick="poOpAvanzar('${p.id}','${sig[p.estado]}')" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">${sigl[p.estado]}</button>`:`<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>`}
-            ${p.estado!=='cancelado'&&p.estado!=='entregado'?`<button onclick="poModalCancelar('${p.id}','op')" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:13px;cursor:pointer" title="Cancelar pedido">✕ Cancelar</button>`:''}
-          </div>
-        </div>
-      </div>`;
+      const horaRecibido=new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const esPre = p.fecha_especial || (p.envio_plazo && p.envio_plazo.startsWith('pre-pedido:'));
+      let fechaEntregaLabel = '';
+      if (esPre && p.fecha_especial) {
+        const fe = new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+        fechaEntregaLabel = '📅 ' + fe;
+      } else {
+        const plazo = p.envio_plazo || '';
+        if (plazo === 'hoy') fechaEntregaLabel = '📅 Hoy';
+        else if (plazo === 'mañana' || plazo === 'ma\u00f1ana') fechaEntregaLabel = '📅 Mañana';
+        else if (plazo === '2-dias') fechaEntregaLabel = '📅 En 2 días';
+        else fechaEntregaLabel = '📅 ' + plazo;
+      }
+      const horarioLabel = p.envio_horario ? '🕐 ' + p.envio_horario.replace('-',' a ') + ' hs' : '';
+      const pagoLabel = p.metodo_pago === 'transfe' ? '🏦 Transferencia' : '💵 Efectivo';
+      const pagoColor = p.metodo_pago === 'transfe' ? '#3b82f6' : '#16a34a';
+      return '<div style="background:var(--surface);border:3px solid '+(esPre?'#9333ea':(ec[p.estado]||'var(--border)'))+';border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px">'
+        +(esPre?'<div style="background:#9333ea;color:white;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;width:fit-content">🗓️ PRE-PEDIDO'+(p.fecha_especial_nombre?' · '+p.fecha_especial_nombre:'')+'</div>':'')
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+          +'<div>'
+            +'<div style="font-size:18px;font-weight:800">'+(p.cliente_nombre||'Sin nombre')+'</div>'
+            +'<div style="font-size:15px;color:var(--text-muted);margin-top:2px">📱 '+(p.cliente_tel||'')+'</div>'
+          +'</div>'
+          +'<span style="padding:5px 14px;border-radius:999px;font-size:13px;font-weight:800;color:white;background:'+(ec[p.estado]||'#888')+';white-space:nowrap">'+(el2[p.estado]||p.estado)+'</span>'
+        +'</div>'
+        +'<div style="background:var(--surface2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">'
+          +'<div style="font-size:14px;font-weight:700;color:var(--text)">'+(p.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro en local')+'</div>'
+          +(fechaEntregaLabel?'<div style="font-size:14px;font-weight:800;color:'+(esPre?'#9333ea':'var(--accent)')+'">'+fechaEntregaLabel+'</div>':'')
+          +(horarioLabel?'<div style="font-size:13px;font-weight:700;color:var(--text)">'+horarioLabel+'</div>':'')
+          +(p.direccion?'<div style="font-size:13px;color:var(--text-muted)">📍 '+p.direccion+'</div>':'')
+          +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Recibido: '+horaRecibido+'</div>'
+        +'</div>'
+        +'<div style="border-top:1px solid var(--border);padding-top:10px">'
+          +items.map(it=>'<div style="display:flex;justify-content:space-between;font-size:15px;padding:3px 0;font-weight:500"><span>'+it.prod_nombre+' · '+it.gusto_nombre+' <strong style="color:var(--accent)">×'+it.cantidad+'</strong></span><span style="color:var(--text-muted);margin-left:8px">$'+((it.precio||0)*it.cantidad).toLocaleString('es-AR')+'</span></div>').join('')
+        +'</div>'
+        +(p.estado==='cancelado'&&p.motivo_cancelacion?'<div style="font-size:13px;color:#ff5a5a;background:rgba(255,90,90,.08);border-radius:7px;padding:8px 10px">❌ '+p.motivo_cancelacion+'</div>':'')
+        +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border)">'
+          +'<div>'
+            +'<div style="font-size:17px;font-weight:800">$'+(p.total_final||p.total||0).toLocaleString('es-AR')+'</div>'
+            +'<div style="font-size:13px;font-weight:700;color:'+pagoColor+'">'+pagoLabel+'</div>'
+          +'</div>'
+          +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+            +(sig[p.estado]?'<button onclick="poOpAvanzar(\''+p.id+'\',\''+sig[p.estado]+'\''+')" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">'+sigl[p.estado]+'</button>':'<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>')
+            +(p.estado!=='cancelado'&&p.estado!=='entregado'?'<button onclick="poModalCancelar(\''+p.id+'\',\'op\')" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:13px;cursor:pointer" title="Cancelar pedido">✕ Cancelar</button>':'')
+          +'</div>'
+        +'</div>'
+      +'</div>';
     }).join('');
   }
 
