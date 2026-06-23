@@ -15652,6 +15652,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const hora = new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       const fechaEntrega = p.fecha_especial ? new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}) : '';
       const horarioEntrega = p.envio_horario ? p.envio_horario.replace('-',' a ') + ' hs' : '';
+      // Día/horario entrega para pedidos normales
+      let entregaLabel = '';
+      if (!esPre && p.envio_plazo && !p.envio_plazo.startsWith('pre-pedido:')) {
+        const plazo = p.envio_plazo;
+        if (plazo === 'hoy') entregaLabel = '📅 Hoy';
+        else if (plazo === 'manana') entregaLabel = '📅 Mañana';
+        else { try { const d=new Date(plazo+'T12:00:00'); entregaLabel='📅 '+d.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}); } catch(e){entregaLabel='📅 '+plazo;} }
+        if (p.envio_horario) entregaLabel += ' · 🕐 ' + p.envio_horario.replace('-',' a ') + ' hs';
+      }
+      const esTransfe = p.metodo_pago==='transfe'||p.metodo_pago==='transferencia';
       return `<div style="background:${esPre?'rgba(147,51,234,.06)':'var(--surface)'};border:${esPre?'2px solid #9333ea':'1px solid var(--border)'};border-radius:12px;padding:16px;margin-bottom:12px;${esPre?'box-shadow:0 2px 12px rgba(147,51,234,.15)':''}">
         ${esPre?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:5px 10px;background:#9333ea;border-radius:8px;width:fit-content">
           <span style="font-size:12px;font-weight:800;color:white">🗓️ PRE-PEDIDO</span>
@@ -15666,6 +15676,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               <span style="background:rgba(200,240,74,.12);color:var(--accent);font-weight:700;padding:2px 8px;border-radius:5px;font-size:11px">🏪 ${p.pdv_nombre||p.pdv_id||'—'}</span>
               <span>${p.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'}</span>
               <span>📥 ${hora}</span>
+              ${entregaLabel?`<span style="background:rgba(29,158,117,.12);color:#1D9E75;font-weight:600;padding:2px 8px;border-radius:5px">${entregaLabel}</span>`:''}
               ${p.direccion?`<span>📍 ${p.direccion}</span>`:''}
             </div>
           </div>
@@ -15676,7 +15687,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           ${p.estado==='cancelado'&&p.motivo_cancelacion?`<div style="font-size:12px;color:#ff5a5a;background:rgba(255,90,90,.08);border-radius:7px;padding:7px 10px;margin-bottom:10px">❌ Motivo cancelación: ${p.motivo_cancelacion}</div>`:''}
-          <div style="font-size:13px">${p.metodo_pago==='transfe'?'🏦 Transferencia':'💵 Efectivo'} · <strong>$${(p.total_final||p.total||0).toLocaleString('es-AR')}</strong></div>
+          <div style="font-size:13px">${esTransfe?'🏦 Transferencia':'💵 Efectivo'} · <strong>$${(p.total_final||p.total||0).toLocaleString('es-AR')}</strong></div>
           <div style="display:flex;gap:6px">
             ${sig[p.estado]?`<button onclick="poAvanzarEstado('${p.id}','${sig[p.estado]}')" style="padding:6px 14px;border-radius:8px;border:none;background:${esPre?'#9333ea':'var(--accent)'};color:white;font-size:12px;font-weight:700;cursor:pointer">${sigl[p.estado]}</button>`:''}
             ${p.estado!=='cancelado'&&p.estado!=='entregado'?`<button onclick="poModalCancelar('${p.id}','admin')" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:12px;cursor:pointer" title="Cancelar pedido">✕ Cancelar</button>`:''}
@@ -16429,7 +16440,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
         ${p.estado==='cancelado'&&p.motivo_cancelacion?`<div style="font-size:13px;color:#ff5a5a;background:rgba(255,90,90,.08);border-radius:7px;padding:8px 10px">❌ ${p.motivo_cancelacion}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border)">
-          <span style="font-size:16px;font-weight:800">${p.metodo_pago==='transfe'?'🏦':'💵'} $${(p.total_final||p.total||0).toLocaleString('es-AR')}</span>
+          <span style="font-size:16px;font-weight:800">${(p.metodo_pago==='transfe'||p.metodo_pago==='transferencia')?'🏦':'💵'} $${(p.total_final||p.total||0).toLocaleString('es-AR')}</span>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             ${sig[p.estado]?`<button onclick="poOpAvanzar('${p.id}','${sig[p.estado]}')" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">${sigl[p.estado]}</button>`:`<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>`}
             ${p.estado!=='cancelado'&&p.estado!=='entregado'?`<button onclick="poModalCancelar('${p.id}','op')" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:13px;cursor:pointer" title="Cancelar pedido">✕ Cancelar</button>`:''}
@@ -16485,7 +16496,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>
       <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px">
         <div style="font-size:15px;font-weight:600">${ped.cliente_nombre||'Sin nombre'} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">· ${ped.cliente_tel||''}</span></div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${hora} · ${ped.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'} · ${ped.metodo_pago==='transfe'?'🏦 Transferencia':'💵 Efectivo'}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${hora} · ${ped.modalidad==='delivery'?'🛵 Delivery':'🚶 Retiro'} · ${(ped.metodo_pago==='transfe'||ped.metodo_pago==='transferencia')?'🏦 Transferencia':'💵 Efectivo'}</div>
         ${ped.direccion?`<div style="font-size:12px;color:var(--text-muted);margin-top:2px">📍 ${ped.direccion}</div>`:''}
       </div>
       <div style="margin-bottom:14px">${itemsHtml}</div>
