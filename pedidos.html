@@ -776,6 +776,7 @@ window.selFechaEsp = function(idx) {
       estado: 'nuevo',
       origen: 'online'
     };
+    console.log('PRE-PEDIDO:', JSON.stringify(pedido));
     try {
       const r = await fetch(SUPABASE_URL + '/rest/v1/pedidos_online', {
         method: 'POST',
