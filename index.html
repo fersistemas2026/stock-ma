@@ -5045,23 +5045,36 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       console.log('[Informes Elab] Filtrados para rango:', elabRecs.length, elabRecs.slice(0,3));
     } catch(e){ console.error('[Informes Elab] Error:', e); }
 
-    // Fetch current stock
-    const allStock=await getAllStock();
+    // Fetch stock historial para el rango
+    let allStock=[];
+    try {
+      const historial = await sbApi(`stock_historial?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,gusto_id,cantidad,fecha`)||[];
+      if (historial.length>0) {
+        const mapaHist={};
+        historial.forEach(r=>{
+          const k=`${r.pdv_id}_${r.prod_id}_${r.gusto_id}`;
+          if (!mapaHist[k]||r.fecha>mapaHist[k].fecha) mapaHist[k]=r;
+        });
+        allStock=Object.values(mapaHist);
+      } else {
+        allStock=await getAllStock();
+      }
+    } catch(e){ allStock=await getAllStock(); }
 
     const periodo=document.getElementById('inf-periodo').value;
     const periodoLabel={diario:'Día',semanal:'Semana',mensual:'Mes',anual:'Año'}[periodo];
     const rangeLabel=desde===hasta?desde:`${desde} → ${hasta}`;
+    const usandoHistorial=allStock.length>0&&allStock[0].fecha;
 
     // Elaboracion map: prodId_gustoId -> total
     const elabMap={};
     elabRecs.forEach(r=>{ const k=`${r.prod_id}_${r.gusto_id}`; elabMap[k]=(elabMap[k]||0)+(parseInt(r.cantidad)||0); });
 
-    // Build per product with per-PDV stock breakdown
+    // Build per product con ambos datos
     informesData=prods.map(p=>{
       const pdvsConProd=pdvs.filter(pdv=>asigs.find(a=>a.pdvId===pdv.id&&a.prodId===p.id));
       const gustos=(p.gustos||[]).map(g=>{
         const elab=elabMap[`${p.id}_${g.id}`]||0;
-        // Stock per PDV
         const sucursales=pdvsConProd.map(pdv=>{
           const rec=allStock.find(s=>String(s.pdv_id)===String(pdv.id)&&String(s.prod_id)===String(p.id)&&String(s.gusto_id)===String(g.id));
           const stock=rec?(parseInt(rec.cantidad)||0):0;
@@ -5084,33 +5097,79 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const grandVendido=informesData.reduce((s,p)=>s+p.totalVendido,0);
 
     body.innerHTML=`
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 20px;margin-bottom:20px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--text-muted);">
-        <span>📅 ${periodoLabel}: <b style="color:var(--accent)">${rangeLabel}</b></span>
-        <span>Elaboración: <b style="color:#8ab4f8;font-family:var(--mono)">${grandElab}</b></span>
-        <span>Stock actual: <b style="color:var(--accent);font-family:var(--mono)">${grandStock}</b></span>
-        <span>Vendido: <b style="color:#ff9f43;font-family:var(--mono)">${grandVendido}</b></span>
+      <!-- Tabs Stock/Elaboración -->
+      <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:9px;overflow:hidden;">
+        <button id="inf-tab-stock" onclick="window.infTabSwitch('stock')" style="flex:1;padding:10px 0;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--accent);color:#000;">📦 Stock diario</button>
+        <button id="inf-tab-elab" onclick="window.infTabSwitch('elab')" style="flex:1;padding:10px 0;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--surface2);color:var(--text-muted);">🍝 Elaboración</button>
       </div>
+      <!-- Resumen -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 20px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--text-muted);">
+        <span>📅 ${periodoLabel}: <b style="color:var(--accent)">${rangeLabel}</b></span>
+        <span id="inf-resumen-elab" style="display:none">Elaboración: <b style="color:#8ab4f8;font-family:var(--mono)">${grandElab}</b></span>
+        <span id="inf-resumen-stock">${usandoHistorial?'📦 Stock del período':'📦 Stock actual'}: <b style="color:var(--accent);font-family:var(--mono)">${grandStock}</b></span>
+        ${!usandoHistorial?'<span id="inf-aviso-hist" style="color:#fb923c;font-size:11px">⚠️ Sin historial para este período — mostrando stock actual</span>':''}
+        <span id="inf-resumen-vendido" style="display:none">Vendido est.: <b style="color:#ff9f43;font-family:var(--mono)">${grandVendido}</b></span>
+      </div>
+      <!-- Panel Stock -->
+      <div id="inf-panel-stock">
       ${informesData.map(p=>{
         const pdvHeaders=p.pdvsConProd;
         return `
         <div class="resumen-pdv-card" style="margin-bottom:16px;">
           <div class="resumen-pdv-header">
             <span class="resumen-pdv-name">📦 ${p.prod}</span>
+            <span style="font-size:12px;color:var(--text-muted);">Stock total: <b style="color:var(--accent);font-family:var(--mono)">${p.totalStock}</b></span>
+          </div>
+          <div style="overflow-x:auto;">
+          <table class="resumen-table" style="min-width:300px;">
+            <thead>
+              <tr>
+                <th>Sabor</th>
+                ${pdvHeaders.map(pdv=>`<th class="right" style="border-left:1px solid var(--border);font-size:10px;color:var(--text-dim)">${pdv.nombre||pdv.name}</th>`).join('')}
+                <th class="right" style="border-left:2px solid var(--accent);color:var(--accent)">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${p.gustos.map(g=>`
+                <tr>
+                  <td style="font-weight:600">${g.gusto}</td>
+                  ${g.sucursales.map(s=>`<td class="right" style="font-family:var(--mono);font-size:12px;border-left:1px solid var(--border);color:var(--text-muted);">${s.stock||'—'}</td>`).join('')}
+                  <td class="right" style="font-family:var(--mono);font-weight:700;border-left:2px solid var(--accent);color:${g.stockTotal>0?'var(--accent)':'var(--text-dim)'};">${g.stockTotal||'—'}</td>
+                </tr>`).join('')}
+              <tr style="background:var(--surface2);border-top:2px solid var(--border)">
+                <td style="font-weight:700;padding:10px 16px;">TOTAL</td>
+                ${pdvHeaders.map((_,i)=>{
+                  const colStock=p.gustos.reduce((s,g)=>s+(g.sucursales[i]?.stock||0),0);
+                  return `<td class="right" style="font-family:var(--mono);font-weight:600;font-size:13px;border-left:1px solid var(--border);padding:10px 8px;color:var(--text-muted);">${colStock||'—'}</td>`;
+                }).join('')}
+                <td class="right" style="font-family:var(--mono);font-weight:800;font-size:14px;color:var(--accent);border-left:2px solid var(--accent);padding:10px 12px;">${p.totalStock||'—'}</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>`;
+      }).join('')}
+      </div>
+      <!-- Panel Elaboración -->
+      <div id="inf-panel-elab" style="display:none">
+      ${informesData.map(p=>{
+        const pdvHeaders=p.pdvsConProd;
+        return `
+        <div class="resumen-pdv-card" style="margin-bottom:16px;">
+          <div class="resumen-pdv-header">
+            <span class="resumen-pdv-name">🍝 ${p.prod}</span>
             <div style="display:flex;gap:12px;">
               <span style="font-size:12px;color:var(--text-muted);">Elab: <b style="color:#8ab4f8;font-family:var(--mono)">${p.totalElab}</b></span>
-              <span style="font-size:12px;color:var(--text-muted);">Stock: <b style="color:var(--accent);font-family:var(--mono)">${p.totalStock}</b></span>
-              <span style="font-size:12px;color:var(--text-muted);">Vendido: <b style="color:#ff9f43;font-family:var(--mono)">${p.totalVendido}</b></span>
+              <span style="font-size:12px;color:var(--text-muted);">Vendido est.: <b style="color:#ff9f43;font-family:var(--mono)">${p.totalVendido}</b></span>
             </div>
           </div>
           <div style="overflow-x:auto;">
-          <table class="resumen-table" style="min-width:400px;">
+          <table class="resumen-table" style="min-width:300px;">
             <thead>
               <tr>
                 <th>Sabor</th>
                 <th class="right" style="color:#8ab4f8;border-left:1px solid var(--border)">Elaboración</th>
-                ${pdvHeaders.map(pdv=>`<th class="right" style="border-left:1px solid var(--border);font-size:10px;color:var(--text-dim)">${pdv.nombre||pdv.name}</th>`).join('')}
-                <th class="right" style="border-left:2px solid var(--accent);color:var(--accent)">Stock total</th>
-                <th class="right" style="color:#ff9f43">Vendido</th>
+                <th class="right" style="color:#ff9f43">Vendido est.</th>
               </tr>
             </thead>
             <tbody>
@@ -5118,26 +5177,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                 <tr>
                   <td style="font-weight:600">${g.gusto}</td>
                   <td class="right" style="font-family:var(--mono);font-weight:700;border-left:1px solid var(--border);color:${g.elab>0?'#8ab4f8':'var(--text-dim)'};">${g.elab||'—'}</td>
-                  ${g.sucursales.map(s=>`<td class="right" style="font-family:var(--mono);font-size:12px;border-left:1px solid var(--border);color:var(--text-muted);">${s.stock||'—'}</td>`).join('')}
-                  <td class="right" style="font-family:var(--mono);font-weight:700;border-left:2px solid var(--accent);color:${g.stockTotal>0?'var(--accent)':'var(--text-dim)'};">${g.stockTotal||'—'}</td>
                   <td class="right" style="font-family:var(--mono);font-weight:800;font-size:15px;color:${g.vendido>0?'#ff9f43':'var(--text-dim)'};">${g.vendido||'—'}</td>
                 </tr>`).join('')}
               <tr style="background:var(--surface2);border-top:2px solid var(--border)">
                 <td style="font-weight:700;padding:10px 16px;">TOTAL</td>
                 <td class="right" style="font-family:var(--mono);font-weight:800;font-size:14px;color:#8ab4f8;border-left:1px solid var(--border);padding:10px 12px;">${p.totalElab||'—'}</td>
-                ${pdvHeaders.map((_,i)=>{
-                  const colStock=p.gustos.reduce((s,g)=>s+(g.sucursales[i]?.stock||0),0);
-                  return `<td class="right" style="font-family:var(--mono);font-weight:600;font-size:13px;border-left:1px solid var(--border);padding:10px 8px;color:var(--text-muted);">${colStock||'—'}</td>`;
-                }).join('')}
-                <td class="right" style="font-family:var(--mono);font-weight:800;font-size:14px;color:var(--accent);border-left:2px solid var(--accent);padding:10px 12px;">${p.totalStock||'—'}</td>
                 <td class="right" style="font-family:var(--mono);font-weight:800;font-size:16px;color:${p.totalVendido>0?'#ff9f43':'var(--text-dim)'};padding:10px 12px;">${p.totalVendido||'—'}</td>
               </tr>
             </tbody>
           </table>
           </div>
         </div>`;
-      }).join('')}`;
+      }).join('')}
+      </div>`;
   }
+
+  window.infTabSwitch = function(tab) {
+    const isStock = tab === 'stock';
+    document.getElementById('inf-panel-stock').style.display = isStock ? '' : 'none';
+    document.getElementById('inf-panel-elab').style.display = isStock ? 'none' : '';
+    document.getElementById('inf-tab-stock').style.background = isStock ? 'var(--accent)' : 'var(--surface2)';
+    document.getElementById('inf-tab-stock').style.color = isStock ? '#000' : 'var(--text-muted)';
+    document.getElementById('inf-tab-elab').style.background = isStock ? 'var(--surface2)' : 'var(--accent)';
+    document.getElementById('inf-tab-elab').style.color = isStock ? 'var(--text-muted)' : '#000';
+    // Mostrar/ocultar resumen según tab
+    const elResElab = document.getElementById('inf-resumen-elab');
+    const elResVendido = document.getElementById('inf-resumen-vendido');
+    if (elResElab) elResElab.style.display = isStock ? 'none' : '';
+    if (elResVendido) elResVendido.style.display = isStock ? 'none' : '';
+  };
 
   function exportInformesExcel() {
     if (!informesData.length) { toast('Primero consultá un período','error'); return; }
