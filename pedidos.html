@@ -346,6 +346,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </button>
 </div>
 
+<!-- FRANJA FECHAS ESPECIALES -->
+<div id="franjaFechasEsp" style="display:none;position:fixed;bottom:62px;left:50%;transform:translateX(-50%);width:100%;max-width:600px;z-index:299;padding:8px 12px;background:linear-gradient(135deg,#7c3aed,#9333ea);box-shadow:0 -2px 12px rgba(0,0,0,.15)">
+  <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8);margin-bottom:6px;letter-spacing:.5px">🗓️ FECHAS ESPECIALES · PRE-PEDIDOS</div>
+  <div id="franjaFechasLista" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none"></div>
+</div>
+
 <!-- MODAL PRE-PEDIDO -->
 <div id="prpOverlay" onclick="cerrarPrePedidoFuera(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-end;justify-content:center">
   <div style="background:var(--bg);border-radius:18px 18px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:20px 16px">
@@ -358,7 +364,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
     <!-- Selector de fecha especial -->
-    <div id="prpFechaSelector" style="margin-bottom:14px"></div>
+    <div id="prpFechaSelector" style="margin-bottom:10px"></div>
+    <!-- Selector de día (próximos 7 días) -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:6px;display:block">📅 Elegí el día de entrega</label>
+      <div id="prpDiasRow" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none"></div>
+    </div>
+    <!-- Horario de entrega -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:6px;display:block">🕐 Horario de entrega</label>
+      <div style="display:flex;gap:8px">
+        <div class="pay-opt active" id="prp-hor-manana" onclick="prpSelHorario('manana')" style="flex:1;padding:10px 12px">
+          <div class="pay-radio" id="prp-radio-hor-manana" style="background:var(--primary);border-color:var(--primary)"></div>
+          <span id="prp-hor-manana-label">🌤️ Mañana</span>
+        </div>
+        <div class="pay-opt" id="prp-hor-tarde" onclick="prpSelHorario('tarde')" style="flex:1;padding:10px 12px">
+          <div class="pay-radio" id="prp-radio-hor-tarde"></div>
+          <span id="prp-hor-tarde-label">🌇 Tarde</span>
+        </div>
+      </div>
+    </div>
     <!-- Datos del cliente -->
     <div style="margin-bottom:10px">
       <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Nombre</label>
@@ -371,7 +396,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <!-- Sucursal -->
     <div style="margin-bottom:10px">
       <label style="font-size:12px;color:var(--text2);margin-bottom:6px;display:block">Sucursal</label>
-      <div id="prpPdvRow" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div id="prpPdvRow" style="display:flex;gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;scrollbar-width:none"></div>
     </div>
     <!-- Modalidad -->
     <div id="prpModoRow" style="margin-bottom:10px;display:none">
@@ -441,12 +466,28 @@ let currentProdId = null, modalQtys = {};
 function renderFechasEspeciales() {
   const btn = document.getElementById('btnPrePedido');
   const badge = document.getElementById('prpBadge');
+  const franja = document.getElementById('franjaFechasEsp');
+  const lista = document.getElementById('franjaFechasLista');
   if (!_fechasEspeciales.length) {
     if (btn) btn.style.display = 'none';
+    if (franja) franja.style.display = 'none';
     return;
   }
-  if (btn) { btn.style.display = ''; }
+  if (btn) btn.style.display = '';
   if (badge) { badge.textContent = _fechasEspeciales.length; badge.style.display = 'flex'; }
+  if (franja && lista) {
+    franja.style.display = 'block';
+    // Aumentar padding del content para que la franja no tape nada
+    const contentEl = document.querySelector('.content');
+    if (contentEl) contentEl.style.paddingBottom = '170px';
+    lista.innerHTML = _fechasEspeciales.map(function(f, i) {
+      const fechaFmt = new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-AR', {day:'numeric', month:'short'});
+      return '<div onclick="abrirPrePedido(' + i + ')" style="flex-shrink:0;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap">' +
+        '<span style="font-size:12px;font-weight:700;color:white">🎉 ' + (f.nombre||'Fecha especial') + '</span>' +
+        '<span style="font-size:11px;color:rgba(255,255,255,.85);margin-left:6px">📅 ' + fechaFmt + '</span>' +
+      '</div>';
+    }).join('');
+  }
 }
 
 window.selFechaEsp = function(idx) {
@@ -495,23 +536,96 @@ window.selFechaEsp = function(idx) {
   let _prpModo = 'retiro';
   let _prpPay = 'efectivo';
   let _prpPdvSeleccionado = null;
+  let _prpDiaSeleccionado = null; // { fecha:'2026-06-25', label:'Miércoles 25 jun' }
+  let _prpHorario = 'manana';
 
-  window.abrirPrePedido = function() {
-    // Abrir siempre el overlay, luego verificar fechas
+  const DIAS_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const MESES_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  function prpRenderDias() {
+    const row = document.getElementById('prpDiasRow');
+    if (!row) return;
+    const hoy = new Date();
+    const dias = [];
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date(hoy);
+      d.setDate(hoy.getDate() + i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      const fechaStr = yyyy + '-' + mm + '-' + dd;
+      const label = DIAS_ES[d.getDay()] + ' ' + d.getDate() + ' ' + MESES_ES[d.getMonth()];
+      const labelCorto = DIAS_ES[d.getDay()].substring(0,3) + ' ' + d.getDate();
+      dias.push({ fecha: fechaStr, label: label, labelCorto: labelCorto });
+    }
+    // Preseleccionar el primero si no hay ninguno
+    if (!_prpDiaSeleccionado) _prpDiaSeleccionado = dias[0];
+    row.innerHTML = dias.map(function(d) {
+      const activo = _prpDiaSeleccionado && d.fecha === _prpDiaSeleccionado.fecha;
+      return '<div onclick="prpSelDia(\'' + d.fecha + '\',\'' + d.label + '\',\'' + d.labelCorto + '\')" data-fecha="' + d.fecha + '" style="flex-shrink:0;text-align:center;padding:8px 12px;border:2px solid ' + (activo?'#9333ea':'var(--border)') + ';border-radius:12px;cursor:pointer;background:' + (activo?'#f5f3ff':'var(--bg2)') + ';min-width:58px">' +
+        '<div style="font-size:11px;font-weight:700;color:' + (activo?'#9333ea':'var(--text2)') + '">' + d.labelCorto.split(' ')[0] + '</div>' +
+        '<div style="font-size:16px;font-weight:800;color:' + (activo?'#9333ea':'var(--text)') + '">' + d.labelCorto.split(' ')[1] + '</div>' +
+      '</div>';
+    }).join('');
+    prpActualizarHorarios();
+  }
+
+  window.prpSelDia = function(fecha, label, labelCorto) {
+    _prpDiaSeleccionado = { fecha: fecha, label: label, labelCorto: labelCorto };
+    document.querySelectorAll('#prpDiasRow > div').forEach(function(el) {
+      const activo = el.dataset.fecha === fecha;
+      el.style.borderColor = activo ? '#9333ea' : 'var(--border)';
+      el.style.background = activo ? '#f5f3ff' : 'var(--bg2)';
+      el.querySelectorAll('div').forEach(function(sub, si) {
+        sub.style.color = activo ? '#9333ea' : (si === 0 ? 'var(--text2)' : 'var(--text)');
+      });
+    });
+  };
+
+  window.prpSelHorario = function(h) {
+    _prpHorario = h;
+    ['manana','tarde'].forEach(function(x) {
+      document.getElementById('prp-hor-' + x).classList.toggle('active', x === h);
+      const r = document.getElementById('prp-radio-hor-' + x);
+      r.style.background = x === h ? 'var(--primary)' : '';
+      r.style.borderColor = x === h ? 'var(--primary)' : '';
+    });
+  };
+
+  function prpActualizarHorarios() {
+    const h = _horariosCfg || {};
+    const mDesde = h.manana_desde || '10:00';
+    const mHasta = h.manana_hasta || '13:30';
+    const tDesde = h.tarde_desde || '16:30';
+    const tHasta = h.tarde_hasta || '20:30';
+    const mActivo = h.manana_activo !== false;
+    const tActivo = h.tarde_activo !== false;
+    const lm = document.getElementById('prp-hor-manana-label');
+    const lt = document.getElementById('prp-hor-tarde-label');
+    const bm = document.getElementById('prp-hor-manana');
+    const bt = document.getElementById('prp-hor-tarde');
+    if (lm) lm.textContent = '🌤️ ' + mDesde + ' a ' + mHasta + ' hs';
+    if (lt) lt.textContent = '🌇 ' + tDesde + ' a ' + tHasta + ' hs';
+    if (bm) { bm.style.opacity = mActivo ? '1' : '0.4'; bm.style.pointerEvents = mActivo ? 'auto' : 'none'; }
+    if (bt) { bt.style.opacity = tActivo ? '1' : '0.4'; bt.style.pointerEvents = tActivo ? 'auto' : 'none'; }
+    if (!mActivo && tActivo) prpSelHorario('tarde');
+    if (mActivo) prpSelHorario('manana');
+  }
+
+  window.abrirPrePedido = function(idxInicial) {
     const ov = document.getElementById('prpOverlay');
     if (!ov) { toast('Error: modal no encontrado'); return; }
-
-    // Si no hay fechas, mostrar mensaje dentro del modal
     const sel = document.getElementById('prpFechaSelector');
     if (!_fechasEspeciales || !_fechasEspeciales.length) {
       sel.innerHTML = '<div style="font-size:13px;color:var(--text2);padding:12px;text-align:center">No hay fechas especiales disponibles por el momento.</div>';
     } else {
-      _prpFechaSeleccionada = _fechasEspeciales[0];
+      const idx = (typeof idxInicial === 'number') ? idxInicial : 0;
+      _prpFechaSeleccionada = _fechasEspeciales[idx];
       sel.innerHTML = _fechasEspeciales.map(function(f, i) {
         const fechaFmt = new Date(f.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
         const horario = (f.desde || '10:00') + ' a ' + (f.hasta || '13:00') + ' hs';
         const cierre = f.cierre_fecha ? 'Pedí antes del ' + new Date(f.cierre_fecha+'T12:00:00').toLocaleDateString('es-AR') + ' ' + (f.cierre_hora||'') + ' hs' : '';
-        const activo = i === 0;
+        const activo = i === idx;
         return '<div onclick="prpSelFecha(' + i + ')" id="prp-fe-' + i + '" style="border:2px solid ' + (activo ? '#9333ea' : 'var(--border)') + ';border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;cursor:pointer;background:' + (activo ? '#f5f3ff' : 'var(--bg2)') + '">' +
           '<div style="font-size:13px;font-weight:700;color:var(--text)">🎉 ' + (f.nombre||'Fecha especial') + '</div>' +
           '<div style="font-size:12px;color:var(--text2);margin-top:3px">📅 ' + fechaFmt + ' · 🕐 ' + horario + '</div>' +
@@ -524,6 +638,7 @@ window.selFechaEsp = function(idx) {
       document.getElementById('prpDirRow').style.display = 'none';
     }
     prpRenderPdvs();
+    prpRenderDias();
     prpRenderCarrito();
     ov.style.display = 'flex';
   };
@@ -550,7 +665,7 @@ window.selFechaEsp = function(idx) {
     if (!_prpPdvSeleccionado && pdvs.length) _prpPdvSeleccionado = pdvs[0];
     row.innerHTML = pdvs.map(function(p, i) {
       const activo = _prpPdvSeleccionado && p.id === _prpPdvSeleccionado.id;
-      return '<div onclick="prpSelPdv(' + i + ')" id="prp-pdv-' + i + '" style="padding:8px 14px;border:2px solid ' + (activo?'#9333ea':'var(--border)') + ';border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;background:' + (activo?'#f5f3ff':'none') + ';color:' + (activo?'#9333ea':'var(--text)') + '">' + p.nombre + '</div>';
+      return '<div onclick="prpSelPdv(' + i + ')" id="prp-pdv-' + i + '" style="flex-shrink:0;padding:6px 10px;border:2px solid ' + (activo?'#9333ea':'var(--border)') + ';border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;background:' + (activo?'#f5f3ff':'none') + ';color:' + (activo?'#9333ea':'var(--text)') + ';white-space:normal;word-break:break-word;max-width:80px;text-align:center;line-height:1.3;display:flex;align-items:center;justify-content:center;min-height:48px">' + p.nombre + '</div>';
     }).join('');
   }
 
@@ -629,12 +744,17 @@ window.selFechaEsp = function(idx) {
     const dir = (document.getElementById('prpDir')?.value || '').trim();
     if (!nombre) { toast('Ingresá tu nombre'); return; }
     if (!tel) { toast('Ingresá tu celular'); return; }
-    if (!_prpFechaSeleccionada) { toast('Elegí una fecha especial'); return; }
+    if (!_prpDiaSeleccionado) { toast('Elegí un día de entrega'); return; }
     if (!_prpPdvSeleccionado) { toast('Elegí una sucursal'); return; }
     if (_prpModo === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
     const items = getCartItemsList();
     if (!items.length) { toast('El carrito está vacío'); return; }
     const total = getCartTotal();
+    const h = _horariosCfg || {};
+    const horarioDesde = _prpHorario === 'manana' ? (h.manana_desde||'10:00') : (h.tarde_desde||'16:30');
+    const horarioHasta = _prpHorario === 'manana' ? (h.manana_hasta||'13:30') : (h.tarde_hasta||'20:30');
+    // Si hay fecha especial seleccionada y coincide con el día, usar sus datos
+    const esFechaEsp = _prpFechaSeleccionada && _prpFechaSeleccionada.fecha === _prpDiaSeleccionado.fecha;
     const pedido = {
       empresa_id: EMPRESA_ID,
       cliente_nombre: nombre,
@@ -643,10 +763,10 @@ window.selFechaEsp = function(idx) {
       pdv_nombre: _prpPdvSeleccionado.nombre || '',
       modalidad: _prpModo,
       direccion: dir || null,
-      envio_plazo: 'fecha-especial:' + _prpFechaSeleccionada.fecha,
-      envio_horario: (_prpFechaSeleccionada.desde || '10:00') + '-' + (_prpFechaSeleccionada.hasta || '13:00'),
-      fecha_especial: _prpFechaSeleccionada.fecha,
-      fecha_especial_nombre: _prpFechaSeleccionada.nombre,
+      envio_plazo: 'pre-pedido:' + _prpDiaSeleccionado.fecha,
+      envio_horario: horarioDesde + '-' + horarioHasta,
+      fecha_especial: esFechaEsp ? _prpFechaSeleccionada.fecha : _prpDiaSeleccionado.fecha,
+      fecha_especial_nombre: esFechaEsp ? _prpFechaSeleccionada.nombre : _prpDiaSeleccionado.label,
       items: JSON.stringify(items),
       total: total, total_final: total, descuento: 0,
       metodo_pago: _prpPay,
@@ -661,14 +781,14 @@ window.selFechaEsp = function(idx) {
       });
       if (!r.ok) throw new Error('Error al enviar');
       window.cerrarPrePedido();
-      const fechaFmt = new Date(_prpFechaSeleccionada.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
-      const horario = (_prpFechaSeleccionada.desde||'10:00') + ' a ' + (_prpFechaSeleccionada.hasta||'13:00') + ' hs';
+      const fechaFmt = new Date(_prpDiaSeleccionado.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
+      const horarioLabel = horarioDesde + ' a ' + horarioHasta + ' hs';
       document.getElementById('mainContent').style.display = 'none';
       document.querySelector('.steps').style.display = 'none';
       document.getElementById('successMsg').innerHTML =
         'Tu pre-pedido fue enviado a <strong>' + (_prpPdvSeleccionado.nombre||'') + '</strong>.<br>' +
-        '🎉 <strong>' + (_prpFechaSeleccionada.nombre||'Fecha especial') + '</strong><br>' +
-        '📅 <strong>' + fechaFmt + '</strong> · 🕐 <strong>' + horario + '</strong><br>' +
+        (esFechaEsp ? '🎉 <strong>' + _prpFechaSeleccionada.nombre + '</strong><br>' : '') +
+        '📅 <strong>' + fechaFmt + '</strong> · 🕐 <strong>' + horarioLabel + '</strong><br>' +
         (_prpModo === 'delivery' ? '🛵 Delivery a <strong>' + dir + '</strong><br>' : '🚶 Retiro en local<br>') +
         '<br>Pago: <strong>' + (_prpPay === 'transfe' ? 'Transferencia' : 'Efectivo') + '</strong> · Total: <strong>$' + total.toLocaleString('es-AR') + '</strong><br><br>' +
         '📱 Te avisamos al <strong>' + tel + '</strong> cuando esté listo.';
