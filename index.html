@@ -5066,28 +5066,49 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const rangeLabel=desde===hasta?desde:`${desde} → ${hasta}`;
     const usandoHistorial=allStock.length>0&&allStock[0].fecha;
 
+    // Fetch ventas reales para el rango
+    let ventasRecs=[];
+    try {
+      ventasRecs=await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=prod_id,gusto_id,cantidad,pdv_id&limit=100000`)||[];
+    } catch(e){ console.error('[Informes Vendido] Error:', e); }
+
     // Elaboracion map: prodId_gustoId -> total
     const elabMap={};
     elabRecs.forEach(r=>{ const k=`${r.prod_id}_${r.gusto_id}`; elabMap[k]=(elabMap[k]||0)+(parseInt(r.cantidad)||0); });
+
+    // Ventas map: prodId_gustoId -> {total, porPdv}
+    const ventasMap={};
+    ventasRecs.forEach(r=>{
+      const k=`${r.prod_id}_${r.gusto_id}`;
+      if (!ventasMap[k]) ventasMap[k]={total:0, porPdv:{}};
+      const cant=parseFloat(r.cantidad||1);
+      ventasMap[k].total+=cant;
+      const pid=String(r.pdv_id||'');
+      if (pid) { ventasMap[k].porPdv[pid]=(ventasMap[k].porPdv[pid]||0)+cant; }
+    });
 
     // Build per product con ambos datos
     informesData=prods.map(p=>{
       const pdvsConProd=pdvs.filter(pdv=>asigs.find(a=>a.pdvId===pdv.id&&a.prodId===p.id));
       const gustos=(p.gustos||[]).map(g=>{
         const elab=elabMap[`${p.id}_${g.id}`]||0;
+        const vData=ventasMap[`${p.id}_${g.id}`]||{total:0,porPdv:{}};
+        const vendidoReal=vData.total;
         const sucursales=pdvsConProd.map(pdv=>{
           const rec=allStock.find(s=>String(s.pdv_id)===String(pdv.id)&&String(s.prod_id)===String(p.id)&&String(s.gusto_id)===String(g.id));
           const stock=rec?(parseInt(rec.cantidad)||0):0;
-          return {pdv:pdv.nombre||pdv.name, stock};
+          const vendPdv=vData.porPdv[String(pdv.id)]||0;
+          return {pdv:pdv.nombre||pdv.name, stock, vendPdv};
         });
         const stockTotal=sucursales.reduce((s,r)=>s+r.stock,0);
         const vendido=Math.max(0,elab-stockTotal);
-        return {gusto:g.name, elab, sucursales, stockTotal, vendido};
+        return {gusto:g.name, elab, sucursales, stockTotal, vendido, vendidoReal};
       });
       const totalElab=gustos.reduce((s,g)=>s+g.elab,0);
       const totalStock=gustos.reduce((s,g)=>s+g.stockTotal,0);
       const totalVendido=gustos.reduce((s,g)=>s+g.vendido,0);
-      return {prod:p.name, prodId:p.id, pdvsConProd, gustos, totalElab, totalStock, totalVendido};
+      const totalVendidoReal=gustos.reduce((s,g)=>s+g.vendidoReal,0);
+      return {prod:p.name, prodId:p.id, pdvsConProd, gustos, totalElab, totalStock, totalVendido, totalVendidoReal};
     }).filter(p=>p.gustos.length);
 
     if (!informesData.length) { body.innerHTML=`<div class="empty-state">📊<p>No hay productos configurados.</p></div>`; return; }
@@ -5095,12 +5116,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const grandElab=informesData.reduce((s,p)=>s+p.totalElab,0);
     const grandStock=informesData.reduce((s,p)=>s+p.totalStock,0);
     const grandVendido=informesData.reduce((s,p)=>s+p.totalVendido,0);
+    const grandVendidoReal=informesData.reduce((s,p)=>s+p.totalVendidoReal,0);
 
     body.innerHTML=`
       <!-- Tabs Stock/Elaboración -->
       <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:9px;overflow:hidden;">
         <button id="inf-tab-stock" onclick="window.infTabSwitch('stock')" style="flex:1;padding:10px 0;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--accent);color:#000;">📦 Stock diario</button>
         <button id="inf-tab-elab" onclick="window.infTabSwitch('elab')" style="flex:1;padding:10px 0;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--surface2);color:var(--text-muted);">🍝 Elaboración</button>
+        <button id="inf-tab-vendido" onclick="window.infTabSwitch('vendido')" style="flex:1;padding:10px 0;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--surface2);color:var(--text-muted);">🛒 Vendido</button>
       </div>
       <!-- Resumen -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 20px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--text-muted);">
@@ -5109,6 +5132,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <span id="inf-resumen-stock">${usandoHistorial?'📦 Stock del período':'📦 Stock actual'}: <b style="color:var(--accent);font-family:var(--mono)">${grandStock}</b></span>
         ${!usandoHistorial?'<span id="inf-aviso-hist" style="color:#fb923c;font-size:11px">⚠️ Sin historial para este período — mostrando stock actual</span>':''}
         <span id="inf-resumen-vendido" style="display:none">Vendido est.: <b style="color:#ff9f43;font-family:var(--mono)">${grandVendido}</b></span>
+        <span id="inf-resumen-vendido-real" style="display:none">🛒 Vendido real: <b style="color:#a3e635;font-family:var(--mono)">${grandVendidoReal.toLocaleString('es-AR',{maximumFractionDigits:2})}</b></span>
       </div>
       <!-- Panel Stock -->
       <div id="inf-panel-stock">
@@ -5189,22 +5213,64 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           </div>
         </div>`;
       }).join('')}
+      </div>
+      <!-- Panel Vendido Real -->
+      <div id="inf-panel-vendido" style="display:none">
+      ${informesData.map(p=>{
+        const pdvHeaders=p.pdvsConProd;
+        return `
+        <div class="resumen-pdv-card" style="margin-bottom:16px;">
+          <div class="resumen-pdv-header">
+            <span class="resumen-pdv-name">🛒 ${p.prod}</span>
+            <span style="font-size:12px;color:var(--text-muted);">Total vendido: <b style="color:#a3e635;font-family:var(--mono)">${parseFloat(p.totalVendidoReal||0).toLocaleString('es-AR',{maximumFractionDigits:2})}</b></span>
+          </div>
+          <div style="overflow-x:auto;">
+          <table class="resumen-table" style="min-width:300px;">
+            <thead>
+              <tr>
+                <th>Sabor</th>
+                ${pdvHeaders.map(pdv=>`<th class="right" style="border-left:1px solid var(--border);font-size:10px;color:var(--text-dim)">${pdv.nombre||pdv.name}</th>`).join('')}
+                <th class="right" style="border-left:2px solid #a3e635;color:#a3e635">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${p.gustos.map(g=>`
+                <tr>
+                  <td style="font-weight:600">${g.gusto}</td>
+                  ${g.sucursales.map(s=>`<td class="right" style="font-family:var(--mono);font-size:12px;border-left:1px solid var(--border);color:var(--text-muted);">${s.vendPdv?parseFloat(s.vendPdv).toLocaleString('es-AR',{maximumFractionDigits:2}):'—'}</td>`).join('')}
+                  <td class="right" style="font-family:var(--mono);font-weight:700;border-left:2px solid #a3e635;color:${g.vendidoReal>0?'#a3e635':'var(--text-dim)'};">${g.vendidoReal?parseFloat(g.vendidoReal).toLocaleString('es-AR',{maximumFractionDigits:2}):'—'}</td>
+                </tr>`).join('')}
+              <tr style="background:var(--surface2);border-top:2px solid var(--border)">
+                <td style="font-weight:700;padding:10px 16px;">TOTAL</td>
+                ${pdvHeaders.map((_,i)=>{
+                  const colVend=p.gustos.reduce((s,g)=>s+(g.sucursales[i]?.vendPdv||0),0);
+                  return `<td class="right" style="font-family:var(--mono);font-weight:600;font-size:13px;border-left:1px solid var(--border);padding:10px 8px;color:var(--text-muted);">${colVend?parseFloat(colVend).toLocaleString('es-AR',{maximumFractionDigits:2}):'—'}</td>`;
+                }).join('')}
+                <td class="right" style="font-family:var(--mono);font-weight:800;font-size:14px;color:#a3e635;border-left:2px solid #a3e635;padding:10px 12px;">${p.totalVendidoReal?parseFloat(p.totalVendidoReal).toLocaleString('es-AR',{maximumFractionDigits:2}):'—'}</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>`;
+      }).join('')}
       </div>`;
   }
 
   window.infTabSwitch = function(tab) {
-    const isStock = tab === 'stock';
-    document.getElementById('inf-panel-stock').style.display = isStock ? '' : 'none';
-    document.getElementById('inf-panel-elab').style.display = isStock ? 'none' : '';
-    document.getElementById('inf-tab-stock').style.background = isStock ? 'var(--accent)' : 'var(--surface2)';
-    document.getElementById('inf-tab-stock').style.color = isStock ? '#000' : 'var(--text-muted)';
-    document.getElementById('inf-tab-elab').style.background = isStock ? 'var(--surface2)' : 'var(--accent)';
-    document.getElementById('inf-tab-elab').style.color = isStock ? 'var(--text-muted)' : '#000';
-    // Mostrar/ocultar resumen según tab
-    const elResElab = document.getElementById('inf-resumen-elab');
+    const panels = {stock:'inf-panel-stock', elab:'inf-panel-elab', vendido:'inf-panel-vendido'};
+    const tabs   = {stock:'inf-tab-stock',   elab:'inf-tab-elab',   vendido:'inf-tab-vendido'};
+    Object.keys(panels).forEach(t => {
+      const p = document.getElementById(panels[t]);
+      const b = document.getElementById(tabs[t]);
+      if (p) p.style.display = t===tab ? '' : 'none';
+      if (b) { b.style.background = t===tab ? 'var(--accent)' : 'var(--surface2)'; b.style.color = t===tab ? '#000' : 'var(--text-muted)'; }
+    });
+    const elResElab    = document.getElementById('inf-resumen-elab');
     const elResVendido = document.getElementById('inf-resumen-vendido');
-    if (elResElab) elResElab.style.display = isStock ? 'none' : '';
-    if (elResVendido) elResVendido.style.display = isStock ? 'none' : '';
+    const elResVendReal= document.getElementById('inf-resumen-vendido-real');
+    if (elResElab)     elResElab.style.display     = tab==='elab'    ? '' : 'none';
+    if (elResVendido)  elResVendido.style.display  = tab==='elab'    ? '' : 'none';
+    if (elResVendReal) elResVendReal.style.display = tab==='vendido' ? '' : 'none';
   };
 
   function exportInformesExcel() {
