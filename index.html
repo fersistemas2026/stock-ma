@@ -16368,9 +16368,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   async function poOpCargar(){
     const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
     try{
-      const pdvId=_sesionId||'';
-      let url=`${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&order=created_at.desc&limit=50`;
-      if(pdvId)url+=`&pdv_id=eq.${pdvId}`;
+      // Obtener PDV: primero sesión activa, luego PDVs del usuario
+      let pdvId = _sesionId || '';
+      const pdvsUsuario = (currentUser?.pdvs||[]).map(String);
+      if (!pdvId && !pdvsUsuario.length) {
+        _poOpPedidos = [];
+        poOpActualizarBadge();
+        poOpRender();
+        return;
+      }
+      let url = `${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&order=created_at.desc&limit=50`;
+      if (pdvId) {
+        // Tiene sesión activa: filtrar solo ese PDV
+        url += `&pdv_id=eq.${pdvId}`;
+      } else if (pdvsUsuario.length === 1) {
+        // Un solo PDV asignado
+        url += `&pdv_id=eq.${pdvsUsuario[0]}`;
+      } else {
+        // Múltiples PDVs: traer de todos los que tiene asignados
+        url += `&pdv_id=in.(${pdvsUsuario.join(',')})`;
+      }
       const r=await fetch(url,{headers:H2});
       _poOpPedidos=r.ok?await r.json():[];
     }catch(e){_poOpPedidos=[];}
