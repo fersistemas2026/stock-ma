@@ -524,9 +524,12 @@ window.selFechaEsp = function(idx) {
       const prod = productos.find(p => String(p.id) === String(pid));
       Object.entries(gm).forEach(([gid, qty]) => {
         if (qty > 0) items.push({
-          prod_id: pid, prod_nombre: prod ? prod.nombre : '',
-          gid: gid, nombre: (prod ? prod.nombre + ' - ' : '') + getNombreGusto(gid),
-          precio: getPrecioGusto(gid), qty: qty
+          prod_id: pid,
+          prod_nombre: prod ? prod.nombre : '',
+          gusto_id: gid,
+          gusto_nombre: getNombreGusto(gid),
+          cantidad: qty,
+          precio: getPrecioGusto(gid)
         });
       });
     });
@@ -767,7 +770,7 @@ window.selFechaEsp = function(idx) {
       envio_horario: horarioDesde + '-' + horarioHasta,
       fecha_especial: esFechaEsp ? _prpFechaSeleccionada.fecha : _prpDiaSeleccionado.fecha,
       fecha_especial_nombre: esFechaEsp ? _prpFechaSeleccionada.nombre : _prpDiaSeleccionado.label,
-      items: JSON.stringify(items),
+      items: items,
       total: total, total_final: total, descuento: 0,
       metodo_pago: _prpPay,
       estado: 'nuevo',
@@ -779,7 +782,7 @@ window.selFechaEsp = function(idx) {
         headers: Object.assign({}, H, {'Prefer':'return=minimal'}),
         body: JSON.stringify(pedido)
       });
-      if (!r.ok) throw new Error('Error al enviar');
+      if (!r.ok) { const t = await r.text(); console.error('Supabase error:', t); throw new Error(t); }
       window.cerrarPrePedido();
       const fechaFmt = new Date(_prpDiaSeleccionado.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
       const horarioLabel = horarioDesde + ' a ' + horarioHasta + ' hs';
