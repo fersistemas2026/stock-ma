@@ -1722,23 +1722,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               <input type="hidden" id="po-fe-tipo" value="especial">
             </div>
 
-            <!-- Fecha + días -->
+            <!-- Fechas múltiples -->
             <div style="margin-bottom:10px">
-              <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Fecha de inicio</label>
-              <input type="date" id="po-fe-fecha" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
-            </div>
-            <div style="margin-bottom:10px">
-              <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Cantidad de días <span id="po-fe-dias-label" style="color:var(--accent);font-weight:700">1 día</span></label>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button id="po-fe-dias-btn-1" onclick="window.poFeDiasSwitch(1)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--accent);color:#000">1</button>
-                <button id="po-fe-dias-btn-2" onclick="window.poFeDiasSwitch(2)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">2</button>
-                <button id="po-fe-dias-btn-3" onclick="window.poFeDiasSwitch(3)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">3</button>
-                <button id="po-fe-dias-btn-4" onclick="window.poFeDiasSwitch(4)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">4</button>
-                <button id="po-fe-dias-btn-5" onclick="window.poFeDiasSwitch(5)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">5</button>
-                <button id="po-fe-dias-btn-6" onclick="window.poFeDiasSwitch(6)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">6</button>
-                <button id="po-fe-dias-btn-7" onclick="window.poFeDiasSwitch(7)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">7</button>
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Fechas de entrega</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="date" id="po-fe-fecha" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+                <button onclick="window.poFeAgregarFecha()" style="padding:8px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Agregar</button>
               </div>
-              <input type="hidden" id="po-fe-dias" value="1">
+              <div id="po-fe-fechas-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -16388,15 +16379,33 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (btnE) { btnE.style.background = tipo==='especial'?'var(--accent)':'var(--surface)'; btnE.style.color = tipo==='especial'?'#000':'var(--text-muted)'; }
     if (btnP) { btnP.style.background = tipo==='prepedido'?'#9333ea':'var(--surface)'; btnP.style.color = tipo==='prepedido'?'#fff':'var(--text-muted)'; }
   };
-  window.poFeDiasSwitch = function(d) {
-    document.getElementById('po-fe-dias').value = d;
-    const label = document.getElementById('po-fe-dias-label');
-    if (label) label.textContent = d===1 ? '1 día' : d+' días';
-    for (let i=1;i<=7;i++) {
-      const btn = document.getElementById('po-fe-dias-btn-'+i);
-      if (btn) { btn.style.background = i===d?'var(--accent)':'var(--surface)'; btn.style.color = i===d?'#000':'var(--text-muted)'; }
-    }
+  // Fechas múltiples para pre-pedido
+  window._poFeFechasSeleccionadas = [];
+  window.poFeAgregarFecha = function() {
+    const val = document.getElementById('po-fe-fecha').value;
+    if (!val) { toast('Seleccioná una fecha'); return; }
+    if (window._poFeFechasSeleccionadas.includes(val)) { toast('Esa fecha ya está agregada'); return; }
+    window._poFeFechasSeleccionadas.push(val);
+    window._poFeFechasSeleccionadas.sort();
+    window.poFeRenderChips();
+    document.getElementById('po-fe-fecha').value = '';
   };
+  window.poFeQuitarFecha = function(fecha) {
+    window._poFeFechasSeleccionadas = window._poFeFechasSeleccionadas.filter(f => f !== fecha);
+    window.poFeRenderChips();
+  };
+  window.poFeRenderChips = function() {
+    const container = document.getElementById('po-fe-fechas-chips');
+    if (!container) return;
+    const DIAS_ES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    container.innerHTML = window._poFeFechasSeleccionadas.map(f => {
+      const d = new Date(f + 'T12:00:00');
+      const label = DIAS_ES[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth()+1);
+      return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--accent);color:#000;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px">${label}<button onclick="window.poFeQuitarFecha('${f}')" style="background:none;border:none;cursor:pointer;font-size:14px;color:#000;padding:0;line-height:1">×</button></span>`;
+    }).join('');
+  };
+  // Mantener compatibilidad (ya no se usa pero evita errores si queda alguna referencia)
+  window.poFeDiasSwitch = function(d) {};
   async function poCargarFechasEspeciales() {
     const el = document.getElementById('po-fechas-lista');
     if (!el) return;
@@ -16404,10 +16413,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const r = await fetch(SUPABASE_URL + '/rest/v1/tienda_config?id=eq.1&empresa_id=eq.' + empresaActual + '&select=fechas_especiales', {headers: H2});
     const data = r.ok ? await r.json() : [];
     const fechas = (data?.[0]?.fechas_especiales || []).sort((a,b) => a.fecha.localeCompare(b.fecha));
-    // Preset cierre = hoy
+    // Preset cierre = hoy y limpiar chips
     const hoy = new Date().toISOString().split('T')[0];
-    if (!document.getElementById('po-fe-fecha').value) document.getElementById('po-fe-fecha').value = hoy;
     if (!document.getElementById('po-fe-cierre-fecha').value) document.getElementById('po-fe-cierre-fecha').value = hoy;
+    if (window._poFeFechasSeleccionadas === undefined) window._poFeFechasSeleccionadas = [];
 
     if (!fechas.length) {
       el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);padding:8px 0;margin-bottom:6px">No hay fechas especiales configuradas.</div>';
@@ -16432,32 +16441,29 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   async function poAgregarFechaEspecial() {
-    const fechaBase = document.getElementById('po-fe-fecha')?.value;
     const nombre = document.getElementById('po-fe-nombre')?.value.trim();
     const tipo = document.getElementById('po-fe-tipo')?.value || 'especial';
-    const dias = parseInt(document.getElementById('po-fe-dias')?.value || '1');
     const desde = document.getElementById('po-fe-desde')?.value || '10:00';
     const hasta = document.getElementById('po-fe-hasta')?.value || '13:00';
     const cierre_fecha = document.getElementById('po-fe-cierre-fecha')?.value || '';
     const cierre_hora = document.getElementById('po-fe-cierre-hora')?.value || '20:00';
     const mensaje = document.getElementById('po-fe-mensaje')?.value.trim() || '';
     const delivery = document.getElementById('po-fe-delivery')?.checked || false;
-    if (!fechaBase) { toast('Seleccioná una fecha'); return; }
+    // Usar array de fechas seleccionadas; si está vacío, intentar usar la del input
+    let fechasSeleccionadas = [...(window._poFeFechasSeleccionadas || [])];
+    const fechaInput = document.getElementById('po-fe-fecha')?.value;
+    if (!fechasSeleccionadas.length && fechaInput) fechasSeleccionadas = [fechaInput];
+    if (!fechasSeleccionadas.length) { toast('Agregá al menos una fecha'); return; }
     if (!nombre) { toast('Escribí un nombre para la fecha'); return; }
     const Hbase = {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'};
     const H2 = {'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`};
     const r = await fetch(SUPABASE_URL + '/rest/v1/tienda_config?id=eq.1&empresa_id=eq.' + empresaActual + '&select=fechas_especiales', {headers: H2});
     const data = r.ok ? await r.json() : [];
     const fechas = data?.[0]?.fechas_especiales || [];
-    // Generar una entrada por cada día del rango
     let agregadas = 0;
-    for (let i = 0; i < dias; i++) {
-      const d = new Date(fechaBase + 'T12:00:00');
-      d.setDate(d.getDate() + i);
-      const fecha = d.toISOString().slice(0, 10);
+    for (const fecha of fechasSeleccionadas) {
       if (fechas.find(f => f.fecha === fecha)) { toast(`Ya existe una fecha para ${fecha}, se omitió`); continue; }
-      const nombreDia = dias > 1 ? `${nombre} (día ${i+1}/${dias})` : nombre;
-      fechas.push({ fecha, nombre: nombreDia, tipo, desde, hasta, cierre_fecha, cierre_hora, mensaje, delivery });
+      fechas.push({ fecha, nombre, tipo, desde, hasta, cierre_fecha, cierre_hora, mensaje, delivery });
       agregadas++;
     }
     if (!agregadas) { toast('No se agregaron fechas (ya existían)'); return; }
@@ -16473,7 +16479,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     document.getElementById('po-fe-nombre').value = '';
     document.getElementById('po-fe-mensaje').value = '';
     document.getElementById('po-fe-delivery').checked = false;
-    window.poFeDiasSwitch(1);
+    document.getElementById('po-fe-fecha').value = '';
+    window._poFeFechasSeleccionadas = [];
+    window.poFeRenderChips();
     toast(agregadas === 1 ? 'Fecha agregada' : `${agregadas} fechas agregadas`, 'success');
     poCargarFechasEspeciales();
   }
