@@ -2810,8 +2810,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   // ── STOCK HISTORY ─────────────────────────────────────────────────────
   async function saveStockHistory(pdvId, prodId, gustoId, cantidad) {
     try {
+      // stock_historial.pdv_id es uuid — resolver el uuid real desde la tabla pdvs
+      const allPdvs = await getPdv();
+      const pdv = allPdvs.find(p => String(p.id) === String(pdvId) || String(p.orden) === String(pdvId));
+      const pdvUuid = pdv?.id || pdvId;
       await sbApi('stock_historial',{method:'POST',body:JSON.stringify({
-        empresa_id:String(empresaActual), pdv_id:String(pdvId),
+        empresa_id:String(empresaActual), pdv_id:pdvUuid,
         prod_id:String(prodId), gusto_id:String(gustoId),
         cantidad:parseInt(cantidad)||0, fecha:fechaHoyAR()
       })});
