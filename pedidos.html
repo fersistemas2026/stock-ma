@@ -805,6 +805,10 @@ window.selFechaEsp = function(idx) {
     const dir = (document.getElementById('prpDir')?.value || '').trim();
     if (!nombre) { toast('Ingresá tu nombre'); return; }
     if (!tel) { toast('Ingresá tu celular'); return; }
+    // Si hay fecha especial seleccionada, sincronizar _prpDiaSeleccionado con ella
+    if (_prpFechaSeleccionada) {
+      _prpDiaSeleccionado = { fecha: _prpFechaSeleccionada.fecha, label: _prpFechaSeleccionada.nombre, labelCorto: _prpFechaSeleccionada.nombre };
+    }
     if (!_prpDiaSeleccionado) { toast('Elegí un día de entrega'); return; }
     if (!_prpPdvSeleccionado) { toast('Elegí una sucursal'); return; }
     if (_prpModo === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
