@@ -4640,13 +4640,25 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const body=document.getElementById('inf-body');
     body.innerHTML=`<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Consultando desperdicios...</p></div>`;
     try {
-      const [desps, prods, pdvs] = await Promise.all([
+      const [desps, prods, pdvs, listaRaw] = await Promise.all([
         sbApi(`desperdicios?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=fecha.asc&select=*`)||[],
-        getProd(), getPdv()
+        getProd(), getPdv(),
+        sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos`)||[]
       ]);
+      // Construir mapa de precios: listaPrecio[prod_id][gusto_id] = precio Lista1
+      // datos es objeto {gustos:[{gid, precio,...}], pct:...}
+      const listaPrecio={};
+      listaRaw.forEach(ld=>{
+        const gustosArr = ld.datos?.gustos;
+        if (!gustosArr||!Array.isArray(gustosArr)) return;
+        listaPrecio[String(ld.prod_id)]={};
+        gustosArr.forEach(g=>{ listaPrecio[String(ld.prod_id)][String(g.gid||g.id||'')]= parseFloat(g.precio)||0; });
+      });
+      const fmtPeso=n=>'$'+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
       if (!desps.length) { body.innerHTML=`<div class="empty-state">🗑️<p>No hay desperdicios en ese período.</p></div>`; return; }
       const periodo=desde===hasta?desde:`${desde} → ${hasta}`;
-      // Group by PDV → product → gusto
+      // Group by PDV → product → gusto: {cant, prod_id, gusto_id}
       const byPdv={};
       desps.forEach(d=>{
         const pdv=pdvs.find(x=>String(x.id)===String(d.pdv_id));
@@ -4656,31 +4668,72 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const gusto=(prod?.gustos||[]).find(g=>String(g.id)===String(d.gusto_id));
         const gustoNombre=gusto?.nombre||gusto?.name||'—';
         if (!byPdv[pdvNombre]) byPdv[pdvNombre]={};
-        if (!byPdv[pdvNombre][prodNombre]) byPdv[pdvNombre][prodNombre]={};
-        if (!byPdv[pdvNombre][prodNombre][gustoNombre]) byPdv[pdvNombre][prodNombre][gustoNombre]=0;
-        byPdv[pdvNombre][prodNombre][gustoNombre]+=parseInt(d.cantidad)||0;
+        if (!byPdv[pdvNombre][prodNombre]) byPdv[pdvNombre][prodNombre]={ prod_id: String(d.prod_id), gustos:{} };
+        if (!byPdv[pdvNombre][prodNombre].gustos[gustoNombre]) byPdv[pdvNombre][prodNombre].gustos[gustoNombre]={ cant:0, gusto_id: String(d.gusto_id) };
+        byPdv[pdvNombre][prodNombre].gustos[gustoNombre].cant += parseInt(d.cantidad)||0;
       });
-      let html=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">📅 ${periodo}</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">`;
+
+      let totalGlobalCant=0, totalGlobalImporte=0;
+      // Pre-calcular totales globales
+      Object.values(byPdv).forEach(prods2=>{
+        Object.values(prods2).forEach(({prod_id, gustos})=>{
+          Object.values(gustos).forEach(({cant, gusto_id})=>{
+            const precio = (listaPrecio[prod_id]||{})[gusto_id]||0;
+            totalGlobalCant+=cant;
+            totalGlobalImporte+=cant*precio;
+          });
+        });
+      });
+
+      let html=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <span>📅 ${periodo}</span>
+        <span style="display:flex;gap:16px;">
+          <span>Total unidades: <b style="font-family:var(--mono);color:#ff5a5a;">${totalGlobalCant}</b></span>
+          <span>Total importe: <b style="font-family:var(--mono);color:#ff5a5a;">${fmtPeso(totalGlobalImporte)}</b></span>
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">`;
+
       Object.entries(byPdv).forEach(([pdvNombre, prods2])=>{
-        const totalPdv=Object.values(prods2).flatMap(g=>Object.values(g)).reduce((s,v)=>s+v,0);
+        let totalPdvCant=0, totalPdvImporte=0;
+        Object.values(prods2).forEach(({prod_id,gustos})=>{
+          Object.values(gustos).forEach(({cant,gusto_id})=>{
+            const precio=(listaPrecio[prod_id]||{})[gusto_id]||0;
+            totalPdvCant+=cant; totalPdvImporte+=cant*precio;
+          });
+        });
         html+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
-          <div style="background:var(--surface2);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:14px;font-weight:700;">🏪 ${pdvNombre}</span>
-            <span style="font-family:var(--mono);font-size:13px;color:#ff5a5a;font-weight:700;">Total: ${totalPdv}</span>
+          <div style="background:var(--surface2);padding:12px 16px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:14px;font-weight:700;">🏪 ${pdvNombre}</span>
+              <span style="font-family:var(--mono);font-size:13px;color:#ff5a5a;font-weight:700;">${totalPdvCant} uds</span>
+            </div>
+            <div style="text-align:right;font-family:var(--mono);font-size:12px;color:#ff5a5a;margin-top:2px;">${fmtPeso(totalPdvImporte)}</div>
           </div>
           <div style="padding:12px 16px;">`;
-        Object.entries(prods2).forEach(([prodNombre, gustos])=>{
-          const totalProd=Object.values(gustos).reduce((s,v)=>s+v,0);
+        Object.entries(prods2).forEach(([prodNombre, {prod_id, gustos}])=>{
+          let totalProdCant=0, totalProdImporte=0;
+          Object.values(gustos).forEach(({cant,gusto_id})=>{
+            const precio=(listaPrecio[prod_id]||{})[gusto_id]||0;
+            totalProdCant+=cant; totalProdImporte+=cant*precio;
+          });
           html+=`<div style="margin-bottom:10px;">
-            <div style="font-size:12px;font-weight:700;color:var(--text);padding:5px 8px;background:var(--surface2);border-radius:6px;margin-bottom:5px;display:flex;justify-content:space-between;">
-              <span>📦 ${prodNombre}</span>
-              <span style="font-family:var(--mono);color:#ff5a5a;">${totalProd}</span>
+            <div style="font-size:12px;font-weight:700;color:var(--text);padding:5px 8px;background:var(--surface2);border-radius:6px;margin-bottom:5px;">
+              <div style="display:flex;justify-content:space-between;">
+                <span>📦 ${prodNombre}</span>
+                <span style="font-family:var(--mono);color:#ff5a5a;">${totalProdCant} uds</span>
+              </div>
+              <div style="text-align:right;font-family:var(--mono);font-size:11px;color:#ff5a5a;margin-top:1px;">${fmtPeso(totalProdImporte)}</div>
             </div>`;
-          Object.entries(gustos).forEach(([gustoNombre, cant])=>{
-            html+=`<div style="display:flex;justify-content:space-between;padding:5px 8px;border-radius:5px;font-size:13px;">
-              <span style="color:var(--text-muted);">${gustoNombre}</span>
-              <span style="font-family:var(--mono);font-weight:700;color:${cant>0?'#ff5a5a':'var(--text-dim)'};">${cant}</span>
+          Object.entries(gustos).forEach(([gustoNombre, {cant, gusto_id}])=>{
+            const precio=(listaPrecio[prod_id]||{})[gusto_id]||0;
+            const importe=cant*precio;
+            html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-radius:5px;font-size:12px;border-bottom:1px solid var(--border);">
+              <span style="color:var(--text-muted);flex:1;">${gustoNombre}</span>
+              <span style="font-family:var(--mono);font-weight:700;color:${cant>0?'#ff5a5a':'var(--text-dim)'};min-width:40px;text-align:right;">${cant}</span>
+              ${precio>0?`<span style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin:0 4px;">× ${fmtPeso(precio)}</span>
+              <span style="font-family:var(--mono);font-weight:700;color:#ff5a5a;min-width:80px;text-align:right;">${fmtPeso(importe)}</span>`
+              :`<span style="font-size:11px;color:var(--text-dim);margin-left:8px;">sin precio</span>`}
             </div>`;
           });
           html+=`</div>`;
