@@ -121,8 +121,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .pay-radio { width: 17px; height: 17px; border-radius: 50%; border: 2px solid var(--border2); flex-shrink: 0; }
 .pay-opt.active .pay-radio { border-color: var(--primary); background: var(--primary); }
 .cliente-banner { border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-size: 13px; }
-.success-screen { display: none; text-align: center; padding: 40px 16px; }
+.success-screen { display: none; padding: 0 0 40px; }
 .success-screen.visible { display: block; }
+.success-hero { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 32px 20px 28px; text-align: center; color: white; }
+.success-hero-icon { font-size: 56px; margin-bottom: 8px; }
+.success-hero-title { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+.success-hero-sub { font-size: 14px; opacity: .85; }
+.success-nro { display: inline-block; background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: 700; margin-top: 10px; letter-spacing: .5px; }
+.success-body { padding: 20px 16px 0; }
+.success-section { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+.success-section-title { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px; }
+.success-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 5px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+.success-row:last-child { border-bottom: none; }
+.success-row-label { font-size: 13px; color: var(--text2); flex-shrink: 0; }
+.success-row-val { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; }
+.success-item-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+.success-item-row:last-child { border-bottom: none; }
+.success-item-name { font-size: 13px; color: var(--text); flex: 1; }
+.success-item-qty { font-size: 12px; color: var(--text2); margin: 0 6px; }
+.success-item-price { font-size: 13px; font-weight: 600; color: var(--text); }
+.success-total-row { display: flex; justify-content: space-between; align-items: center; padding-top: 6px; margin-top: 2px; border-top: 2px solid var(--border2); }
+.success-total-label { font-size: 15px; font-weight: 700; }
+.success-total-amt { font-size: 20px; font-weight: 800; color: var(--primary); }
+.success-wa-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 15px; background: #25D366; color: white; border: none; border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 10px; text-decoration: none; }
+.success-wa-btn svg { width: 22px; height: 22px; fill: white; flex-shrink: 0; }
+.success-new-btn { width: 100%; padding: 13px; background: none; border: 1.5px solid var(--border2); border-radius: var(--radius); font-size: 14px; font-weight: 600; color: var(--text2); cursor: pointer; }
 .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 400; align-items: flex-end; justify-content: center; }
 .overlay.open { display: flex; }
 .modal { background: var(--bg); border-radius: 18px 18px 0 0; width: 100%; max-width: 600px; max-height: 88vh; overflow-y: auto; padding: 20px 16px; }
@@ -210,10 +233,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div class="content">
     <div class="success-screen" id="successScreen">
-      <div style="font-size:60px;margin-bottom:16px">✅</div>
-      <div style="font-size:22px;font-weight:700;margin-bottom:8px">¡Pedido recibido!</div>
-      <div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:24px" id="successMsg"></div>
-      <button class="cta-btn" style="background:var(--green)" onclick="resetApp()">Hacer otro pedido</button>
+      <div class="success-hero">
+        <div class="success-hero-icon">&#127881;</div>
+        <div class="success-hero-title">&#161;Pedido recibido!</div>
+        <div class="success-hero-sub">Te confirmamos cuando est&#233; listo</div>
+        <div class="success-nro" id="successNro">#000000</div>
+      </div>
+      <div class="success-body">
+        <div class="success-section">
+          <div class="success-section-title">&#128230; Entrega</div>
+          <div id="successEntrega"></div>
+        </div>
+        <div class="success-section">
+          <div class="success-section-title">&#128722; Tu pedido</div>
+          <div id="successItems"></div>
+          <div class="success-total-row">
+            <span class="success-total-label">Total</span>
+            <span class="success-total-amt" id="successTotal">$0</span>
+          </div>
+        </div>
+        <div class="success-section">
+          <div class="success-section-title">&#128100; Tus datos</div>
+          <div id="successDatos"></div>
+        </div>
+        <a id="successWaBtn" href="#" target="_blank" rel="noopener" class="success-wa-btn">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Guardar confirmaci&#243;n por WhatsApp
+        </a>
+        <button class="success-new-btn" onclick="resetApp()">Hacer otro pedido</button>
+      </div>
     </div>
     <div id="mainContent">
       <div id="catalogPanel">
@@ -461,6 +509,7 @@ const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, '
 
 // Estado
 let pdvs = [], productos = [], gustos = [], promos = [], pdvDirs = {};
+let _waNumberCfg = WA_NUMBER;
 // prodId → { gustos: [{gid, nombre, precio}], activosSet: Set<gid> }
 let listaDatos = {};
 let selectedPdv = null, selectedMode = 'retiro', selectedPay = 'efectivo', selectedEnvio = 'manana', selectedHorario = 'manana';
@@ -786,23 +835,67 @@ window.selFechaEsp = function(idx) {
     try {
       const r = await fetch(SUPABASE_URL + '/rest/v1/pedidos_online', {
         method: 'POST',
-        headers: Object.assign({}, H, {'Prefer':'return=minimal'}),
+        headers: Object.assign({}, H, {'Prefer':'return=representation'}),
         body: JSON.stringify(pedido)
       });
       if (!r.ok) { const t = await r.text(); console.error('Supabase error:', t); throw new Error(t); }
+      const rPrp = await r.json();
       window.cerrarPrePedido();
       const fechaFmt = new Date(_prpDiaSeleccionado.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
       const horarioLabel = horarioDesde + ' a ' + horarioHasta + ' hs';
       document.getElementById('mainContent').style.display = 'none';
       document.querySelector('.steps').style.display = 'none';
-      document.getElementById('successMsg').innerHTML =
-        'Tu pre-pedido fue enviado a <strong>' + (_prpPdvSeleccionado.nombre||'') + '</strong>.<br>' +
-        (esFechaEsp ? '🎉 <strong>' + _prpFechaSeleccionada.nombre + '</strong><br>' : '') +
-        '📅 <strong>' + fechaFmt + '</strong> · 🕐 <strong>' + horarioLabel + '</strong><br>' +
-        (_prpModo === 'delivery' ? '🛵 Delivery a <strong>' + dir + '</strong><br>' : '🚶 Retiro en local<br>') +
-        '<br>Pago: <strong>' + (_prpPay === 'transfe' ? 'Transferencia' : 'Efectivo') + '</strong> · Total: <strong>$' + total.toLocaleString('es-AR') + '</strong><br><br>' +
-        '📱 Te avisamos al <strong>' + tel + '</strong> cuando esté listo.';
+
+      const pedidoPrpId = rPrp?.[0]?.id || null;
+      const nroPrp = pedidoPrpId ? ('#' + String(pedidoPrpId).padStart(5,'0')) : '';
+      document.getElementById('successNro').textContent = nroPrp;
+
+      // Entrega
+      let entPrp = '';
+      entPrp += `<div class="success-row"><span class="success-row-label">Sucursal</span><span class="success-row-val">${_prpPdvSeleccionado.nombre||''}</span></div>`;
+      entPrp += `<div class="success-row"><span class="success-row-label">Modalidad</span><span class="success-row-val">${_prpModo==='delivery'?'🛵 Delivery':'🚶 Retiro en local'}</span></div>`;
+      if (_prpModo==='delivery' && dir) entPrp += `<div class="success-row"><span class="success-row-label">Dirección</span><span class="success-row-val">${dir}</span></div>`;
+      if (esFechaEsp) entPrp += `<div class="success-row"><span class="success-row-label">Fecha</span><span class="success-row-val">🎉 ${_prpFechaSeleccionada.nombre}<br>${fechaFmt}</span></div>`;
+      else entPrp += `<div class="success-row"><span class="success-row-label">Fecha</span><span class="success-row-val">📅 ${fechaFmt}</span></div>`;
+      entPrp += `<div class="success-row"><span class="success-row-label">Horario</span><span class="success-row-val">${horarioLabel}</span></div>`;
+      entPrp += `<div class="success-row"><span class="success-row-label">Pago</span><span class="success-row-val">${_prpPay==='transfe'?'💳 Transferencia':'💵 Efectivo'}</span></div>`;
+      document.getElementById('successEntrega').innerHTML = entPrp;
+
+      // Items
+      const entriesPrp = Object.entries(cart).filter(([,gm])=>Object.values(gm).some(q=>q>0));
+      let itemsPrpHtml = '';
+      entriesPrp.forEach(([pid,gm]) => {
+        const prod = productos.find(p=>String(p.id)===String(pid));
+        Object.entries(gm).filter(([,q])=>q>0).forEach(([gid,q]) => {
+          itemsPrpHtml += `<div class="success-item-row"><span class="success-item-name">${prod?.nombre||''} <span style="color:var(--text2);font-weight:400">– ${getNombreGusto(gid)}</span></span><span class="success-item-qty">x${q}</span><span class="success-item-price">$${(getPrecioGusto(gid)*q).toLocaleString('es-AR')}</span></div>`;
+        });
+      });
+      document.getElementById('successItems').innerHTML = itemsPrpHtml;
+      document.getElementById('successTotal').textContent = '$' + total.toLocaleString('es-AR');
+
+      // Datos
+      document.getElementById('successDatos').innerHTML =
+        `<div class="success-row"><span class="success-row-label">Nombre</span><span class="success-row-val">${nombre}</span></div>` +
+        `<div class="success-row"><span class="success-row-label">Celular</span><span class="success-row-val">${tel}</span></div>`;
+
+      // WhatsApp
+      const waNPrp = _waNumberCfg || WA_NUMBER.replace(/\D/g,'');
+      let waMsgPrp = `📅 *Pre-pedido${nroPrp ? ' ' + nroPrp : ''}*\n📍 *${_prpPdvSeleccionado.nombre||''}*\n`;
+      if (esFechaEsp) waMsgPrp += `🎉 ${_prpFechaSeleccionada.nombre} · ${fechaFmt} · ${horarioDesde}-${horarioHasta}hs\n`;
+      else waMsgPrp += `📅 ${fechaFmt} · ${horarioLabel}\n`;
+      waMsgPrp += _prpModo==='delivery' ? `🛵 Delivery a ${dir}\n` : `🚶 Retiro en local\n`;
+      waMsgPrp += `💳 Pago: ${_prpPay==='transfe'?'Transferencia':'Efectivo'}\n\n*Detalle:*\n`;
+      entriesPrp.forEach(([pid,gm]) => {
+        const prod = productos.find(p=>String(p.id)===String(pid));
+        Object.entries(gm).filter(([,q])=>q>0).forEach(([gid,q]) => {
+          waMsgPrp += `• ${prod?.nombre||''} ${getNombreGusto(gid)} x${q} = $${(getPrecioGusto(gid)*q).toLocaleString('es-AR')}\n`;
+        });
+      });
+      waMsgPrp += `\n💰 *Total: $${total.toLocaleString('es-AR')}*\n👤 ${nombre} · ${tel}`;
+      document.getElementById('successWaBtn').href = `https://wa.me/${waNPrp}?text=${encodeURIComponent(waMsgPrp)}`;
+
       document.getElementById('successScreen').classList.add('visible');
+      window.scrollTo({top:0, behavior:'smooth'});
     } catch(e) {
       toast('Error al enviar. Intentá de nuevo.');
     }
@@ -896,6 +989,7 @@ async function init() {
   });
   renderFechasEspeciales();
   const waNum = cfg.whatsapp || WA_NUMBER;
+  _waNumberCfg = waNum.replace(/\D/g,'');
   document.getElementById('waLink').href = `https://wa.me/${waNum}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido 🛒')}`;
 
   const [pdvsData, prodsData, gustosData, listaData, promosData] = await Promise.all([
@@ -1394,7 +1488,7 @@ function calcularOpciones(mode) {
         ? ('🌤️ No disponible')
         : mVencido
           ? ('🌤️ No disponible (cerrado)')
-          : ('🌤️ ' + (esModoRetiro && esHoy ? 'Hoy' : prefDia) + formatHora(mDesde) + ' a ' + formatHora(mHasta));
+          : ('🌤️ ' + prefDia + formatHora(mDesde) + ' a ' + formatHora(mHasta));
 
     // Turno tarde
     const tVencido = esHoy && horaActual >= parseMin(tHasta);
@@ -1405,7 +1499,7 @@ function calcularOpciones(mode) {
         ? ('🌇 No disponible')
         : tVencido
           ? ('🌇 No disponible (cerrado)')
-          : ('🌇 ' + (esModoRetiro && esHoy ? 'Hoy' : prefDia) + formatHora(tDesde) + ' a ' + formatHora(tHasta));
+          : ('🌇 ' + prefDia + formatHora(tDesde) + ' a ' + formatHora(tHasta));
 
     return {
       manana: { label: labelManana, disponible: mananaDisponible, desde: mDesde, hasta: mHasta },
@@ -1557,9 +1651,11 @@ async function enviarPedido() {
 
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online`, {
-      method:'POST', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(pedido)
+      method:'POST', headers:{...H,'Prefer':'return=representation'}, body:JSON.stringify(pedido)
     });
     if (!r.ok) throw new Error(await r.text());
+    const pedidoGuardado = await r.json();
+    const pedidoId = pedidoGuardado?.[0]?.id || null;
 
     if (!clienteData) {
       await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
@@ -1571,26 +1667,78 @@ async function enviarPedido() {
     document.getElementById('mainContent').style.display = 'none';
     document.querySelector('.steps').style.display = 'none';
 
-    let envioInfo;
+    // --- Número de pedido ---
+    const nroLabel = pedidoId ? ('#' + String(pedidoId).padStart(5,'0')) : '';
+    document.getElementById('successNro').textContent = nroLabel;
+
+    // --- Sección entrega ---
+    let entregaRows = '';
+    entregaRows += `<div class="success-row"><span class="success-row-label">Sucursal</span><span class="success-row-val">${selectedPdv?.nombre||''}</span></div>`;
+    entregaRows += `<div class="success-row"><span class="success-row-label">Modalidad</span><span class="success-row-val">${selectedMode==='delivery'?'🛵 Delivery':'🚶 Retiro en local'}</span></div>`;
+    if (selectedMode==='delivery' && dir) {
+      entregaRows += `<div class="success-row"><span class="success-row-label">Dirección</span><span class="success-row-val">${dir}</span></div>`;
+    }
     if (selectedFechaEsp) {
-      const fechaFmt = new Date(selectedFechaEsp.fecha + 'T12:00:00').toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'});
-      const horario = selectedFechaEsp.desde + ' a ' + selectedFechaEsp.hasta + ' hs';
-      envioInfo = `🎉 <strong>${selectedFechaEsp.nombre}</strong><br>📅 <strong>${fechaFmt}</strong> · 🕐 <strong>${horario}</strong><br>${selectedMode==='delivery'?`🛵 Delivery a <strong>${dir}</strong>`:'🚶 Retiro en local'}`;
+      const fechaFmt = new Date(selectedFechaEsp.fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+      entregaRows += `<div class="success-row"><span class="success-row-label">Fecha</span><span class="success-row-val">🎉 ${selectedFechaEsp.nombre}<br>${fechaFmt}</span></div>`;
+      entregaRows += `<div class="success-row"><span class="success-row-label">Horario</span><span class="success-row-val">${selectedFechaEsp.desde} a ${selectedFechaEsp.hasta} hs</span></div>`;
     } else {
       const opts = calcularOpciones(selectedMode);
-      const nombreDia = selectedEnvio === 'pasado' ? opts.nombreDia2 : opts.nombreDia1;
-      const horarioLabel = selectedHorario === 'manana'
-        ? (selectedMode === 'retiro' && selectedEnvio === 'manana' ? 'hasta las 13:30 hs' : '10:00 a 14:00 hs')
+      const nombreDia = selectedEnvio==='pasado' ? opts.nombreDia2 : opts.nombreDia1;
+      const horarioLabel = selectedHorario==='manana'
+        ? (selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta las 13:30 hs':'10:00 a 14:00 hs')
         : '16:30 a 20:30 hs';
-      const plazoLabel = selectedMode === 'delivery'
-        ? (selectedEnvio === 'manana' ? 'Mañana' : 'En 2 días')
-        : (selectedEnvio === 'manana' ? 'Hoy' : 'Mañana');
-      envioInfo = selectedMode === 'delivery'
-        ? `🛵 Delivery a <strong>${dir}</strong><br>📦 <strong>${plazoLabel} (${nombreDia})</strong> · Horario: <strong>${horarioLabel}</strong>`
-        : `🚶 Retiro en local · <strong>${plazoLabel} (${nombreDia})</strong> · Horario: <strong>${horarioLabel}</strong>`;
+      const plazoLabel = selectedMode==='delivery'
+        ? (selectedEnvio==='manana'?'Mañana':'En 2 días')
+        : (selectedEnvio==='manana'?'Hoy':'Mañana');
+      entregaRows += `<div class="success-row"><span class="success-row-label">Cuándo</span><span class="success-row-val">${plazoLabel} (${nombreDia})</span></div>`;
+      entregaRows += `<div class="success-row"><span class="success-row-label">Horario</span><span class="success-row-val">${horarioLabel}</span></div>`;
     }
-    document.getElementById('successMsg').innerHTML = `Tu pedido fue enviado a <strong>${selectedPdv?.nombre||''}</strong>.<br>${envioInfo}<br><br>Pago: <strong>${selectedPay==='transfe'?'Transferencia':'Efectivo'}</strong> · Total: <strong>$${total.toLocaleString('es-AR')}</strong><br><br>📱 Te avisamos al <strong>${tel}</strong> cuando esté listo.`;
+    entregaRows += `<div class="success-row"><span class="success-row-label">Pago</span><span class="success-row-val">${selectedPay==='transfe'?'💳 Transferencia':'💵 Efectivo'}</span></div>`;
+    document.getElementById('successEntrega').innerHTML = entregaRows;
+
+    // --- Sección items ---
+    let itemsHtml = '';
+    items.forEach(it => {
+      itemsHtml += `<div class="success-item-row">
+        <span class="success-item-name">${it.prod_nombre} <span style="color:var(--text2);font-weight:400">– ${it.gusto_nombre}</span></span>
+        <span class="success-item-qty">x${it.cantidad}</span>
+        <span class="success-item-price">$${(it.precio*it.cantidad).toLocaleString('es-AR')}</span>
+      </div>`;
+    });
+    document.getElementById('successItems').innerHTML = itemsHtml;
+    document.getElementById('successTotal').textContent = '$' + total.toLocaleString('es-AR');
+
+    // --- Sección datos ---
+    let datosHtml = '';
+    datosHtml += `<div class="success-row"><span class="success-row-label">Nombre</span><span class="success-row-val">${nombre}</span></div>`;
+    datosHtml += `<div class="success-row"><span class="success-row-label">Celular</span><span class="success-row-val">${tel}</span></div>`;
+    document.getElementById('successDatos').innerHTML = datosHtml;
+
+    // --- Botón WhatsApp con resumen completo ---
+    const waNum = _waNumberCfg || WA_NUMBER.replace(/\D/g,'');
+    let waResumen = `✅ *Confirmación de pedido${nroLabel ? ' ' + nroLabel : ''}*\n`;
+    waResumen += `📍 *${selectedPdv?.nombre||''}*\n`;
+    if (selectedFechaEsp) {
+      const fechaFmt2 = new Date(selectedFechaEsp.fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+      waResumen += `🎉 ${selectedFechaEsp.nombre} · ${fechaFmt2} · ${selectedFechaEsp.desde}-${selectedFechaEsp.hasta}hs\n`;
+    } else {
+      const opts2 = calcularOpciones(selectedMode);
+      const nd = selectedEnvio==='pasado'?opts2.nombreDia2:opts2.nombreDia1;
+      const hl = selectedHorario==='manana'?(selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta 13:30hs':'10:00-14:00hs'):'16:30-20:30hs';
+      const pl = selectedMode==='delivery'?(selectedEnvio==='manana'?'Mañana':'En 2 días'):(selectedEnvio==='manana'?'Hoy':'Mañana');
+      waResumen += `📦 ${pl} (${nd}) · ${hl}\n`;
+    }
+    waResumen += selectedMode==='delivery' ? `🛵 Delivery a ${dir}\n` : `🚶 Retiro en local\n`;
+    waResumen += `💳 Pago: ${selectedPay==='transfe'?'Transferencia':'Efectivo'}\n\n`;
+    waResumen += `*Detalle:*\n`;
+    items.forEach(it => { waResumen += `• ${it.prod_nombre} ${it.gusto_nombre} x${it.cantidad} = $${(it.precio*it.cantidad).toLocaleString('es-AR')}\n`; });
+    waResumen += `\n💰 *Total: $${total.toLocaleString('es-AR')}*\n`;
+    waResumen += `\n👤 ${nombre} · ${tel}`;
+    document.getElementById('successWaBtn').href = `https://wa.me/${waNum}?text=${encodeURIComponent(waResumen)}`;
+
     document.getElementById('successScreen').classList.add('visible');
+    window.scrollTo({top:0, behavior:'smooth'});
   } catch(e) {
     toast('Error al enviar. Intentá de nuevo.');
     btn.disabled = false; btn.textContent = 'Enviar pedido 🚀';
