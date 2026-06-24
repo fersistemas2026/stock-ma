@@ -2326,51 +2326,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       // Normalize turno: manana -> mañana
       if (found.perms && found.perms.turno === 'manana') found.perms.turno = 'mañana';
 
-      // ── Verificar sesión duplicada (solo para operadores, no admin ni visor-pedidos) ──
-      if (found.role !== 'admin' && found.role !== 'visor-pedidos') {
-        const pdvsDelUser = found.pdvs || [];
-        if (pdvsDelUser.length) {
-          const sesionConflicto = await verificarSesionDuplicada(pdvsDelUser);
-          if (sesionConflicto && sesionConflicto.username !== found.username) {
-            const pdvNombreConf = sesionConflicto.pdv_nombre || sesionConflicto.pdv_id;
-            const horaIntento = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
-            // Registrar el intento en sesiones_intentos
-            sbApi('sesiones_intentos', {
-              method: 'POST',
-              body: JSON.stringify({
-                empresa_id: String(empresaActual),
-                pdv_id: sesionConflicto.pdv_id,
-                pdv_nombre: pdvNombreConf,
-                username_intento: found.username,
-                tipo: 'duplicado',
-                created_at: new Date().toISOString()
-              })
-            }).catch(()=>{});
-            // Enviar mensaje interno al admin
-            try {
-              const todosUsers = getUsers();
-              const admins = todosUsers.filter(u => u.role === 'admin');
-              for (const admin of admins) {
-                await sbApi('mensajes', {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    empresa_id: String(empresaActual),
-                    desde: 'sistema',
-                    desde_nombre: '🔒 Sistema',
-                    para: admin.username,
-                    mensaje: `⚠️ Intento de acceso bloqueado\n📍 PDV: ${pdvNombreConf}\n👤 Usuario: ${found.username}\n🕐 Hora: ${horaIntento}hs\n\nEse PDV ya tiene una sesión activa (${sesionConflicto.username}).`,
-                    leido: false
-                  })
-                });
-              }
-            } catch(e) { console.warn('Error enviando mensaje interno:', e); }
-            errorEl.textContent = `🔒 ${pdvNombreConf} ya tiene una sesión activa (${sesionConflicto.username}). Contactá al administrador.`;
-            errorEl.style.display = 'block';
-            if (loginBtn) loginBtn.textContent = 'Ingresar';
-            return;
-          }
-        }
-      }
+      // ── Verificar sesión duplicada deshabilitado ──
 
       currentUser = {...found};
       resetLoginAttempts();
