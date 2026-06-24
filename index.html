@@ -1730,7 +1730,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <div style="margin-bottom:10px">
               <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Cantidad de días <span id="po-fe-dias-label" style="color:var(--accent);font-weight:700">1 día</span></label>
               <div style="display:flex;gap:6px;flex-wrap:wrap">
-                ${[1,2,3,4,5,6,7].map(d=>`<button id="po-fe-dias-btn-${d}" onclick="window.poFeDiasSwitch(${d})" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:${d===1?'var(--accent)':'var(--surface)'};color:${d===1?'#000':'var(--text-muted)'}">${d}</button>`).join('')}
+                <button id="po-fe-dias-btn-1" onclick="window.poFeDiasSwitch(1)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--accent);color:#000">1</button>
+                <button id="po-fe-dias-btn-2" onclick="window.poFeDiasSwitch(2)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">2</button>
+                <button id="po-fe-dias-btn-3" onclick="window.poFeDiasSwitch(3)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">3</button>
+                <button id="po-fe-dias-btn-4" onclick="window.poFeDiasSwitch(4)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">4</button>
+                <button id="po-fe-dias-btn-5" onclick="window.poFeDiasSwitch(5)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">5</button>
+                <button id="po-fe-dias-btn-6" onclick="window.poFeDiasSwitch(6)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">6</button>
+                <button id="po-fe-dias-btn-7" onclick="window.poFeDiasSwitch(7)" style="padding:6px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text-muted)">7</button>
               </div>
               <input type="hidden" id="po-fe-dias" value="1">
             </div>
