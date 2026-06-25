@@ -1485,7 +1485,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     </div>
     <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)">
       <button class="po-tab active" id="po-tab-pedidos" onclick="poSwitchTab('pedidos')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-1px">Pedidos</button>
-      <button class="po-tab" id="po-tab-config" onclick="poSwitchTab('config')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px">⚙️ Configuración</button>
+      <button class="po-tab" id="po-tab-config" onclick="poSwitchTab('config')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px">⚙️ Config Minorista</button>
+      <button class="po-tab" id="po-tab-mayorista" onclick="poSwitchTab('mayorista')" style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px">🏭 Config Mayorista</button>
     </div>
     <div id="po-panel-pedidos">
       <!-- Filtros de período -->
@@ -1864,9 +1865,265 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
       </div>
 
-    </div>
+      <!-- Configuración Mayorista (viejo acordeón - eliminado, ahora es tab separado) -->
+
+    </div><!-- /po-panel-config -->
   </div>
 </div>
+
+    <!-- PANEL MAYORISTA CONFIG -->
+    <div id="po-panel-mayorista" style="display:none;padding:20px 24px;max-width:1000px;margin:0 auto">
+      <style>
+        .may-acc { border:1px solid #1D9E75; border-radius:12px; margin-bottom:10px; overflow:hidden; }
+        .may-acc-hdr { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer; background:rgba(29,158,117,.07); user-select:none; }
+        .may-acc-hdr:hover { background:rgba(29,158,117,.13); }
+        .may-acc-title { font-size:14px; font-weight:700; }
+        .may-acc-arrow { font-size:12px; color:var(--text-muted); transition:transform .2s; }
+        .may-acc-body { display:none; padding:16px; border-top:1px solid #1D9E75; background:var(--surface); }
+        .may-acc.open .may-acc-arrow { transform:rotate(180deg); }
+        .may-acc.open .may-acc-body { display:block; }
+      </style>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:20px">🏭</span>
+        <div>
+          <div class="form-title" style="margin:0">Configuración Tienda Mayorista</div>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:2px">Configuración independiente para <code>mayoristas.html</code></p>
+        </div>
+        <a href="https://fersistemas2026.github.io/stock-ma/mayoristas.html" target="_blank" class="btn-outline" style="font-size:12px;text-decoration:none;margin-left:auto">🔗 Ver tienda</a>
+      </div>
+
+      <!-- Lista de precios -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">💲 Lista de precios</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí qué campo de precio de <code>lista_datos</code> se usa en la tienda mayorista.</p>
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:5px;display:block">Número de lista</label>
+            <select id="may-nro-lista" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+              <option value="1">Lista 1 — campo: precio (base)</option>
+              <option value="2">Lista 2 — campo: precio2</option>
+              <option value="3" selected>Lista 3 — campo: precio3</option>
+              <option value="4">Lista 4 — campo: precio4</option>
+              <option value="5">Lista 5 — campo: precio5</option>
+            </select>
+          </div>
+          <p style="font-size:11px;color:var(--text-muted)">Si un gusto no tiene precio en la lista elegida, se usa el precio base como fallback.</p>
+          <button onclick="mayGuardarLista()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar lista de precios</button>
+        </div>
+      </div>
+
+      <!-- Sucursales -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">🏪 Sucursales habilitadas</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí qué sucursales aparecen en la tienda mayorista y cargá su dirección.</p>
+          <div id="may-config-pdvs"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+          <button onclick="mayGuardarPdvs()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar sucursales</button>
+        </div>
+      </div>
+
+      <!-- Logo y nombre -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">🖼️ Logo y nombre de la tienda</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Nombre de la tienda</label>
+              <input type="text" id="may-tienda-nombre" placeholder="Ej: MA Pastas Mayorista" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Subtítulo</label>
+              <input type="text" id="may-tienda-subtitulo" placeholder="Ej: Precios exclusivos mayoristas" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+            </div>
+          </div>
+          <div style="margin-bottom:14px">
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">WhatsApp (con código país)</label>
+            <input type="text" id="may-tienda-wa" placeholder="Ej: 5491112345678" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:6px;display:block">Logo</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <img id="may-logo-preview" src="" style="width:60px;height:60px;border-radius:10px;object-fit:cover;border:1px solid var(--border);display:none">
+              <div id="may-logo-placeholder" style="width:60px;height:60px;border-radius:10px;background:var(--surface2);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px">🏭</div>
+              <div>
+                <input type="file" id="may-logo-file" accept="image/*" style="display:none" onchange="mayPreviewLogo(this)">
+                <button onclick="document.getElementById('may-logo-file').click()" class="btn-outline" style="font-size:13px;margin-bottom:6px">📁 Elegir logo</button>
+                <div style="font-size:11px;color:var(--text-muted)">JPG, PNG o WebP · Máx 1MB</div>
+              </div>
+            </div>
+          </div>
+          <!-- Header color/trama -->
+          <div style="margin-top:14px">
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:block">Fondo del encabezado</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Color de fondo</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="color" id="may-header-color" value="#e8f5f0" oninput="document.getElementById('may-header-color-val').textContent=this.value;mayPreviewTrama()" style="width:40px;height:34px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px;background:var(--surface2)">
+                  <span id="may-header-color-val" style="font-size:12px;color:var(--text-muted)">#e8f5f0</span>
+                  <button onclick="document.getElementById('may-header-color').value='#e8f5f0';document.getElementById('may-header-color-val').textContent='#e8f5f0';mayPreviewTrama()" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--text-muted)">Reset</button>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Patrón / Trama</label>
+                <select id="may-header-trama" onchange="mayPreviewTrama()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px">
+                  <option value="">Sin trama</option>
+                  <option value="dots">Puntos</option>
+                  <option value="lines-h">Líneas horizontales</option>
+                  <option value="lines-d">Líneas diagonales</option>
+                  <option value="grid">Cuadrícula</option>
+                  <option value="waves">Ondas</option>
+                  <option value="zigzag">Zigzag</option>
+                  <option value="circles">Círculos</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:10px">
+              <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Vista previa</label>
+              <div id="may-trama-preview" style="height:70px;border-radius:10px;border:1px solid var(--border);display:flex;align-items:center;padding:10px 14px;gap:10px;transition:all .3s;background:#e8f5f0">
+                <div style="width:44px;height:44px;border-radius:8px;background:rgba(0,0,0,0.1);flex-shrink:0"></div>
+                <div><div style="font-size:14px;font-weight:700;color:#333">Nombre tienda</div><div style="font-size:11px;color:#666">Mayoristas</div></div>
+              </div>
+            </div>
+          </div>
+          <button onclick="mayGuardarTiendaConfig()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar configuración</button>
+        </div>
+      </div>
+
+      <!-- Productos -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">📦 Productos en tienda mayorista</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Activá los sabores para la tienda mayorista (independiente de la tienda minorista).</p>
+          <div id="may-config-productos"><div style="color:var(--text-muted);font-size:13px">Cargando...</div></div>
+          <button onclick="mayGuardarProductos()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar productos</button>
+        </div>
+      </div>
+
+      <!-- Días y Horarios -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">🕐 Días y horarios de atención</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Configurá los días y turnos para la tienda mayorista.</p>
+          <div style="margin-bottom:18px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 Días habilitados</div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center" id="may-dias-checks"></div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">🌤️ Turno mañana</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Apertura</label><input type="time" id="may-turno-m-desde" value="09:00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Cierre</label><input type="time" id="may-turno-m-hasta" value="13:00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+            </div>
+            <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="may-turno-m-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">Turno mañana habilitado</label></div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">🌇 Turno tarde</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Apertura</label><input type="time" id="may-turno-t-desde" value="16:00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Cierre</label><input type="time" id="may-turno-t-hasta" value="20:00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+            </div>
+            <div style="margin-top:10px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="may-turno-t-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">Turno tarde habilitado</label></div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">🛵 Delivery</div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:10px"><input type="checkbox" id="may-delivery-activo" checked style="width:16px;height:16px;accent-color:var(--accent)">Delivery habilitado</label>
+            <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Plazo mínimo</label><select id="may-delivery-plazo" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"><option value="1">1 día (mañana)</option><option value="2">2 días</option><option value="3">3 días</option></select></div>
+          </div>
+          <button onclick="mayGuardarHorarios()" class="btn-primary" style="width:100%;font-size:13px">💾 Guardar días y horarios</button>
+        </div>
+      </div>
+
+      <!-- Fechas Especiales -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">🗓️ Fechas especiales y pre-pedidos</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Fechas especiales para la tienda mayorista.</p>
+          <div id="may-fechas-lista" style="margin-bottom:14px"></div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px">➕ Agregar fecha</div>
+            <div style="margin-bottom:10px">
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Fechas de entrega</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="date" id="may-fe-fecha" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px">
+                <button onclick="mayFeAgregarFecha()" style="padding:8px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Agregar</button>
+              </div>
+              <div id="may-fe-fechas-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Nombre</label><input type="text" id="may-fe-nombre" placeholder="Ej: Día de la Madre" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Mensaje (opcional)</label><input type="text" id="may-fe-mensaje" placeholder="Ej: ¡Pedidos especiales!" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Apertura</label><input type="time" id="may-fe-desde" value="09:00" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+              <div><label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Cierre</label><input type="time" id="may-fe-hasta" value="13:00" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+            </div>
+            <div style="margin-bottom:12px">
+              <label style="font-size:12px;color:var(--text-muted);margin-bottom:4px;display:block">Cierre de recepción</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div><input type="date" id="may-fe-cierre-fecha" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"><div style="font-size:11px;color:var(--text-muted);margin-top:3px">Fecha límite</div></div>
+                <div><input type="time" id="may-fe-cierre-hora" value="20:00" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"><div style="font-size:11px;color:var(--text-muted);margin-top:3px">Hora límite</div></div>
+              </div>
+            </div>
+            <div style="margin-bottom:12px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="may-fe-delivery" style="width:16px;height:16px;accent-color:var(--accent)">Incluir delivery</label></div>
+            <button onclick="mayAgregarFechaEspecial()" class="btn-primary" style="width:100%;font-size:13px">📅 Agregar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Novedades -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">🔔 Novedades para mayoristas</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <div id="may-novedades-lista" style="margin-bottom:14px"></div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">➕ Nueva novedad</div>
+            <div style="margin-bottom:10px"><label style="font-size:12px;color:var(--text-muted);margin-bottom:5px;display:block">Título</label><input type="text" id="may-nov-titulo" placeholder="Ej: ¡Nuevos precios disponibles!" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px"></div>
+            <div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-muted);margin-bottom:5px;display:block">Texto</label><textarea id="may-nov-texto" rows="3" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:14px;resize:vertical"></textarea></div>
+            <button onclick="mayGuardarNovedad()" class="btn-primary" style="width:100%;font-size:13px">💾 Guardar novedad</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Link -->
+      <div class="may-acc">
+        <div class="may-acc-hdr" onclick="mayToggleAcc(this)">
+          <span class="may-acc-title">🔗 Link de la tienda mayorista</span>
+          <span class="may-acc-arrow">▼</span>
+        </div>
+        <div class="may-acc-body">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" value="https://fersistemas2026.github.io/stock-ma/mayoristas.html" readonly style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;min-width:200px">
+            <button onclick="navigator.clipboard.writeText('https://fersistemas2026.github.io/stock-ma/mayoristas.html').then(()=>toast('¡Link copiado!','success'))" class="btn-outline" style="font-size:13px">📋 Copiar</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /po-panel-mayorista -->
+
+</div><!-- /neg-pedidos-online -->
 
 </div><!-- /neg-panels-wrap -->
 </div><!-- /neg-layout -->
@@ -1879,6 +2136,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         <div class="form-title" style="margin:0">📲 Pedidos Online</div>
         <button class="po-op-fbtn active" onclick="poOpFiltrar(this,'pendientes')" style="padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;cursor:pointer">⏳ Pendientes</button>
         <button class="po-op-fbtn" onclick="poOpFiltrar(this,'todos')" style="padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:12px;cursor:pointer">Todos</button>
+        <button class="po-op-fbtn" onclick="poOpFiltrar(this,'mayoristas')" style="padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:12px;cursor:pointer">🏭 Mayoristas</button>
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="poOpCargar()" class="btn-outline" style="font-size:12px;padding:4px 10px">🔄 Actualizar</button>
@@ -15834,6 +16092,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function poSwitchTab(tab) {
     document.getElementById('po-panel-pedidos').style.display=tab==='pedidos'?'block':'none';
     document.getElementById('po-panel-config').style.display=tab==='config'?'block':'none';
+    document.getElementById('po-panel-mayorista').style.display=tab==='mayorista'?'block':'none';
     document.querySelectorAll('.po-tab').forEach(b=>{
       const a=b.id==='po-tab-'+tab;
       b.style.color=a?'var(--accent)':'var(--text-muted)';
@@ -15841,6 +16100,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       b.style.borderBottom=a?'2px solid var(--accent)':'2px solid transparent';
     });
     if(tab==='config'){poCargarTiendaConfig();poCargarFotosProductos();poRenderPdvsOnline();poCargarNovedades();poCargarHorarios();poCargarFechasEspeciales();}
+    if(tab==='mayorista'){mayCargarTodo();}
   }
 
   window.poGetFiltroFechas = function(periodo) {
@@ -15928,6 +16188,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           ${fechaEntrega?`<span style="font-size:11px;color:rgba(255,255,255,.85)">📅 ${fechaEntrega}</span>`:''}
           ${horarioEntrega?`<span style="font-size:11px;color:rgba(255,255,255,.85)">🕐 ${horarioEntrega}</span>`:''}
         </div>`:''}
+        ${p.tipo==='mayorista'?`<div style="display:inline-block;background:#1D9E75;color:white;font-size:11px;font-weight:800;padding:3px 10px;border-radius:7px;margin-bottom:8px">🏭 MAYORISTA</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
           <div>
             <div style="font-size:15px;font-weight:700">${p.cliente_nombre||'Sin nombre'} <span style="font-size:13px;font-weight:400;color:var(--text-muted)">· ${p.cliente_tel||''}</span></div>
@@ -16457,7 +16718,384 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
 
 
-  // ── DÍAS Y HORARIOS ──────────────────────────────────────────────────
+  // ── MAYORISTA CONFIG ─────────────────────────────────────────────────
+  let _mayCfg = {};
+  const MAY_DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  window.mayToggleAcc = function(hdr) {
+    const acc = hdr.closest('.may-acc');
+    acc.classList.toggle('open');
+  };
+
+  async function mayCargarTodo() {
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}&select=may_pdvs,may_pdvs_dirs,may_nombre,may_subtitulo,may_whatsapp,may_logo_url,may_header_color,may_header_trama,may_horarios,may_fechas_especiales,may_novedades,may_nro_lista,may_online_activo`, {headers:H2});
+      const data = r.ok ? await r.json() : [];
+      _mayCfg = data[0] || {};
+    } catch(e) { _mayCfg = {}; }
+    mayCargarLista();
+    mayCargarTiendaConfig();
+    mayRenderPdvs();
+    mayCargarProductos();
+    mayCargarHorarios();
+    mayCargarFechas();
+    mayCargarNovedades();
+  }
+
+  function mayCargarLista() {
+    const el = document.getElementById('may-nro-lista');
+    if (el) el.value = String(_mayCfg.may_nro_lista || 3);
+  }
+
+  async function mayGuardarLista() {
+    const nro = parseInt(document.getElementById('may-nro-lista')?.value || '3');
+    await maySave({may_nro_lista: nro});
+    _mayCfg.may_nro_lista = nro;
+    toast('Lista de precios guardada ✅','success');
+  }
+
+  function mayCargarTiendaConfig() {
+    const n = document.getElementById('may-tienda-nombre');
+    const s = document.getElementById('may-tienda-subtitulo');
+    const w = document.getElementById('may-tienda-wa');
+    const c = document.getElementById('may-header-color');
+    const cv = document.getElementById('may-header-color-val');
+    const t = document.getElementById('may-header-trama');
+    if (n) n.value = _mayCfg.may_nombre || '';
+    if (s) s.value = _mayCfg.may_subtitulo || '';
+    if (w) w.value = _mayCfg.may_whatsapp || '';
+    const col = _mayCfg.may_header_color || '#e8f5f0';
+    if (c) c.value = col;
+    if (cv) cv.textContent = col;
+    if (t) t.value = _mayCfg.may_header_trama || '';
+    if (_mayCfg.may_logo_url) {
+      const prev = document.getElementById('may-logo-preview');
+      const ph = document.getElementById('may-logo-placeholder');
+      if (prev) { prev.src = _mayCfg.may_logo_url; prev.style.display = 'block'; }
+      if (ph) ph.style.display = 'none';
+    }
+    mayPreviewTrama();
+  }
+
+  window.mayPreviewLogo = function(input) {
+    const file = input.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = document.getElementById('may-logo-preview');
+      const ph = document.getElementById('may-logo-placeholder');
+      if (prev) { prev.src = e.target.result; prev.style.display = 'block'; }
+      if (ph) ph.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.mayPreviewTrama = function() {
+    const c = document.getElementById('may-header-color')?.value || '#e8f5f0';
+    const t = document.getElementById('may-header-trama')?.value || '';
+    const prev = document.getElementById('may-trama-preview');
+    if (!prev) return;
+    prev.style.backgroundColor = c;
+    if (t) {
+      const hex = c.replace('#','');
+      const r2=parseInt(hex.substr(0,2),16),g2=parseInt(hex.substr(2,2),16),b2=parseInt(hex.substr(4,2),16);
+      const lum=0.299*r2+0.587*g2+0.114*b2;
+      const tc=lum>128?'rgba(0,0,0,0.12)':'rgba(255,255,255,0.15)';
+      const bgMap={
+        'dots':{img:`radial-gradient(circle,${tc} 1.5px,transparent 1.5px)`,size:'20px 20px'},
+        'lines-h':{img:`repeating-linear-gradient(0deg,${tc},${tc} 1px,transparent 1px,transparent 18px)`,size:'100% 18px'},
+        'lines-d':{img:`repeating-linear-gradient(45deg,${tc},${tc} 1px,transparent 1px,transparent 18px)`,size:'25px 25px'},
+        'grid':{img:`repeating-linear-gradient(0deg,${tc},${tc} 1px,transparent 1px,transparent 20px),repeating-linear-gradient(90deg,${tc},${tc} 1px,transparent 1px,transparent 20px)`,size:'20px 20px'},
+        'waves':{img:`repeating-radial-gradient(ellipse at 0 50%,transparent 8px,${tc} 9px,transparent 10px)`,size:'30px 20px'},
+        'zigzag':{img:`linear-gradient(135deg,${tc} 25%,transparent 25%),linear-gradient(225deg,${tc} 25%,transparent 25%),linear-gradient(315deg,${tc} 25%,transparent 25%),linear-gradient(45deg,${tc} 25%,transparent 25%)`,size:'20px 20px'},
+        'circles':{img:`radial-gradient(circle at 50% 50%,transparent 8px,${tc} 9px,transparent 10px)`,size:'24px 24px'}
+      };
+      const bg=bgMap[t];
+      if(bg){prev.style.backgroundImage=bg.img;prev.style.backgroundSize=bg.size;}
+    } else {
+      prev.style.backgroundImage='none';
+    }
+  };
+
+  async function mayGuardarTiendaConfig() {
+    const nombre = document.getElementById('may-tienda-nombre')?.value.trim()||'';
+    const subtitulo = document.getElementById('may-tienda-subtitulo')?.value.trim()||'';
+    const whatsapp = document.getElementById('may-tienda-wa')?.value.trim()||'';
+    const header_color = document.getElementById('may-header-color')?.value||'#e8f5f0';
+    const header_trama = document.getElementById('may-header-trama')?.value||'';
+    let logo_url = _mayCfg.may_logo_url || '';
+    const logoFile = document.getElementById('may-logo-file')?.files?.[0];
+    if (logoFile) {
+      try {
+        toast('Subiendo logo mayorista...','success');
+        const ext = logoFile.name.split('.').pop();
+        logo_url = await poSubirImagen(logoFile, 'empresa_'+empresaActual+'/may_logo.'+ext);
+      } catch(e) { toast('Error al subir logo: '+e.message); return; }
+    }
+    const payload = {may_nombre:nombre, may_subtitulo:subtitulo, may_whatsapp:whatsapp, may_logo_url:logo_url, may_header_color:header_color, may_header_trama:header_trama};
+    await maySave(payload);
+    Object.assign(_mayCfg, payload);
+    toast('Configuración mayorista guardada ✅','success');
+  }
+
+  async function mayRenderPdvs() {
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    const el = document.getElementById('may-config-pdvs');
+    if (!el) return;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pdvs?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre`,{headers:H2});
+    const pdvs = r.ok ? await r.json() : [];
+    const activos = (_mayCfg.may_pdvs || []).map(String);
+    const dirs = _mayCfg.may_pdvs_dirs || {};
+    el.innerHTML = pdvs.map(p => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" id="may-pdv-${p.id}" ${activos.includes(String(p.id))?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
+        <label for="may-pdv-${p.id}" style="font-size:14px;font-weight:600;flex:1;cursor:pointer">${p.nombre}</label>
+        <input type="text" id="may-dir-${p.id}" value="${dirs[String(p.id)]||''}" placeholder="Dirección (opcional)" style="width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px">
+      </div>`).join('');
+  }
+
+  async function mayGuardarPdvs() {
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/pdvs?empresa_id=eq.${empresaActual}&select=id`,{headers:H2});
+    const pdvs = r.ok ? await r.json() : [];
+    const activos = pdvs.filter(p=>document.getElementById('may-pdv-'+p.id)?.checked).map(p=>String(p.id));
+    const dirs = {};
+    pdvs.forEach(p=>{const v=document.getElementById('may-dir-'+p.id)?.value.trim();if(v)dirs[String(p.id)]=v;});
+    await maySave({may_pdvs:activos, may_pdvs_dirs:dirs});
+    _mayCfg.may_pdvs = activos; _mayCfg.may_pdvs_dirs = dirs;
+    toast('Sucursales mayoristas guardadas ✅','success');
+  }
+
+  async function mayCargarProductos() {
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    const el = document.getElementById('may-config-productos');
+    if (!el) return;
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando...</div>';
+    const [prodsR, gustosR, listaR] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/productos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,nombre`,{headers:H2}).then(r=>r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/gustos?empresa_id=eq.${empresaActual}&order=orden.asc&select=id,producto_id,nombre`,{headers:H2}).then(r=>r.json()),
+      fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos,may_activo`,{headers:H2}).then(r=>r.json())
+    ]);
+    const nroLista = _mayCfg.may_nro_lista || 3;
+    const precioKey = nroLista === 1 ? 'precio' : `precio${nroLista}`;
+    // may_activo: array de gustoIds activos para mayoristas
+    const listaMap = {};
+    (listaR||[]).forEach(row=>{
+      if (!row.prod_id || row.prod_id.startsWith('SCHED_') || row.prod_id==='__config__') return;
+      try {
+        const d = typeof row.datos==='string'?JSON.parse(row.datos):row.datos;
+        listaMap[String(row.prod_id)] = {gustos:d?.gustos||[], mayActivo:Array.isArray(row.may_activo)?row.may_activo.map(String):[]};
+      } catch(e){}
+    });
+    el.innerHTML = (prodsR||[]).map(p => {
+      const gProds = (gustosR||[]).filter(g=>String(g.producto_id)===String(p.id));
+      const ld = listaMap[String(p.id)] || {gustos:[],mayActivo:[]};
+      const gustosConPrecio = ld.gustos.filter(g=>{
+        const pr = g[precioKey];
+        return pr !== undefined && pr !== null && pr !== '' && parseFloat(pr) > 0;
+      });
+      if (!gustosConPrecio.length && !gProds.length) return '';
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:10px">${p.nombre}</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${gustosConPrecio.map(g => {
+            const pr = parseFloat(g[precioKey])||0;
+            const checked = ld.mayActivo.includes(String(g.gid));
+            return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0;border-bottom:1px solid var(--border)">
+              <input type="checkbox" class="may-gusto-chk" data-prod="${p.id}" data-gid="${g.gid}" ${checked?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
+              <span style="flex:1;font-size:14px">${g.nombre}</span>
+              <span style="font-size:13px;color:var(--accent);font-weight:700">$${pr.toLocaleString('es-AR')}</span>
+            </label>`;
+          }).join('')}
+          ${gustosConPrecio.length===0?`<div style="font-size:12px;color:var(--text-muted)">Sin precio en lista ${nroLista}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function mayGuardarProductos() {
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    const Hbase={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    // Agrupar por prod_id
+    const byProd = {};
+    document.querySelectorAll('.may-gusto-chk').forEach(chk=>{
+      const pid = chk.dataset.prod;
+      const gid = chk.dataset.gid;
+      if (!byProd[pid]) byProd[pid]=[];
+      if (chk.checked) byProd[pid].push(String(gid));
+    });
+    // Guardar en lista_datos.may_activo para cada prod
+    await Promise.all(Object.entries(byProd).map(([pid,gids])=>
+      fetch(`${SUPABASE_URL}/rest/v1/lista_datos?prod_id=eq.${pid}&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:Hbase,body:JSON.stringify({may_activo:gids})})
+    ));
+    toast('Productos mayoristas guardados ✅','success');
+  }
+
+  function mayCargarHorarios() {
+    const h = _mayCfg.may_horarios || {};
+    const dias = h.dias || [1,2,3,4,5];
+    MAY_DIAS.forEach((d,i)=>{
+      const el = document.getElementById('may-dia-'+i);
+      if(el) el.checked = dias.includes(i);
+    });
+    const mActivo = document.getElementById('may-turno-m-activo');
+    const mDesde = document.getElementById('may-turno-m-desde');
+    const mHasta = document.getElementById('may-turno-m-hasta');
+    const tActivo = document.getElementById('may-turno-t-activo');
+    const tDesde = document.getElementById('may-turno-t-desde');
+    const tHasta = document.getElementById('may-turno-t-hasta');
+    const delActivo = document.getElementById('may-delivery-activo');
+    const delPlazo = document.getElementById('may-delivery-plazo');
+    if(mActivo) mActivo.checked = h.turno_m_activo !== false;
+    if(mDesde) mDesde.value = h.turno_m_desde || '09:00';
+    if(mHasta) mHasta.value = h.turno_m_hasta || '13:00';
+    if(tActivo) tActivo.checked = h.turno_t_activo !== false;
+    if(tDesde) tDesde.value = h.turno_t_desde || '16:00';
+    if(tHasta) tHasta.value = h.turno_t_hasta || '20:00';
+    if(delActivo) delActivo.checked = h.delivery_activo !== false;
+    if(delPlazo) delPlazo.value = String(h.delivery_plazo || 1);
+    // Render días
+    const diasEl = document.getElementById('may-dias-checks');
+    if (diasEl) diasEl.innerHTML = MAY_DIAS.map((d,i)=>`
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${d}</div>
+        <input type="checkbox" id="may-dia-${i}" ${dias.includes(i)?'checked':''} style="width:20px;height:20px;accent-color:var(--accent)">
+      </div>`).join('');
+  }
+
+  async function mayGuardarHorarios() {
+    const dias = MAY_DIAS.map((_,i)=>i).filter(i=>document.getElementById('may-dia-'+i)?.checked);
+    const horarios = {
+      dias,
+      turno_m_activo: document.getElementById('may-turno-m-activo')?.checked,
+      turno_m_desde: document.getElementById('may-turno-m-desde')?.value,
+      turno_m_hasta: document.getElementById('may-turno-m-hasta')?.value,
+      turno_t_activo: document.getElementById('may-turno-t-activo')?.checked,
+      turno_t_desde: document.getElementById('may-turno-t-desde')?.value,
+      turno_t_hasta: document.getElementById('may-turno-t-hasta')?.value,
+      delivery_activo: document.getElementById('may-delivery-activo')?.checked,
+      delivery_plazo: parseInt(document.getElementById('may-delivery-plazo')?.value||'1')
+    };
+    await maySave({may_horarios:horarios});
+    _mayCfg.may_horarios = horarios;
+    toast('Horarios mayoristas guardados ✅','success');
+  }
+
+  let _mayFechasPendientes = [];
+
+  window.mayFeAgregarFecha = function() {
+    const v = document.getElementById('may-fe-fecha')?.value;
+    if (!v) return;
+    if (!_mayFechasPendientes.includes(v)) _mayFechasPendientes.push(v);
+    mayRenderFechasChips();
+  };
+
+  function mayRenderFechasChips() {
+    const el = document.getElementById('may-fe-fechas-chips');
+    if (!el) return;
+    el.innerHTML = _mayFechasPendientes.map(f=>{
+      const d = new Date(f+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+      return `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(29,158,117,.15);border:1px solid #1D9E75;border-radius:999px;padding:4px 12px;font-size:13px">
+        📅 ${d} <button onclick="mayFeBorrarFecha('${f}')" style="background:none;border:none;cursor:pointer;color:#D85A30;font-size:14px;line-height:1">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  window.mayFeBorrarFecha = function(f) {
+    _mayFechasPendientes = _mayFechasPendientes.filter(x=>x!==f);
+    mayRenderFechasChips();
+  };
+
+  async function mayAgregarFechaEspecial() {
+    if (!_mayFechasPendientes.length) { toast('Agregá al menos una fecha'); return; }
+    const nombre = document.getElementById('may-fe-nombre')?.value.trim()||'';
+    const mensaje = document.getElementById('may-fe-mensaje')?.value.trim()||'';
+    const desde = document.getElementById('may-fe-desde')?.value||'09:00';
+    const hasta = document.getElementById('may-fe-hasta')?.value||'13:00';
+    const cierre_fecha = document.getElementById('may-fe-cierre-fecha')?.value||'';
+    const cierre_hora = document.getElementById('may-fe-cierre-hora')?.value||'20:00';
+    const delivery = document.getElementById('may-fe-delivery')?.checked||false;
+    const existentes = _mayCfg.may_fechas_especiales || [];
+    const nuevas = _mayFechasPendientes.map(f=>({fecha:f,nombre,mensaje,desde,hasta,cierre_fecha,cierre_hora,delivery}));
+    const todas = [...existentes, ...nuevas];
+    await maySave({may_fechas_especiales:todas});
+    _mayCfg.may_fechas_especiales = todas;
+    _mayFechasPendientes = [];
+    mayRenderFechasChips();
+    mayCargarFechas();
+    toast('Fechas especiales mayoristas guardadas ✅','success');
+  }
+
+  function mayCargarFechas() {
+    const el = document.getElementById('may-fechas-lista');
+    if (!el) return;
+    const fechas = _mayCfg.may_fechas_especiales || [];
+    if (!fechas.length) { el.innerHTML='<div style="font-size:13px;color:var(--text-muted)">No hay fechas especiales cargadas.</div>'; return; }
+    el.innerHTML = fechas.map((f,i)=>{
+      const d = new Date(f.fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div style="font-size:14px;font-weight:700">${f.nombre||'Fecha especial'} <span style="font-size:11px;font-weight:400;color:var(--text-muted)">📅 ${d}</span></div>
+          <div style="font-size:12px;color:var(--text-muted)">🕐 ${f.desde} a ${f.hasta} hs${f.cierre_fecha?' · Cierre '+f.cierre_fecha:''}</div>
+        </div>
+        <button onclick="mayEliminarFecha(${i})" style="background:none;border:none;color:#D85A30;cursor:pointer;font-size:18px">🗑️</button>
+      </div>`;
+    }).join('');
+  }
+
+  window.mayEliminarFecha = async function(idx) {
+    const fechas = (_mayCfg.may_fechas_especiales||[]).filter((_,i)=>i!==idx);
+    await maySave({may_fechas_especiales:fechas});
+    _mayCfg.may_fechas_especiales = fechas;
+    mayCargarFechas();
+    toast('Fecha eliminada','success');
+  };
+
+  async function mayCargarNovedades() {
+    const el = document.getElementById('may-novedades-lista');
+    if (!el) return;
+    const novedades = _mayCfg.may_novedades || [];
+    if (!novedades.length) { el.innerHTML='<div style="font-size:13px;color:var(--text-muted)">No hay novedades cargadas.</div>'; return; }
+    el.innerHTML = novedades.map((n,i)=>`
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div><div style="font-size:14px;font-weight:700">${n.titulo||'Sin título'}</div><div style="font-size:12px;color:var(--text-muted)">${n.texto||''}</div></div>
+        <button onclick="mayEliminarNovedad(${i})" style="background:none;border:none;color:#D85A30;cursor:pointer;font-size:18px">🗑️</button>
+      </div>`).join('');
+  }
+
+  async function mayGuardarNovedad() {
+    const titulo = document.getElementById('may-nov-titulo')?.value.trim()||'';
+    const texto = document.getElementById('may-nov-texto')?.value.trim()||'';
+    if (!titulo && !texto) { toast('Escribí un título o texto'); return; }
+    const novedades = [...(_mayCfg.may_novedades||[]), {titulo,texto,fecha:new Date().toISOString().split('T')[0]}];
+    await maySave({may_novedades:novedades});
+    _mayCfg.may_novedades = novedades;
+    if(document.getElementById('may-nov-titulo')) document.getElementById('may-nov-titulo').value='';
+    if(document.getElementById('may-nov-texto')) document.getElementById('may-nov-texto').value='';
+    mayCargarNovedades();
+    toast('Novedad guardada ✅','success');
+  }
+
+  window.mayEliminarNovedad = async function(idx) {
+    const novedades = (_mayCfg.may_novedades||[]).filter((_,i)=>i!==idx);
+    await maySave({may_novedades:novedades});
+    _mayCfg.may_novedades = novedades;
+    mayCargarNovedades();
+    toast('Novedad eliminada','success');
+  };
+
+  async function maySave(payload) {
+    const Hbase={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    const checkR = await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
+    const ex = checkR.ok ? await checkR.json() : [];
+    if (ex.length > 0) {
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:Hbase,body:JSON.stringify(payload)});
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/tienda_config`,{method:'POST',headers:Hbase,body:JSON.stringify({id:'1',empresa_id:String(empresaActual),...payload})});
+    }
+  }
+
+  // ── MAYORISTA CONFIG ──────────────────────────────────────────────────
   const PO_DIAS_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
   const PO_DIAS_FULL   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
@@ -16863,12 +17501,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function poOpRender(){
     const el=document.getElementById('po-op-lista');
     if(!el)return;
-    const lista=_poOpFiltro==='pendientes'
-      ?_poOpPedidos.filter(p=>p.estado==='nuevo'||p.estado==='en_preparacion')
-      :_poOpPedidos;
+    let lista;
+    if(_poOpFiltro==='pendientes')
+      lista=_poOpPedidos.filter(p=>p.estado==='nuevo'||p.estado==='en_preparacion');
+    else if(_poOpFiltro==='mayoristas')
+      lista=_poOpPedidos.filter(p=>p.tipo==='mayorista');
+    else
+      lista=_poOpPedidos;
     if(!lista.length){
       el.style.display='block';
-      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">'+(_poOpFiltro==='pendientes'?'✅ No hay pedidos pendientes':'No hay pedidos')+'</div>';
+      const msgs={'pendientes':'✅ No hay pedidos pendientes','mayoristas':'🏭 No hay pedidos mayoristas'};
+      el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px">'+(msgs[_poOpFiltro]||'No hay pedidos')+'</div>';
       return;
     }
     const ec={nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75',entregado:'#5a6070',cancelado:'#888'};
@@ -16898,6 +17541,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const pagoColor = p.metodo_pago === 'transfe' ? '#3b82f6' : '#16a34a';
       return '<div style="background:var(--surface);border:3px solid '+(esPre?'#9333ea':(ec[p.estado]||'var(--border)'))+';border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px">'
         +(esPre?'<div style="background:#9333ea;color:white;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;width:fit-content">🗓️ PRE-PEDIDO'+(p.fecha_especial_nombre?' · '+p.fecha_especial_nombre:'')+'</div>':'')
+        +(p.tipo==='mayorista'?'<div style="background:#1D9E75;color:white;font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;width:fit-content">🏭 MAYORISTA</div>':'')
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
           +'<div>'
             +'<div style="font-size:18px;font-weight:800">'+(p.cliente_nombre||'Sin nombre')+'</div>'
