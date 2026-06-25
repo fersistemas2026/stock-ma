@@ -520,6 +520,7 @@
               <option value="gastos">💸 Gastos</option>
               <option value="pedidos">📋 Pedidos varios</option>
               <option value="pedidosInt">📦 Pedidos internos</option>
+              <option value="pedidosOnline">🌐 Pedidos Tienda y Mayoristas</option>
               <option value="desperdicios">🗑️ Desperdicios</option>
               <option value="ventas">🛒 Ventas</option>
               <option value="cantVentas">📊 Cantidad de ventas</option>
@@ -5367,6 +5368,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='descuentosAuto') { await loadInformesDescuentosAuto(); return; }
     if (seccion==='ranking')        { await loadInformesRanking(range.desde, range.hasta); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
+    if (seccion==='pedidosOnline'){ await loadInformesPedidosOnline(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
     if (seccion==='tarjetas')     { await loadInformesTarjetas(range.desde, range.hasta); return; }
     if (seccion==='cashflow')     { await loadInformesCashflow(range.desde, range.hasta); return; }
@@ -10550,6 +10552,174 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         }).join('');
     } catch(e) { cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`; }
   }
+
+  async function loadInformesPedidosOnline(desde, hasta) {
+    const cont = document.getElementById('inf-body') || document.getElementById('inf-resultado');
+    if (!cont) return;
+    cont.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:32px;text-align:center;"><span class="spin"></span><p style="margin-top:12px">Cargando pedidos online...</p></div>';
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`};
+    try {
+      // Traer todos los pedidos del período (filtramos por fecha local AR en cliente)
+      const url = `${SUPABASE_URL}/rest/v1/pedidos_online?empresa_id=eq.${empresaActual}&order=created_at.desc&limit=500&select=*`;
+      const r = await fetch(url, {headers:H2});
+      const todos = r.ok ? await r.json() : [];
+      // Filtrar por período en timezone AR
+      const pedidos = todos.filter(p => {
+        const f = new Date(p.created_at).toLocaleDateString('sv-SE', {timeZone:'America/Argentina/Buenos_Aires'});
+        return f >= desde && f <= hasta;
+      });
+
+      const tienda = pedidos.filter(p => p.tipo !== 'mayorista');
+      const mayor  = pedidos.filter(p => p.tipo === 'mayorista');
+
+      const ec={nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75',entregado:'#5a6070',cancelado:'#888'};
+      const el2={nuevo:'🆕 Nuevo',en_preparacion:'👨‍🍳 En prep.',listo:'✅ Listo',entregado:'📦 Entregado',cancelado:'❌ Cancelado'};
+
+      const sumTotal = arr => arr.reduce((s,p)=>s+(p.total_final||p.total||0),0);
+
+      const renderFila = p => {
+        const hora = new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
+        const items = Array.isArray(p.items)?p.items:[];
+        const nro = p.nro_pedido ? ('#'+String(p.nro_pedido).padStart(5,'0')) : '—';
+        const total = (p.total_final||p.total||0).toLocaleString('es-AR');
+        const pago = p.metodo_pago==='transfe'?'🏦 Transfe':'💵 Efect.';
+        const esPre = p.fecha_especial||(p.envio_plazo&&p.envio_plazo.startsWith('pre-pedido:'));
+        const itemsHtml = items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border)"><span>${it.cantidad}× ${it.prod_nombre||''} ${it.gusto_nombre?'('+it.gusto_nombre+')':''}</span><span>$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('');
+        return `<tr id="po-inf-row-${p.id}" style="border-top:1px solid var(--border);">
+          <td style="padding:8px 10px;font-size:12px;font-family:var(--mono);color:var(--accent)">${nro}</td>
+          <td style="padding:8px 10px;font-size:12px;color:var(--text-muted)">${hora}</td>
+          <td style="padding:8px 10px;font-size:13px;font-weight:600">${p.cliente_nombre||'—'}<div style="font-size:11px;color:var(--text-muted)">${p.cliente_tel||''}</div></td>
+          <td style="padding:8px 10px;font-size:12px;color:var(--text-muted)">${p.pdv_nombre||p.pdv_id||'—'}</td>
+          <td style="padding:8px 10px"><span style="padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;color:white;background:${ec[p.estado]||'#888'}">${el2[p.estado]||p.estado}</span>${esPre?'<span style="font-size:10px;color:#9333ea;font-weight:700;margin-left:4px">PRE</span>':''}</td>
+          <td style="padding:8px 10px;font-size:12px">${p.modalidad==='delivery'?'🛵':'🚶'} ${pago}</td>
+          <td style="padding:8px 10px;font-size:13px;font-weight:700;font-family:var(--mono)">$${total}</td>
+          <td style="padding:8px 10px;white-space:nowrap">
+            <button onclick="poInfVerDetalle('${p.id}')" style="padding:4px 8px;border-radius:7px;border:1px solid var(--border);background:none;color:var(--text);font-size:11px;cursor:pointer" title="Ver detalle">👁️</button>
+            <button onclick="poImprimirPedidoInf('${p.id}')" style="padding:4px 8px;border-radius:7px;border:1px solid var(--border);background:none;color:var(--text);font-size:11px;cursor:pointer;margin-left:3px" title="Imprimir">🖨️</button>
+            <button onclick="poInfEliminar('${p.id}')" style="padding:4px 8px;border-radius:7px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:11px;cursor:pointer;margin-left:3px" title="Eliminar">🗑️</button>
+          </td>
+          <td id="po-inf-detail-${p.id}" style="display:none;padding:0"></td>
+        </tr>
+        <tr id="po-inf-expand-${p.id}" style="display:none;border-top:none">
+          <td colspan="8" style="padding:10px 16px;background:var(--surface2)">
+            ${itemsHtml}
+            ${p.direccion?`<div style="font-size:12px;color:var(--text-muted);margin-top:6px">📍 ${p.direccion}</div>`:''}
+            ${p.motivo_cancelacion?`<div style="font-size:12px;color:#ff5a5a;margin-top:4px">❌ ${p.motivo_cancelacion}</div>`:''}
+          </td>
+        </tr>`;
+      };
+
+      const renderTabla = (arr, titulo, color) => {
+        if (!arr.length) return `<div style="font-size:13px;color:var(--text-muted);padding:12px 0">${titulo}: sin pedidos en el período</div>`;
+        const tot = sumTotal(arr).toLocaleString('es-AR');
+        const ent = arr.filter(p=>p.estado==='entregado').length;
+        const can = arr.filter(p=>p.estado==='cancelado').length;
+        return `
+        <div style="margin-bottom:28px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:800;color:${color}">${titulo}</span>
+            <span style="font-size:12px;color:var(--text-muted)">${arr.length} pedido${arr.length!==1?'s':''}</span>
+            <span style="font-size:12px;color:var(--accent);font-weight:700">Total $${tot}</span>
+            <span style="font-size:11px;color:#1D9E75">${ent} entregados</span>
+            ${can?`<span style="font-size:11px;color:#ff5a5a">${can} cancelados</span>`:''}
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr style="background:var(--surface2)">
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase">#</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase">Hora</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase">Cliente</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase">Sucursal</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase">Estado</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase">Modalidad / Pago</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase">Total</th>
+                <th style="padding:8px 10px"></th>
+              </tr></thead>
+              <tbody>${arr.map(renderFila).join('')}</tbody>
+            </table>
+          </div>
+        </div>`;
+      };
+
+      // Guardar los pedidos en window para acceso desde botones
+      window._poInfPedidos = pedidos;
+
+      const periodo = desde===hasta ? desde : `${desde} → ${hasta}`;
+      cont.innerHTML = `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:var(--text-muted)">📅 ${periodo} · ${pedidos.length} pedido${pedidos.length!==1?'s':''} en total · $${sumTotal(pedidos).toLocaleString('es-AR')}</div>
+        ${renderTabla(tienda,'🛍️ Pedidos Tienda','var(--accent)')}
+        ${renderTabla(mayor,'🏭 Pedidos Mayoristas','#1D9E75')}
+      `;
+    } catch(e) { cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`; }
+  }
+
+  window.poInfVerDetalle = function(id) {
+    const row = document.getElementById(`po-inf-expand-${id}`);
+    if (!row) return;
+    const visible = row.style.display !== 'none';
+    row.style.display = visible ? 'none' : 'table-row';
+  };
+
+  window.poImprimirPedidoInf = function(id) {
+    const p = (window._poInfPedidos||[]).find(x=>x.id===id);
+    if (!p) { toast('Pedido no encontrado','error'); return; }
+    const items = Array.isArray(p.items)?p.items:[];
+    const hora = new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
+    const nro = p.nro_pedido?('#'+String(p.nro_pedido).padStart(5,'0')):'';
+    const total = (p.total_final||p.total||0).toLocaleString('es-AR');
+    const pago = p.metodo_pago==='transfe'?'Transferencia':'Efectivo';
+    const modalidad = p.modalidad==='delivery'?'DELIVERY':'RETIRO EN LOCAL';
+    const esMay = p.tipo==='mayorista';
+    const esPre = p.fecha_especial||(p.envio_plazo&&p.envio_plazo.startsWith('pre-pedido:'));
+    let fechaLabel = '';
+    if (esPre && p.fecha_especial) {
+      fechaLabel = new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+      if (p.fecha_especial_nombre) fechaLabel = p.fecha_especial_nombre+' · '+fechaLabel;
+    } else {
+      const pl=p.envio_plazo||'';
+      fechaLabel = pl==='hoy'?'Hoy':pl==='mañana'?'Mañana':pl==='2-dias'?'En 2 días':pl;
+    }
+    const horario = p.envio_horario?p.envio_horario.replace('-',' a ')+' hs':'';
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:'Courier New',monospace;font-size:13px;width:80mm;margin:0 auto;padding:8px;color:#000}.centro{text-align:center}.linea{border-top:1px dashed #000;margin:6px 0}.grande{font-size:16px;font-weight:bold}.negrita{font-weight:bold}.item{display:flex;justify-content:space-between}@media print{body{margin:0;padding:4px}}</style></head><body>
+<div class="centro grande">MIGUEL ANGEL PASTAS</div>
+<div class="centro">${esMay?'PEDIDO MAYORISTA':'PEDIDO ONLINE'}</div>
+<div class="linea"></div>
+<div class="centro grande">${nro}</div>
+<div class="centro" style="font-size:11px">Recibido: ${hora}</div>
+<div class="linea"></div>
+<div class="negrita">${p.cliente_nombre||'Sin nombre'}</div>
+<div>📱 ${p.cliente_tel||''}</div>
+<div class="linea"></div>
+<div class="negrita">${modalidad}</div>
+${fechaLabel?`<div>${fechaLabel}</div>`:''}
+${horario?`<div>${horario}</div>`:''}
+${p.direccion?`<div>📍 ${p.direccion}</div>`:''}
+${esPre?'<div class="negrita">*** PRE-PEDIDO ***</div>':''}
+<div class="linea"></div>
+${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} ${it.gusto_nombre?'('+it.gusto_nombre+')':''}</span><span>$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
+<div class="linea"></div>
+<div class="item grande"><span>TOTAL</span><span>$${total}</span></div>
+<div class="negrita">Pago: ${pago}</div>
+<div class="linea"></div>
+<br><br>
+<script>window.onload=()=>window.print();<\/script></body></html>`;
+    const win = window.open('','_blank','width=400,height=600');
+    if(win){win.document.write(html);win.document.close();}
+  };
+
+  window.poInfEliminar = async function(id) {
+    if (!confirm('¿Eliminar este pedido definitivamente? Esta acción no se puede deshacer.')) return;
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${id}`,{method:'DELETE',headers:H2});
+      if (!r.ok) { toast('Error al eliminar: '+await r.text(),'error'); return; }
+      // Sacar la fila de la tabla sin recargar
+      document.getElementById(`po-inf-row-${id}`)?.remove();
+      document.getElementById(`po-inf-expand-${id}`)?.remove();
+      window._poInfPedidos = (window._poInfPedidos||[]).filter(x=>x.id!==id);
+      toast('🗑️ Pedido eliminado','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  };
 
   async function loadInformesClientes(range) {
     const body = document.getElementById('inf-body');
@@ -17604,6 +17774,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             +'<div style="font-size:13px;font-weight:700;color:'+pagoColor+'">'+pagoLabel+'</div>'
           +'</div>'
           +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+            +'<button onclick="poImprimirPedido(\'+p.id+\')" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text);font-size:13px;cursor:pointer" title="Imprimir comandera">🖨️</button>'
+
             +(sig[p.estado]?'<button onclick="poOpAvanzar(\''+p.id+'\',\''+sig[p.estado]+'\''+')" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">'+sigl[p.estado]+'</button>':'<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>')
             +(p.estado!=='cancelado'&&p.estado!=='entregado'?'<button onclick="poModalCancelar(\''+p.id+'\',\'op\')" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:13px;cursor:pointer" title="Cancelar pedido">✕ Cancelar</button>':'')
           +'</div>'
@@ -17611,6 +17783,64 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       +'</div>';
     }).join('');
   }
+
+  window.poImprimirPedido = function(id) {
+    const p = _poOpPedidos.find(x => x.id === id);
+    if (!p) { toast('Pedido no encontrado','error'); return; }
+    const items = Array.isArray(p.items) ? p.items : [];
+    const hora = new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const esPre = p.fecha_especial || (p.envio_plazo && p.envio_plazo.startsWith('pre-pedido:'));
+    let fechaLabel = '';
+    if (esPre && p.fecha_especial) {
+      fechaLabel = new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+      if (p.fecha_especial_nombre) fechaLabel = p.fecha_especial_nombre + ' · ' + fechaLabel;
+    } else {
+      const pl = p.envio_plazo || '';
+      fechaLabel = pl === 'hoy' ? 'Hoy' : pl === 'mañana' ? 'Mañana' : pl === '2-dias' ? 'En 2 días' : pl;
+    }
+    const horario = p.envio_horario ? p.envio_horario.replace('-',' a ') + ' hs' : '';
+    const pago = p.metodo_pago === 'transfe' ? 'Transferencia' : 'Efectivo';
+    const total = (p.total_final || p.total || 0).toLocaleString('es-AR');
+    const nro = p.nro_pedido ? ('#' + String(p.nro_pedido).padStart(5,'0')) : '';
+    const modalidad = p.modalidad === 'delivery' ? 'DELIVERY' : 'RETIRO EN LOCAL';
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  body { font-family: 'Courier New', monospace; font-size: 13px; width: 80mm; margin: 0 auto; padding: 8px; color: #000; }
+  .centro { text-align: center; }
+  .linea { border-top: 1px dashed #000; margin: 6px 0; }
+  .grande { font-size: 16px; font-weight: bold; }
+  .titulo { font-size: 15px; font-weight: bold; text-align: center; }
+  .item { display: flex; justify-content: space-between; }
+  .negrita { font-weight: bold; }
+  @media print { body { margin: 0; padding: 4px; } }
+</style>
+</head><body>
+<div class="centro grande">MIGUEL ANGEL PASTAS</div>
+<div class="centro">PEDIDO ONLINE</div>
+<div class="linea"></div>
+<div class="centro grande">${nro}</div>
+<div class="centro" style="font-size:11px">Recibido: ${hora}</div>
+<div class="linea"></div>
+<div class="negrita">${p.cliente_nombre || 'Sin nombre'}</div>
+<div>📱 ${p.cliente_tel || ''}</div>
+<div class="linea"></div>
+<div class="negrita">${modalidad}</div>
+${fechaLabel ? `<div>${fechaLabel}</div>` : ''}
+${horario ? `<div>${horario}</div>` : ''}
+${p.direccion ? `<div>📍 ${p.direccion}</div>` : ''}
+${esPre ? '<div class="negrita">*** PRE-PEDIDO ***</div>' : ''}
+<div class="linea"></div>
+${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${it.gusto_nombre ? '('+it.gusto_nombre+')' : ''}</span><span>$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
+<div class="linea"></div>
+<div class="item grande"><span>TOTAL</span><span>$${total}</span></div>
+<div class="negrita">Pago: ${pago}</div>
+<div class="linea"></div>
+<br><br>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`;
+    const win = window.open('','_blank','width=400,height=600');
+    if (win) { win.document.write(html); win.document.close(); }
+  };
 
   async function poOpAvanzar(id,nuevoEstado){
     const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
