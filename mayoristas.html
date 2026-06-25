@@ -1001,7 +1001,35 @@ async function init() {
 
   // === CONFIG MAYORISTA (columnas may_*) ===
   const mayoristaNroLista = cfg.may_nro_lista || 3;
-  const mayoristaListaKey = mayoristaNroLista === 1 ? 'precio' : `precio${mayoristaNroLista}`;
+
+  const [pdvsData, prodsData, gustosData, listaData, promosData] = await Promise.all([
+    sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre`),
+    sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria,foto_url`),
+    sbGet(`gustos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,producto_id,nombre`),
+    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,may_activo,online_activo,online_presentaciones`),
+    sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
+  ]);
+
+  // Leer __config__ para obtener los porcentajes de lista 2 y lista 3
+  const configRow = (listaData || []).find(r => r.prod_id === '__config__');
+  const pct2 = parseFloat(configRow?.datos?.pct2 || 0);
+  const pct3 = parseFloat(configRow?.datos?.pct3 || 0);
+  const pct4 = parseFloat(configRow?.datos?.pct4 || 0);
+
+  // Función para calcular precio según lista
+  function calcPrecioMay(g) {
+    const base = parsePrecioAR(g.precio);
+    if (!base) return 0;
+    if (mayoristaNroLista === 1) return base;
+    if (mayoristaNroLista === 2) return pct2 !== 0 ? Math.round(base * (1 + pct2/100)) : base;
+    if (mayoristaNroLista === 3) return pct3 !== 0 ? Math.round(base * (1 + pct3/100)) : base;
+    if (mayoristaNroLista === 4) {
+      // lista 4 puede estar guardada como precio4 directo en el JSON
+      const p4 = parsePrecioAR(g.precio4);
+      return p4 || (pct4 !== 0 ? Math.round(base * (1 + pct4/100)) : base);
+    }
+    return base;
+  }
 
   // Logo / nombre / header - usa may_* con fallback a config minorista
   const mayNombre = cfg.may_nombre || cfg.nombre || 'Miguel Angel Pastas';
@@ -1068,14 +1096,6 @@ async function init() {
   _waNumberCfg = mayWa.replace(/\D/g,'');
   document.getElementById('waLink').href = `https://wa.me/${_waNumberCfg}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido mayorista 🛒')}`;
 
-  const [pdvsData, prodsData, gustosData, listaData, promosData] = await Promise.all([
-    sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre`),
-    sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria,foto_url`),
-    sbGet(`gustos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,producto_id,nombre`),
-    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,may_activo,online_activo,online_presentaciones`),
-    sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
-  ]);
-
   // Filtrar PDVs por los habilitados en may_pdvs (con fallback a pdvs_online)
   const mayPdvsOnline = (cfg.may_pdvs || cfg.pdvs_online || []).map(String);
   const todosPdvs = pdvsData || [];
@@ -1086,21 +1106,19 @@ async function init() {
   gustos   = gustosData || [];
   promos   = promosData || [];
 
-  // Procesar lista_datos - MAYORISTAS: usa may_activo + precio de lista configurada
+  // Procesar lista_datos - MAYORISTAS: calcula precio según lista configurada
   listaDatos = {};
   (listaData || []).forEach(row => {
     if (!row.prod_id || row.prod_id.startsWith('SCHED_') || row.prod_id === '__config__') return;
     try {
       const d = typeof row.datos === 'string' ? JSON.parse(row.datos) : row.datos;
       const gustosRaw = d?.gustos || [];
-      // Para mayoristas, usar el precio de la lista configurada
+      // Calcular precio de mayorista para cada gusto
       const gustosArr = gustosRaw.map(g => {
-        const precioMay = g[mayoristaListaKey];
-        const precio = (precioMay !== undefined && precioMay !== null && precioMay !== '') ? precioMay : g.precio;
-        return { ...g, precio };
+        const precioCalculado = calcPrecioMay(g);
+        return { ...g, precio: precioCalculado || g.precio };
       });
-      // may_activo = gustos habilitados para mayoristas
-      // Si may_activo está vacío/null, usar online_activo como fallback
+      // may_activo con fallback a online_activo si nunca se configuró
       const mayActivoArr = Array.isArray(row.may_activo) && row.may_activo.length > 0
         ? row.may_activo
         : (Array.isArray(row.online_activo) ? row.online_activo : []);
