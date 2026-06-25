@@ -17775,10 +17775,10 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             +'<div style="font-size:13px;font-weight:700;color:'+pagoColor+'">'+pagoLabel+'</div>'
           +'</div>'
           +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-            +'<button onclick="poImprimirPedido(\'+p.id+\')" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text);font-size:13px;cursor:pointer" title="Imprimir comandera">🖨️</button>'
+            +`<button data-imprimir="${p.id}" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text);font-size:13px;cursor:pointer" title="Imprimir comandera">🖨️</button>`
 
-            +(sig[p.estado]?'<button onclick="poOpAvanzar(\''+p.id+'\',\''+sig[p.estado]+'\''+')" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">'+sigl[p.estado]+'</button>':'<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>')
-            +(p.estado!=='cancelado'&&p.estado!=='entregado'?'<button onclick="poModalCancelar(\''+p.id+'\',\'op\')" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:13px;cursor:pointer" title="Cancelar pedido">✕ Cancelar</button>':'')
+            +(sig[p.estado]?`<button data-avanzar="${p.id}" data-estado="${sig[p.estado]}" class="neg-stab-vertical" style="padding:10px 16px;font-size:14px">${sigl[p.estado]}</button>`:'<span style="font-size:13px;color:var(--text-muted)">✓ Completado</span>')
+            +(p.estado!=='cancelado'&&p.estado!=='entregado'?`<button data-cancelar="${p.id}" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,90,90,.4);background:none;color:#ff5a5a;font-size:13px;cursor:pointer" title="Cancelar pedido">✕ Cancelar</button>`:'')
           +'</div>'
         +'</div>'
       +'</div>';
@@ -17988,6 +17988,18 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     }catch(e){}
     poOpStartPolling();
   }
+  // Delegación de clicks en la lista de pedidos operador
+  (function(){
+    const lista = document.getElementById('po-op-lista');
+    if(!lista) return;
+    lista.addEventListener('click', function(e){
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      if(btn.dataset.imprimir){ poImprimirPedido(btn.dataset.imprimir); return; }
+      if(btn.dataset.avanzar){ poOpAvanzar(btn.dataset.avanzar, btn.dataset.estado); return; }
+      if(btn.dataset.cancelar){ poModalCancelar(btn.dataset.cancelar,'op'); return; }
+    });
+  })();
   // ══════════════════════════════════════ / PEDIDOS ONLINE ══
 
 </script>
