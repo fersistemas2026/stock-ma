@@ -1574,7 +1574,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               </div>
               <div>
                 <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Patrón / Trama</label>
-                <select id="po-header-trama" onchange="poPreviewTrama()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px">
+                <select id="po-header-trama" onchange="poPreviewTrama()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px;margin-bottom:6px">
                   <option value="">Sin trama</option>
                   <option value="dots">Puntos</option>
                   <option value="lines-h">Líneas horizontales</option>
@@ -1583,7 +1583,19 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                   <option value="waves">Ondas</option>
                   <option value="zigzag">Zigzag</option>
                   <option value="circles">Círculos</option>
+                  <option value="imagen">📷 Imagen personalizada</option>
                 </select>
+                <!-- Subir imagen de trama -->
+                <div id="po-trama-img-wrap" style="display:none">
+                  <input type="file" id="po-trama-img-file" accept="image/*" style="display:none" onchange="poPreviewTramaImg(this)">
+                  <button onclick="document.getElementById('po-trama-img-file').click()" class="btn-outline" style="font-size:12px;margin-bottom:4px;width:100%">📁 Elegir imagen de trama</button>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                    <img id="po-trama-img-preview" src="" style="width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid var(--border);display:none">
+                    <span id="po-trama-img-nombre" style="font-size:11px;color:var(--text-muted)"></span>
+                    <button id="po-trama-img-quitar" onclick="poQuitarTramaImg()" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px">✕</button>
+                  </div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px">JPG, PNG o WebP · Máx 1MB · Se repetirá como mosaico</div>
+                </div>
               </div>
             </div>
             <!-- Preview -->
@@ -16233,8 +16245,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if(colorEl)colorEl.value=c;
     if(colorVal)colorVal.textContent=c;
     if(tramaEl)tramaEl.value=t;
+    // Restaurar imagen de trama si existe
+    if(t==='imagen'&&_poTiendaConfig.header_trama_url){
+      window._poTramaImgUrl=_poTiendaConfig.header_trama_url;
+      const imgPrev=document.getElementById('po-trama-img-preview');
+      const nombre=document.getElementById('po-trama-img-nombre');
+      const quitar=document.getElementById('po-trama-img-quitar');
+      if(imgPrev){imgPrev.src=_poTiendaConfig.header_trama_url;imgPrev.style.display='block';}
+      if(nombre)nombre.textContent='Imagen guardada';
+      if(quitar)quitar.style.display='inline';
+    }
     poPreviewTrama();
   }
+
+  // Variable para guardar la URL de la imagen de trama subida
+  window._poTramaImgUrl = '';
 
   function poPreviewTrama(){
     const c=document.getElementById('po-header-color')?.value||'#ffffff';
@@ -16244,8 +16269,52 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const prev=document.getElementById('po-trama-preview');
     if(!prev)return;
     prev.style.background=c;
-    prev.style.backgroundImage=window.poGetTramaCSS(t,c);
-    prev.style.backgroundSize=window.poGetTramaBgSize(t);
+    // Mostrar/ocultar el bloque de subir imagen
+    const imgWrap=document.getElementById('po-trama-img-wrap');
+    if(imgWrap)imgWrap.style.display=t==='imagen'?'block':'none';
+    if(t==='imagen'){
+      if(window._poTramaImgUrl){
+        prev.style.backgroundImage=`url('${window._poTramaImgUrl}')`;
+        prev.style.backgroundSize='auto';
+        prev.style.backgroundRepeat='repeat';
+      } else {
+        prev.style.backgroundImage='none';
+      }
+    } else {
+      prev.style.backgroundImage=window.poGetTramaCSS(t,c);
+      prev.style.backgroundSize=window.poGetTramaBgSize(t);
+    }
+  }
+
+  function poPreviewTramaImg(input){
+    const file=input.files?.[0];
+    if(!file)return;
+    if(file.size>1024*1024){toast('La imagen de trama no puede superar 1MB');input.value='';return;}
+    const reader=new FileReader();
+    reader.onload=function(e){
+      window._poTramaImgUrl=e.target.result; // base64 temporal para preview
+      const imgPrev=document.getElementById('po-trama-img-preview');
+      const nombre=document.getElementById('po-trama-img-nombre');
+      const quitar=document.getElementById('po-trama-img-quitar');
+      if(imgPrev){imgPrev.src=e.target.result;imgPrev.style.display='block';}
+      if(nombre)nombre.textContent=file.name;
+      if(quitar)quitar.style.display='inline';
+      poPreviewTrama();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function poQuitarTramaImg(){
+    window._poTramaImgUrl='';
+    const input=document.getElementById('po-trama-img-file');
+    if(input)input.value='';
+    const imgPrev=document.getElementById('po-trama-img-preview');
+    const nombre=document.getElementById('po-trama-img-nombre');
+    const quitar=document.getElementById('po-trama-img-quitar');
+    if(imgPrev){imgPrev.src='';imgPrev.style.display='none';}
+    if(nombre)nombre.textContent='';
+    if(quitar)quitar.style.display='none';
+    poPreviewTrama();
   }
   window.poGetTramaCSS=function(trama,color){
     // Genera color de trama ligeramente más oscuro/claro según luminosidad
@@ -16354,7 +16423,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
     const header_color=document.getElementById('po-header-color')?.value||'#ffffff';
     const header_trama=document.getElementById('po-header-trama')?.value||'';
-    const payload={nombre,whatsapp:wa,logo_url,header_color,header_trama};
+    // Subir imagen de trama si fue seleccionada
+    let header_trama_url=_poTiendaConfig.header_trama_url||'';
+    if(header_trama==='imagen'){
+      const tramaFile=document.getElementById('po-trama-img-file')?.files?.[0];
+      if(tramaFile){
+        try{
+          toast('Subiendo imagen de trama...','success');
+          const ext=tramaFile.name.split('.').pop();
+          header_trama_url=await poSubirImagen(tramaFile,'empresa_'+empresaActual+'/trama.'+ext);
+        }catch(e){toast('Error al subir la trama: '+e.message);return;}
+      }
+    } else {
+      header_trama_url='';
+    }
+    const payload={nombre,whatsapp:wa,logo_url,header_color,header_trama,header_trama_url};
     const checkR=await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
     const ex=checkR.ok?await checkR.json():[];
     if(ex.length>0){
