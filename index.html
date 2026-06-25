@@ -16910,8 +16910,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       try {
         const d = typeof row.datos==='string'?JSON.parse(row.datos):row.datos;
         const gustos = d?.gustos||[];
-        const mayActivo = Array.isArray(row.may_activo) && row.may_activo.length > 0
-          ? row.may_activo.map(String)
+        const mayActivo = row.may_activo != null
+          ? (Array.isArray(row.may_activo) ? row.may_activo.map(String) : [])
           : (Array.isArray(row.online_activo) ? row.online_activo.map(String) : []);
         listaMap[String(row.prod_id)] = {gustos, mayActivo};
       } catch(e){}

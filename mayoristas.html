@@ -1149,9 +1149,9 @@ async function init() {
         const precioCalculado = calcPrecioMay(g);
         return { ...g, precio: precioCalculado || g.precio };
       });
-      // may_activo con fallback a online_activo si nunca se configuró
-      const mayActivoArr = Array.isArray(row.may_activo) && row.may_activo.length > 0
-        ? row.may_activo
+      // may_activo: si es null/undefined → fallback a online_activo. Si es [] → ninguno habilitado (intencional)
+      const mayActivoArr = row.may_activo != null
+        ? (Array.isArray(row.may_activo) ? row.may_activo : [])
         : (Array.isArray(row.online_activo) ? row.online_activo : []);
       const activosSet = new Set(mayActivoArr.map(String));
       const pres = row.online_presentaciones || {};
