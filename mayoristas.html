@@ -1208,8 +1208,13 @@ function selMode(el, mode) {
   document.getElementById('rowPlazo').style.display = 'block';
   selectedEnvio = 'manana';
   selEnvio('manana');
-  selHorario('manana');
   actualizarHorarios(mode);
+  // Seleccionar el turno disponible de la primera opción
+  const optsInit = calcularOpciones(mode);
+  const dia1Init = optsInit.dia1;
+  if (dia1Init.tarde.disponible) selHorario('tarde');
+  else if (dia1Init.manana.disponible) selHorario('manana');
+  else selHorario('tarde'); // fallback
 }
 
 function renderCatalogo() {
@@ -1577,35 +1582,12 @@ function calcularOpciones(mode) {
   const tDesde = h.tarde_desde || '16:30';
   const tHasta = h.tarde_hasta || '20:30';
   const tActivo = h.tarde_activo !== false;
-  const deliveryPlazo = h.delivery_plazo || 1;
+  const horaCorte = parseMin(h.hora_corte || '13:30');
+  const esDelivery = mode === 'delivery';
 
   const ahora = new Date();
-  const hoy = ahora.getDay(); // 0=Dom..6=Sáb
+  const hoy = ahora.getDay();
   const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
-  const esModoRetiro = mode === 'retiro';
-
-  // Avanzar días hasta encontrar uno habilitado
-  function proximoDia(desde, saltos) {
-    let d = desde;
-    for (let s = 0; s < saltos; s++) {
-      d = (d + 1) % 7;
-      // avanzar mientras el día no esté activo
-      let guard = 0;
-      while (!diasActivos.has(d) && guard++ < 7) d = (d + 1) % 7;
-    }
-    return d;
-  }
-
-  let diaNum1, diaNum2;
-  if (esModoRetiro) {
-    // Día 1: hoy si está activo, si no el próximo activo
-    diaNum1 = diasActivos.has(hoy) ? hoy : proximoDia(hoy, 1);
-    diaNum2 = proximoDia(diaNum1, 1);
-  } else {
-    // Delivery: el próximo día activo según plazo
-    diaNum1 = proximoDia(hoy, deliveryPlazo);
-    diaNum2 = proximoDia(diaNum1, 1);
-  }
 
   function parseMin(hhmm) {
     const [hh, mm] = (hhmm||'00:00').split(':').map(Number);
@@ -1617,43 +1599,80 @@ function calcularOpciones(mode) {
     return mm === '00' ? hh + ' hs' : hh + ':' + mm + ' hs';
   }
 
-  function opcionesHorario(diaNum, esHoy) {
+  function proximoDia(desde, saltos) {
+    let d = desde;
+    for (let s = 0; s < saltos; s++) {
+      d = (d + 1) % 7;
+      let guard = 0;
+      while (!diasActivos.has(d) && guard++ < 7) d = (d + 1) % 7;
+    }
+    return d;
+  }
+
+  const antesDelCorte = horaActual < horaCorte;
+
+  // Retiro: mínimo 24hs
+  // - Antes 13:30 → op1: mañana tarde / op2: pasado mañana mañana
+  // - Después 13:30 → op1: pasado mañana mañana / op2: pasado mañana tarde
+  //
+  // Delivery: mínimo 48hs
+  // - Antes 13:30 → op1: pasado mañana tarde / op2: en 3 días mañana
+  // - Después 13:30 → op1: en 3 días mañana / op2: en 3 días tarde
+
+  let diaNum1, diaNum2, turno1, turno2;
+
+  if (!esDelivery) {
+    // RETIRO — mínimo 24hs
+    if (antesDelCorte) {
+      diaNum1 = proximoDia(hoy, 1); turno1 = 'tarde';
+      diaNum2 = proximoDia(hoy, 2); turno2 = 'manana';
+    } else {
+      diaNum1 = proximoDia(hoy, 2); turno1 = 'manana';
+      diaNum2 = diaNum1;            turno2 = 'tarde';
+    }
+  } else {
+    // DELIVERY — mínimo 48hs
+    if (antesDelCorte) {
+      diaNum1 = proximoDia(hoy, 2); turno1 = 'tarde';
+      diaNum2 = proximoDia(hoy, 3); turno2 = 'manana';
+    } else {
+      diaNum1 = proximoDia(hoy, 3); turno1 = 'manana';
+      diaNum2 = diaNum1;            turno2 = 'tarde';
+    }
+  }
+
+  function opcionTurno(diaNum, turno) {
     const nombreDia = DIAS_NOMBRE[diaNum];
     const prefDia = nombreDia + ' · ';
     const diaHabilitado = diasActivos.has(diaNum);
-
-    // Turno mañana
-    const mVencido = esHoy && horaActual >= parseMin(mHasta);
-    const mananaDisponible = mActivo && diaHabilitado && !mVencido;
-    const labelManana = !diaHabilitado
-      ? ('🌤️ No disponible')
-      : !mActivo
-        ? ('🌤️ No disponible')
-        : mVencido
-          ? ('🌤️ No disponible (cerrado)')
-          : ('🌤️ ' + prefDia + formatHora(mDesde) + ' a ' + formatHora(mHasta));
-
-    // Turno tarde
-    const tVencido = esHoy && horaActual >= parseMin(tHasta);
-    const tardeDisponible = tActivo && diaHabilitado && !tVencido;
-    const labelTarde = !diaHabilitado
-      ? ('🌇 No disponible')
-      : !tActivo
-        ? ('🌇 No disponible')
-        : tVencido
-          ? ('🌇 No disponible (cerrado)')
-          : ('🌇 ' + prefDia + formatHora(tDesde) + ' a ' + formatHora(tHasta));
-
-    return {
-      manana: { label: labelManana, disponible: mananaDisponible, desde: mDesde, hasta: mHasta },
-      tarde:  { label: labelTarde,  disponible: tardeDisponible,  desde: tDesde, hasta: tHasta }
-    };
+    if (turno === 'manana') {
+      const disponible = mActivo && diaHabilitado;
+      const label = !diaHabilitado || !mActivo ? '🌤️ No disponible'
+        : '🌤️ ' + prefDia + formatHora(mDesde) + ' a ' + formatHora(mHasta);
+      return { label, disponible, desde: mDesde, hasta: mHasta };
+    } else {
+      const disponible = tActivo && diaHabilitado;
+      const label = !diaHabilitado || !tActivo ? '🌇 No disponible'
+        : '🌇 ' + prefDia + formatHora(tDesde) + ' a ' + formatHora(tHasta);
+      return { label, disponible, desde: tDesde, hasta: tHasta };
+    }
   }
 
+  const op1 = opcionTurno(diaNum1, turno1);
+  const op2 = opcionTurno(diaNum2, turno2);
+
+  const dia1 = {
+    manana: turno1 === 'manana' ? op1 : { label: '🌤️ No disponible', disponible: false, desde: mDesde, hasta: mHasta },
+    tarde:  turno1 === 'tarde'  ? op1 : { label: '🌇 No disponible', disponible: false, desde: tDesde, hasta: tHasta },
+  };
+  const dia2 = {
+    manana: turno2 === 'manana' ? op2 : { label: '🌤️ No disponible', disponible: false, desde: mDesde, hasta: mHasta },
+    tarde:  turno2 === 'tarde'  ? op2 : { label: '🌇 No disponible', disponible: false, desde: tDesde, hasta: tHasta },
+  };
+
   return {
-    dia1: opcionesHorario(diaNum1, esModoRetiro && diaNum1 === hoy),
-    dia2: opcionesHorario(diaNum2, false),
-    nombreDia1: (esModoRetiro && diaNum1 === hoy) ? 'Hoy' : DIAS_NOMBRE[diaNum1],
+    dia1, dia2,
+    nombreDia1: DIAS_NOMBRE[diaNum1],
     nombreDia2: DIAS_NOMBRE[diaNum2],
     deliveryActivo: h.delivery_activo !== false,
   };
@@ -1665,14 +1684,12 @@ function actualizarHorarios(mode) {
 
   // Plazo: siempre visible (tanto retiro como delivery)
   if (esDelivery) {
-    document.getElementById('labelPlazo').textContent = '¿Cuándo lo recibís?';
-    document.getElementById('label-envio-24').textContent = '📦 Mañana (' + opts.nombreDia1 + ')';
-    document.getElementById('label-envio-48').textContent = '📦 En 2 días (' + opts.nombreDia2 + ')';
+    document.getElementById('labelPlazo').textContent = '¿Cuándo lo recibís? (mín. 48hs)';
+    document.getElementById('label-envio-24').textContent = '📦 ' + opts.nombreDia1;
+    document.getElementById('label-envio-48').textContent = '📦 ' + opts.nombreDia2;
   } else {
-    document.getElementById('labelPlazo').textContent = '¿Cuándo retirás?';
-    document.getElementById('label-envio-24').textContent = opts.nombreDia1 === 'Hoy'
-      ? '🏃 Hoy (' + DIAS_NOMBRE[new Date().getDay()] + ')'
-      : '📅 ' + opts.nombreDia1;
+    document.getElementById('labelPlazo').textContent = '¿Cuándo retirás? (mín. 24hs)';
+    document.getElementById('label-envio-24').textContent = '📅 ' + opts.nombreDia1;
     document.getElementById('label-envio-48').textContent = '📅 ' + opts.nombreDia2;
   }
 
@@ -1804,8 +1821,17 @@ async function enviarPedido() {
     empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: tel,
     pdv_id: String(selectedPdv?.id||''), pdv_nombre: selectedPdv?.nombre||'',
     modalidad: selectedMode, direccion: dir||null,
-    envio_plazo: selectedFechaEsp ? ('fecha-especial:' + selectedFechaEsp.fecha) : (selectedEnvio==='manana'?(selectedMode==='retiro'?'hoy':'mañana'):(selectedMode==='retiro'?'mañana':'2-dias')),
-    envio_horario: selectedFechaEsp ? (selectedFechaEsp.desde + '-' + selectedFechaEsp.hasta) : (selectedHorario==='manana'?(selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta-13:30':'10:00-14:00'):'16:30-20:30'),
+    envio_plazo: selectedFechaEsp ? ('fecha-especial:' + selectedFechaEsp.fecha) : (() => {
+      const o = calcularOpciones(selectedMode);
+      const nd = selectedEnvio === 'pasado' ? o.nombreDia2 : o.nombreDia1;
+      return nd;
+    })(),
+    envio_horario: selectedFechaEsp ? (selectedFechaEsp.desde + '-' + selectedFechaEsp.hasta) : (() => {
+      const o = calcularOpciones(selectedMode);
+      const dOpts = selectedEnvio === 'pasado' ? o.dia2 : o.dia1;
+      const turno = selectedHorario === 'manana' ? dOpts.manana : dOpts.tarde;
+      return turno.desde + '-' + turno.hasta;
+    })(),
     fecha_especial: selectedFechaEsp ? selectedFechaEsp.fecha : null,
     fecha_especial_nombre: selectedFechaEsp ? selectedFechaEsp.nombre : null,
     items,
@@ -1850,13 +1876,10 @@ async function enviarPedido() {
     } else {
       const opts = calcularOpciones(selectedMode);
       const nombreDia = selectedEnvio==='pasado' ? opts.nombreDia2 : opts.nombreDia1;
-      const horarioLabel = selectedHorario==='manana'
-        ? (selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta las 13:30 hs':'10:00 a 14:00 hs')
-        : '16:30 a 20:30 hs';
-      const plazoLabel = selectedMode==='delivery'
-        ? (selectedEnvio==='manana'?'Mañana':'En 2 días')
-        : (selectedEnvio==='manana'?'Hoy':'Mañana');
-      entregaRows += `<div class="success-row"><span class="success-row-label">Cuándo</span><span class="success-row-val">${plazoLabel} (${nombreDia})</span></div>`;
+      const dOpts = selectedEnvio==='pasado' ? opts.dia2 : opts.dia1;
+      const turno = selectedHorario==='manana' ? dOpts.manana : dOpts.tarde;
+      const horarioLabel = turno.desde.replace(':00','') + ' a ' + turno.hasta.replace(':00','') + ' hs';
+      entregaRows += `<div class="success-row"><span class="success-row-label">Cuándo</span><span class="success-row-val">${nombreDia}</span></div>`;
       entregaRows += `<div class="success-row"><span class="success-row-label">Horario</span><span class="success-row-val">${horarioLabel}</span></div>`;
     }
     entregaRows += `<div class="success-row"><span class="success-row-label">Pago</span><span class="success-row-val">${selectedPay==='transfe'?'💳 Transferencia':'💵 Efectivo'}</span></div>`;
@@ -1890,9 +1913,10 @@ async function enviarPedido() {
     } else {
       const opts2 = calcularOpciones(selectedMode);
       const nd = selectedEnvio==='pasado'?opts2.nombreDia2:opts2.nombreDia1;
-      const hl = selectedHorario==='manana'?(selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta 13:30hs':'10:00-14:00hs'):'16:30-20:30hs';
-      const pl = selectedMode==='delivery'?(selectedEnvio==='manana'?'Mañana':'En 2 días'):(selectedEnvio==='manana'?'Hoy':'Mañana');
-      waResumen += `📦 ${pl} (${nd}) · ${hl}\n`;
+      const dOpts2 = selectedEnvio==='pasado'?opts2.dia2:opts2.dia1;
+      const turno2 = selectedHorario==='manana'?dOpts2.manana:dOpts2.tarde;
+      const hl = turno2.desde + '-' + turno2.hasta + 'hs';
+      waResumen += `📦 ${nd} · ${hl}\n`;
     }
     waResumen += selectedMode==='delivery' ? `🛵 Delivery a ${dir}\n` : `🚶 Retiro en local\n`;
     waResumen += `💳 Pago: ${selectedPay==='transfe'?'Transferencia':'Efectivo'}\n`;
