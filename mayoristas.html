@@ -297,6 +297,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="form-hint">Con tu celular accedés a descuentos y promociones</div>
         </div>
         <div id=\"clienteBanner\"></div>
+
+        <!-- Datos de facturación (mayoristas) -->
+        <div class="slabel">Facturación <span style="font-size:11px;font-weight:400;color:var(--text3)">(opcional)</span></div>
+        <div class="form-row">
+          <label class="form-label">Tipo de factura</label>
+          <div style="display:flex;gap:8px;">
+            <div class="pay-opt active" id="fact-cf" onclick="selFactura('CF')" style="flex:1;padding:10px 12px;">
+              <div class="pay-radio" id="radio-fact-cf" style="background:var(--primary);border-color:var(--primary)"></div>
+              <span>Consumidor Final</span>
+            </div>
+            <div class="pay-opt" id="fact-b" onclick="selFactura('B')" style="flex:1;padding:10px 12px;">
+              <div class="pay-radio" id="radio-fact-b"></div>
+              <span>Factura B</span>
+            </div>
+            <div class="pay-opt" id="fact-a" onclick="selFactura('A')" style="flex:1;padding:10px 12px;">
+              <div class="pay-radio" id="radio-fact-a"></div>
+              <span>Factura A</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-row" id="rowCuit" style="display:none">
+          <label class="form-label">CUIT / CUIL</label>
+          <input class="form-input" type="text" placeholder="Ej: 20-12345678-9" id="inCuit" maxlength="13">
+          <div class="form-hint">Necesario para factura A o B</div>
+        </div>
+
         <div id="addressRow" style="display:none">
           <div class="form-row">
             <label class="form-label">Dirección de entrega</label>
@@ -359,6 +385,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="modal-header-info">
         <div class="modal-title" id="modalTitle"></div>
         <div class="modal-desc" id="modalDesc"></div>
+        <div style="font-size:11px;font-weight:700;color:#1D9E75;background:rgba(29,158,117,.1);border-radius:6px;padding:4px 10px;display:inline-block">🏭 Mínimo 5 unidades por sabor</div>
         <div class="modal-subtotal-inline">
           <span class="modal-subtotal-label">Subtotal</span>
           <span class="modal-subtotal-amt" id="modalSubtotal">$0</span>
@@ -515,6 +542,7 @@ let _waNumberCfg = WA_NUMBER;
 // prodId → { gustos: [{gid, nombre, precio}], activosSet: Set<gid> }
 let listaDatos = {};
 let selectedPdv = null, selectedMode = 'retiro', selectedPay = 'efectivo', selectedEnvio = 'manana', selectedHorario = 'manana';
+let selectedFactura = 'CF'; // CF = Consumidor Final, A = Factura A, B = Factura B
 let _fechasEspeciales = []; // fechas especiales desde Supabase
 let selectedFechaEsp = null; // fecha especial seleccionada {fecha, nombre, desde, hasta, ...}
 let cart = {}; // prodId → { gustoId → qty }
@@ -906,7 +934,10 @@ window.selFechaEsp = function(idx) {
       if (esFechaEsp) waMsgPrp += `🎉 ${_prpFechaSeleccionada.nombre} · ${fechaFmt} · ${horarioDesde}-${horarioHasta}hs\n`;
       else waMsgPrp += `📅 ${fechaFmt} · ${horarioLabel}\n`;
       waMsgPrp += _prpModo==='delivery' ? `🛵 Delivery a ${dir}\n` : `🚶 Retiro en local\n`;
-      waMsgPrp += `💳 Pago: ${_prpPay==='transfe'?'Transferencia':'Efectivo'}\n\n*Detalle:*\n`;
+      waMsgPrp += `💳 Pago: ${_prpPay==='transfe'?'Transferencia':'Efectivo'}\n`;
+      const cuitPrp = document.getElementById('inCuit')?.value.trim()||'';
+      if (selectedFactura !== 'CF' || cuitPrp) waMsgPrp += `🧾 Factura ${selectedFactura}${cuitPrp?' · CUIT: '+cuitPrp:''}\n`;
+      waMsgPrp += `\n*Detalle:*\n`;
       entriesPrp.forEach(([pid,gm]) => {
         const prod = productos.find(p=>String(p.id)===String(pid));
         Object.entries(gm).filter(([,q])=>q>0).forEach(([gid,q]) => {
@@ -1333,8 +1364,19 @@ function abrirModal(prodId) {
   document.getElementById('overlay').classList.add('open');
 }
 
+const MAY_MIN_UNIDADES = 5; // Mínimo de unidades por gusto en tienda mayorista
+
 function chgGusto(gid, delta) {
-  modalQtys[gid] = Math.max(0, (modalQtys[gid]||0) + delta);
+  const actual = modalQtys[gid] || 0;
+  if (delta > 0 && actual === 0) {
+    // Primera unidad: salta directo a mínimo
+    modalQtys[gid] = MAY_MIN_UNIDADES;
+  } else if (delta < 0 && actual > 0 && actual <= MAY_MIN_UNIDADES) {
+    // Bajar del mínimo = quitar todo
+    modalQtys[gid] = 0;
+  } else {
+    modalQtys[gid] = Math.max(0, actual + delta);
+  }
   const el = document.getElementById('fq-' + gid);
   if (el) el.textContent = modalQtys[gid];
   actualizarModalSubtotal();
@@ -1696,6 +1738,22 @@ function selPay(m) {
   });
 }
 
+function selFactura(tipo) {
+  selectedFactura = tipo;
+  ['CF','B','A'].forEach(x => {
+    const btn = document.getElementById('fact-'+x.toLowerCase());
+    const radio = document.getElementById('radio-fact-'+x.toLowerCase());
+    if (btn) btn.classList.toggle('active', x===tipo);
+    if (radio) {
+      radio.style.background = x===tipo ? 'var(--primary)' : '';
+      radio.style.borderColor = x===tipo ? 'var(--primary)' : '';
+    }
+  });
+  // Mostrar campo CUIT solo si pide factura A o B
+  const rowCuit = document.getElementById('rowCuit');
+  if (rowCuit) rowCuit.style.display = (tipo==='A'||tipo==='B') ? 'block' : 'none';
+}
+
 let telBusquedaTimeout = null;
 async function onTelInput() {
   const tel = document.getElementById('inTel').value.trim().replace(/\s/g,'');
@@ -1719,6 +1777,7 @@ async function enviarPedido() {
   const nombre = document.getElementById('inNombre').value.trim();
   const tel    = document.getElementById('inTel').value.trim();
   const dir    = document.getElementById('inDir').value.trim();
+  const cuit   = document.getElementById('inCuit')?.value.trim() || '';
   if (!nombre) { toast('Ingresá tu nombre'); return; }
   if (!tel)    { toast('Ingresá tu celular'); return; }
   if (selectedMode === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
@@ -1737,6 +1796,10 @@ async function enviarPedido() {
   });
 
   const total = getCartTotal();
+  // Datos de facturación opcionales
+  const facturacion = selectedFactura !== 'CF' || cuit
+    ? { tipo: selectedFactura, cuit: cuit || null }
+    : null;
   const pedido = {
     empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: tel,
     pdv_id: String(selectedPdv?.id||''), pdv_nombre: selectedPdv?.nombre||'',
@@ -1747,7 +1810,8 @@ async function enviarPedido() {
     fecha_especial_nombre: selectedFechaEsp ? selectedFechaEsp.nombre : null,
     items,
     total, total_final: total, descuento: 0,
-    metodo_pago: selectedPay, estado: 'nuevo', origen: 'online', tipo: 'mayorista'
+    metodo_pago: selectedPay, estado: 'nuevo', origen: 'online', tipo: 'mayorista',
+    notas: facturacion ? `Factura ${facturacion.tipo}${facturacion.cuit ? ' · CUIT: '+facturacion.cuit : ''}` : null
   };
 
   try {
@@ -1831,8 +1895,9 @@ async function enviarPedido() {
       waResumen += `📦 ${pl} (${nd}) · ${hl}\n`;
     }
     waResumen += selectedMode==='delivery' ? `🛵 Delivery a ${dir}\n` : `🚶 Retiro en local\n`;
-    waResumen += `💳 Pago: ${selectedPay==='transfe'?'Transferencia':'Efectivo'}\n\n`;
-    waResumen += `*Detalle:*\n`;
+    waResumen += `💳 Pago: ${selectedPay==='transfe'?'Transferencia':'Efectivo'}\n`;
+    if (facturacion) waResumen += `🧾 Factura ${facturacion.tipo}${facturacion.cuit ? ' · CUIT: '+facturacion.cuit : ''}\n`;
+    waResumen += `\n*Detalle:*\n`;
     items.forEach(it => { waResumen += `• ${it.prod_nombre} ${it.gusto_nombre} x${it.cantidad} = $${(it.precio*it.cantidad).toLocaleString('es-AR')}\n`; });
     waResumen += `\n💰 *Total: $${total.toLocaleString('es-AR')}*\n`;
     waResumen += `\n👤 ${nombre} · ${tel}`;
@@ -1862,6 +1927,10 @@ function resetApp() {
   document.getElementById('inNombre').value = '';
   document.getElementById('inTel').value = '';
   document.getElementById('inDir').value = '';
+  // Reset datos de facturación
+  const cuitEl = document.getElementById('inCuit');
+  if (cuitEl) cuitEl.value = '';
+  selFactura('CF'); // resetear a Consumidor Final
   // Rehabilitar botón enviar
   const btnEnviar = document.getElementById('btnEnviar');
   if (btnEnviar) { btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar pedido 🚀'; }
