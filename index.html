@@ -7411,16 +7411,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     try {
       const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
-      // Intentar UPDATE primero, si no existe INSERT
+      // Leer may_activo y online_activo actuales antes de borrar
+      const existR = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}&select=may_activo,online_activo,online_presentaciones`, {headers:H});
+      const existD = existR.ok ? await existR.json() : [];
+      const prevMayActivo = existD[0]?.may_activo ?? null;
+      const prevOnlineActivo = existD[0]?.online_activo ?? null;
+      const prevOnlinePres = existD[0]?.online_presentaciones ?? null;
+      // Borrar e insertar preservando campos de activación
       const delRes = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}`, { method: 'DELETE', headers: H });
       const pct2 = parseFloat(document.getElementById('lista-pct2').value)||0;
       const pct3 = parseFloat(document.getElementById('lista-pct3').value)||0;
       const titulo = document.getElementById('lista-titulo').value.trim();
+      const newRow = { empresa_id: String(empresaActual), prod_id: String(prodId), datos: { gustos: datos, pct }, updated_at: new Date().toISOString() };
+      if (prevMayActivo !== null) newRow.may_activo = prevMayActivo;
+      if (prevOnlineActivo !== null) newRow.online_activo = prevOnlineActivo;
+      if (prevOnlinePres !== null) newRow.online_presentaciones = prevOnlinePres;
 
       const res = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos`, {
         method: 'POST',
         headers: { ...H, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ empresa_id: String(empresaActual), prod_id: String(prodId), datos: { gustos: datos, pct }, updated_at: new Date().toISOString() })
+        body: JSON.stringify(newRow)
       });
       if (!res.ok) throw new Error(await res.text());
 
