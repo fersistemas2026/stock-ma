@@ -1677,7 +1677,7 @@ function actualizarHorarios(mode) {
   }
 
   // Horario según plazo seleccionado
-  const diaOpts = (esDelivery && selectedEnvio === 'pasado') ? opts.dia2 : opts.dia1;
+  const diaOpts = selectedEnvio === 'pasado' ? opts.dia2 : opts.dia1;
   if (!diaOpts) return;
 
   // Label del bloque
