@@ -1072,7 +1072,7 @@ async function init() {
     sbGet(`pdvs?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre`),
     sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria,foto_url`),
     sbGet(`gustos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,producto_id,nombre`),
-    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,may_activo,online_presentaciones`),
+    sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,may_activo,online_activo,online_presentaciones`),
     sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
   ]);
 
@@ -1099,9 +1099,12 @@ async function init() {
         const precio = (precioMay !== undefined && precioMay !== null && precioMay !== '') ? precioMay : g.precio;
         return { ...g, precio };
       });
-      // may_activo = array de gustoIds habilitados para mayoristas (independiente de online_activo)
-      const activosArr = Array.isArray(row.may_activo) ? row.may_activo : [];
-      const activosSet = new Set(activosArr.map(String));
+      // may_activo = gustos habilitados para mayoristas
+      // Si may_activo está vacío/null, usar online_activo como fallback
+      const mayActivoArr = Array.isArray(row.may_activo) && row.may_activo.length > 0
+        ? row.may_activo
+        : (Array.isArray(row.online_activo) ? row.online_activo : []);
+      const activosSet = new Set(mayActivoArr.map(String));
       const pres = row.online_presentaciones || {};
       listaDatos[String(row.prod_id)] = { gustos: gustosArr, activosSet, pres };
     } catch(e) {}
