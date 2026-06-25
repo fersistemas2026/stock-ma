@@ -1560,6 +1560,44 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               </div>
             </div>
           </div>
+          <!-- Trama y color del header -->
+          <div style="margin-top:14px">
+            <label style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:block">Fondo del encabezado en tienda</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Color de fondo</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="color" id="po-header-color" value="#ffffff" style="width:40px;height:34px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px;background:var(--surface2)">
+                  <span id="po-header-color-val" style="font-size:12px;color:var(--text-muted)">#ffffff</span>
+                  <button onclick="document.getElementById('po-header-color').value='#ffffff';document.getElementById('po-header-color-val').textContent='#ffffff';poPreviewTrama()" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--text-muted)">Reset</button>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Patrón / Trama</label>
+                <select id="po-header-trama" onchange="poPreviewTrama()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:13px">
+                  <option value="">Sin trama</option>
+                  <option value="dots">Puntos</option>
+                  <option value="lines-h">Líneas horizontales</option>
+                  <option value="lines-d">Líneas diagonales</option>
+                  <option value="grid">Cuadrícula</option>
+                  <option value="waves">Ondas</option>
+                  <option value="zigzag">Zigzag</option>
+                  <option value="circles">Círculos</option>
+                </select>
+              </div>
+            </div>
+            <!-- Preview -->
+            <div style="margin-top:10px">
+              <label style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Vista previa</label>
+              <div id="po-trama-preview" style="height:70px;border-radius:10px;border:1px solid var(--border);display:flex;align-items:center;padding:10px 14px;gap:10px;transition:all .3s">
+                <div style="width:44px;height:44px;border-radius:8px;background:rgba(0,0,0,0.1);flex-shrink:0"></div>
+                <div>
+                  <div style="font-size:14px;font-weight:700;color:#333">Nombre tienda</div>
+                  <div style="font-size:11px;color:#666">Pedidos online</div>
+                </div>
+              </div>
+            </div>
+          </div>
           <button onclick="poGuardarTiendaConfig()" class="btn-primary" style="margin-top:14px;width:100%;font-size:13px">💾 Guardar configuración</button>
         </div>
       </div>
@@ -16186,7 +16224,54 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if(prev){prev.src=_poTiendaConfig.logo_url;prev.style.display='block';}
       if(ph)ph.style.display='none';
     }
+    // Cargar trama y color
+    const colorEl=document.getElementById('po-header-color');
+    const tramaEl=document.getElementById('po-header-trama');
+    const colorVal=document.getElementById('po-header-color-val');
+    const c=_poTiendaConfig.header_color||'#ffffff';
+    const t=_poTiendaConfig.header_trama||'';
+    if(colorEl)colorEl.value=c;
+    if(colorVal)colorVal.textContent=c;
+    if(tramaEl)tramaEl.value=t;
+    poPreviewTrama();
   }
+
+  function poPreviewTrama(){
+    const c=document.getElementById('po-header-color')?.value||'#ffffff';
+    const t=document.getElementById('po-header-trama')?.value||'';
+    const valEl=document.getElementById('po-header-color-val');
+    if(valEl)valEl.textContent=c;
+    const prev=document.getElementById('po-trama-preview');
+    if(!prev)return;
+    prev.style.background=c;
+    prev.style.backgroundImage=window.poGetTramaCSS(t,c);
+    prev.style.backgroundSize=window.poGetTramaBgSize(t);
+  }
+  window.poGetTramaCSS=function(trama,color){
+    // Genera color de trama ligeramente más oscuro/claro según luminosidad
+    const hex=color.replace('#','');
+    const r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);
+    const lum=0.299*r+0.587*g+0.114*b;
+    const tc=lum>128?'rgba(0,0,0,0.12)':'rgba(255,255,255,0.15)';
+    if(trama==='dots')return`radial-gradient(circle,${tc} 1.5px,transparent 1.5px)`;
+    if(trama==='lines-h')return`repeating-linear-gradient(0deg,${tc},${tc} 1px,transparent 1px,transparent 18px)`;
+    if(trama==='lines-d')return`repeating-linear-gradient(45deg,${tc},${tc} 1px,transparent 1px,transparent 18px)`;
+    if(trama==='grid')return`repeating-linear-gradient(0deg,${tc},${tc} 1px,transparent 1px,transparent 20px),repeating-linear-gradient(90deg,${tc},${tc} 1px,transparent 1px,transparent 20px)`;
+    if(trama==='waves')return`repeating-radial-gradient(ellipse at 0 50%,transparent 8px,${tc} 9px,transparent 10px)`;
+    if(trama==='zigzag')return`linear-gradient(135deg,${tc} 25%,transparent 25%),linear-gradient(225deg,${tc} 25%,transparent 25%),linear-gradient(315deg,${tc} 25%,transparent 25%),linear-gradient(45deg,${tc} 25%,transparent 25%)`;
+    if(trama==='circles')return`radial-gradient(circle at 50% 50%,transparent 8px,${tc} 9px,transparent 10px)`;
+    return'none';
+  };
+  window.poGetTramaBgSize=function(trama){
+    if(trama==='dots')return'20px 20px';
+    if(trama==='lines-h')return'100% 18px';
+    if(trama==='lines-d')return'25px 25px';
+    if(trama==='grid')return'20px 20px';
+    if(trama==='waves')return'30px 20px';
+    if(trama==='zigzag')return'20px 20px';
+    if(trama==='circles')return'24px 24px';
+    return'auto';
+  };
 
   function poPreviewLogo(input){
     if(!input.files||!input.files[0])return;
@@ -16267,7 +16352,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         logo_url=await poSubirImagen(logoFile,'empresa_'+empresaActual+'/logo.'+ext);
       }catch(e){toast('Error al subir el logo: '+e.message);return;}
     }
-    const payload={nombre,whatsapp:wa,logo_url};
+    const header_color=document.getElementById('po-header-color')?.value||'#ffffff';
+    const header_trama=document.getElementById('po-header-trama')?.value||'';
+    const payload={nombre,whatsapp:wa,logo_url,header_color,header_trama};
     const checkR=await fetch(`${SUPABASE_URL}/rest/v1/tienda_config?id=eq.1&empresa_id=eq.${empresaActual}`,{headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`}});
     const ex=checkR.ok?await checkR.json():[];
     if(ex.length>0){

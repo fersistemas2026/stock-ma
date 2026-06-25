@@ -978,6 +978,31 @@ async function init() {
   const cfg = cfgData?.[0] || {};
   if (cfg.nombre) document.getElementById('headerNombre').textContent = cfg.nombre;
   if (cfg.logo_url && logoImg) logoImg.src = cfg.logo_url;
+  // Trama y color del header
+  (function() {
+    const header = document.querySelector('.header');
+    if (!header) return;
+    const c = cfg.header_color || '#ffffff';
+    const t = cfg.header_trama || '';
+    header.style.backgroundColor = c;
+    if (t && t !== '') {
+      const hex = c.replace('#','');
+      const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      const tc = lum > 128 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)';
+      const bgMap = {
+        'dots': { img: `radial-gradient(circle,${tc} 1.5px,transparent 1.5px)`, size: '20px 20px' },
+        'lines-h': { img: `repeating-linear-gradient(0deg,${tc},${tc} 1px,transparent 1px,transparent 18px)`, size: '100% 18px' },
+        'lines-d': { img: `repeating-linear-gradient(45deg,${tc},${tc} 1px,transparent 1px,transparent 18px)`, size: '25px 25px' },
+        'grid': { img: `repeating-linear-gradient(0deg,${tc},${tc} 1px,transparent 1px,transparent 20px),repeating-linear-gradient(90deg,${tc},${tc} 1px,transparent 1px,transparent 20px)`, size: '20px 20px' },
+        'waves': { img: `repeating-radial-gradient(ellipse at 0 50%,transparent 8px,${tc} 9px,transparent 10px)`, size: '30px 20px' },
+        'zigzag': { img: `linear-gradient(135deg,${tc} 25%,transparent 25%),linear-gradient(225deg,${tc} 25%,transparent 25%),linear-gradient(315deg,${tc} 25%,transparent 25%),linear-gradient(45deg,${tc} 25%,transparent 25%)`, size: '20px 20px' },
+        'circles': { img: `radial-gradient(circle at 50% 50%,transparent 8px,${tc} 9px,transparent 10px)`, size: '24px 24px' }
+      };
+      const bg = bgMap[t];
+      if (bg) { header.style.backgroundImage = bg.img; header.style.backgroundSize = bg.size; }
+    }
+  })();
   // Slider
   sliderInit(cfg.slider_imagenes || []);
   // Horarios desde config
