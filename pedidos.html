@@ -913,6 +913,13 @@ window.selFechaEsp = function(idx) {
       waMsgPrp += `\n💰 *Total: $${total.toLocaleString('es-AR')}*\n👤 ${nombre} · ${tel}`;
       document.getElementById('successWaBtn').href = `https://wa.me/${waNPrp}?text=${encodeURIComponent(waMsgPrp)}`;
 
+      // Limpiar carrito tras pre-pedido
+      Object.keys(cart).forEach(k => delete cart[k]);
+      actualizarBadge(); actualizarCartIndicators();
+      // Ocultar botón "Hacer otro pedido" en pre-pedido (solo queda WhatsApp)
+      const newBtn = document.querySelector('.success-new-btn');
+      if (newBtn) newBtn.style.display = 'none';
+
       document.getElementById('successScreen').classList.add('visible');
       window.scrollTo({top:0, behavior:'smooth'});
     } catch(e) {
@@ -1796,6 +1803,9 @@ async function enviarPedido() {
 }
 
 function resetApp() {
+  // Restaurar botón "Hacer otro pedido" (puede haber sido ocultado por pre-pedido)
+  const newBtn = document.querySelector('.success-new-btn');
+  if (newBtn) newBtn.style.display = '';
   Object.keys(cart).forEach(k=>delete cart[k]);
   clienteData = null;
   actualizarBadge(); actualizarCartIndicators();
