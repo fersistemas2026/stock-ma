@@ -15693,7 +15693,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         const renderTop5Rows = (top5) => {
           let rows = '';
           top5.forEach((p, i) => {
-            const gustosOrds = Object.values(p.gustos).sort((a,b) => b.cant - a.cant);
+            const gustosOrds = Object.values(p.gustos||{}).sort((a,b) => b.cant - a.cant);
             let gustoSpans = '';
             gustosOrds.slice(0,5).forEach(g => {
               gustoSpans += '<span style="display:inline-block;margin-right:8px;">' + g.nombre + ': <b>' + (Number.isInteger(g.cant) ? g.cant : g.cant.toFixed(1)) + '</b> &middot; ' + fmtARS(g.facturacion) + '</span>';
