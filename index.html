@@ -10749,7 +10749,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
       // Construir tabla
       let html = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-        <span style="font-size:13px;color:var(--text-muted);">${clientes.length} cliente${clientes.length!==1?'s':''} registrados</span>
+        <span id="clientes-contador" style="font-size:13px;color:var(--text-muted);">${clientes.length} cliente${clientes.length!==1?'s':''} registrados</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <input type="text" id="clientes-search" placeholder="🔍 Buscar..." oninput="filtrarClientes()"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);outline:none;width:180px;" />
@@ -10966,6 +10966,20 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     }
 
     tbody.innerHTML = renderClientesFilas(clientes);
+    const cont = document.getElementById('clientes-contador');
+    if (cont) {
+      const total = (window._clientesData||[]).length;
+      const filtrado = clientes.length;
+      const pdvFiltroActivo = document.getElementById('clientes-filtro-pdv')?.value || '';
+      const pdvNombre = pdvFiltroActivo ? (window._clientesPdvs||[]).find(p=>String(p.id)===String(pdvFiltroActivo))?.nombre || '' : '';
+      if (filtrado === total) {
+        cont.textContent = `${total} cliente${total!==1?'s':''} registrados`;
+        cont.style.color = 'var(--text-muted)';
+      } else {
+        cont.innerHTML = `<span style="color:var(--accent);font-weight:700;">${filtrado}</span> de ${total} cliente${total!==1?'s':''}${pdvNombre ? ` \u00b7 \uD83C\uDFEA ${pdvNombre}` : ''}`;
+        cont.style.color = 'var(--text-muted)';
+      }
+    }
   }
 
   function exportarClientesExcel() {
