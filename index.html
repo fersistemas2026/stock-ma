@@ -15478,14 +15478,15 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (!body) return;
     body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
     try {
-      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw] = await Promise.all([
+      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas] = await Promise.all([
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,cliente_tel,ticket_id,created_at&limit=200000`) || [],
         getPdv(),
         sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,pdv_id,telefono,created_at&order=created_at.asc&limit=50000`) || [],
         sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto,created_at`) || [],
         sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,reporte_z,efectivo,tarjetas&order=fecha.asc`) || [],
         sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || [],
-        sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || []
+        sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || [],
+        sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio`) || []
       ]);
 
       if (!ventas.length) {
@@ -15547,7 +15548,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
       // Función que renderiza las métricas de los PDVs seleccionados
       const todasMetas = metasRaw.length ? (metasRaw[0].datos || []) : [];
-      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas };
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[] };
       window._pdvMetricasActivos = 'all';
 
       window.pdvMetricasSelAll = function() {
@@ -15577,7 +15578,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       };
 
       window.renderPdvMetricas = function(ids) {
-        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas } = window._pdvMetricasData;
+        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas } = window._pdvMetricasData;
         const contenido = document.getElementById('pdvm-contenido');
         if (!contenido) return;
 
@@ -15678,13 +15679,24 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           });
           const clsPromCompra = clsConCompra > 0 ? clsGastado / clsConCompra : 0;
 
+          // ── Visitas tienda ──
+          const visitasFiltradas = (visitas||[]).filter(v => pdvId === 'all' || String(v.pdv_id) === String(pdvId));
+          const visitasPed = visitasFiltradas.filter(v => v.pagina === 'pedidos').length;
+          const visitasMay = visitasFiltradas.filter(v => v.pagina === 'mayoristas').length;
+          const visitasTotal = visitasFiltradas.length;
+          const convPed = visitasFiltradas.filter(v => v.pagina === 'pedidos' && v.convirtio).length;
+          const convMay = visitasFiltradas.filter(v => v.pagina === 'mayoristas' && v.convirtio).length;
+          const pctConvPed = visitasPed > 0 ? Math.round(convPed / visitasPed * 100) : 0;
+          const pctConvMay = visitasMay > 0 ? Math.round(convMay / visitasMay * 100) : 0;
+
           return { facturacion, clientesUnicos, ticketProm, efectivo, noEfectivo, pctEf, pctNoEf, top5,
             cl_manana: tickets_manana.size, cl_tarde: tickets_tarde.size,
             fac_manana, fac_tarde, prom_manana, prom_tarde,
             ef_manana, noef_manana, ef_tarde, noef_tarde,
             pctEf_m, pctNoEf_m, pctEf_t, pctNoEf_t,
             buzon_manana, buzon_tarde,
-            clsNuevos, clsConCompra, clsPromCompra, clsRecompra };
+            clsNuevos, clsConCompra, clsPromCompra, clsRecompra,
+            visitasTotal, visitasPed, visitasMay, convPed, convMay, pctConvPed, pctConvMay };
         };
 
         const fmtARS = n => '$'+Math.round(n).toLocaleString('es-AR');
@@ -15988,6 +16000,40 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                     : '')
                   + '</div>';
               })()
+            // ── Bloque: Visitas tienda ──
+            + (m.visitasTotal > 0
+              ? '<div style="margin-top:16px;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;">'
+                + '<div style="font-size:13px;font-weight:700;color:#22c55e;margin-bottom:12px;">🌐 Visitas tienda online</div>'
+                + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+                + '<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;">🛒 Pedidos online</div>'
+                  + '<div style="display:flex;align-items:center;justify-content:space-between;">'
+                    + '<span style="font-size:22px;font-weight:800;color:#22c55e;">' + m.visitasPed + '</span>'
+                    + '<span style="font-size:11px;color:var(--text-muted);">visitas</span>'
+                  + '</div>'
+                  + '<div style="margin-top:6px;font-size:11px;">'
+                    + '<span style="color:#4ade80;font-weight:700;">' + m.convPed + '</span>'
+                    + '<span style="color:var(--text-muted);"> pidieron &middot; </span>'
+                    + '<span style="color:#f97316;font-weight:700;">' + m.pctConvPed + '%</span>'
+                    + '<span style="color:var(--text-muted);"> conversión</span>'
+                  + '</div>'
+                + '</div>'
+                + '<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;">🏪 Mayoristas</div>'
+                  + '<div style="display:flex;align-items:center;justify-content:space-between;">'
+                    + '<span style="font-size:22px;font-weight:800;color:#22c55e;">' + m.visitasMay + '</span>'
+                    + '<span style="font-size:11px;color:var(--text-muted);">visitas</span>'
+                  + '</div>'
+                  + '<div style="margin-top:6px;font-size:11px;">'
+                    + '<span style="color:#4ade80;font-weight:700;">' + m.convMay + '</span>'
+                    + '<span style="color:var(--text-muted);"> pidieron &middot; </span>'
+                    + '<span style="color:#f97316;font-weight:700;">' + m.pctConvMay + '%</span>'
+                    + '<span style="color:var(--text-muted);"> conversión</span>'
+                  + '</div>'
+                + '</div>'
+                + '</div>'
+              + '</div>'
+              : '')
             + '</div>';
         };
 
