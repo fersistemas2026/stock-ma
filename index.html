@@ -1152,6 +1152,8 @@
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">📊 Egresos</button>
           <button id="cfg-tab-btn-seguridad" onclick="switchCfgTab('seguridad')"
             style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">🔒 Seguridad</button>
+          <button id="cfg-tab-btn-metas" onclick="switchCfgTab('metas')"
+            style="flex:1;background:none;color:var(--text-muted);border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">🎯 Metas-Desafío</button>
         </div>
 
         <!-- Tab Mensajes -->
@@ -1254,6 +1256,66 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                 style="background:none;border:1px solid #ff5a5a;color:#ff5a5a;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;">
                 🔓 Desbloquear ahora
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab Metas-Desafío -->
+        <div id="cfg-tab-metas" style="display:none;max-width:860px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+            <div>
+              <div style="font-size:14px;font-weight:800;color:var(--text);">🎯 Metas-Desafío</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Creá metas por PDV y evaluá su cumplimiento en Métricas por PDV.</div>
+            </div>
+            <button onclick="window.metaAbrirForm()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:800;cursor:pointer;">+ Nueva meta</button>
+          </div>
+          <div id="metas-lista" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="color:var(--text-dim);font-size:13px;">Cargando...</div>
+          </div>
+          <!-- Form nueva/editar meta -->
+          <div id="metas-form-wrap" style="display:none;margin-top:20px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:20px;">
+            <div style="font-size:14px;font-weight:800;color:var(--accent);margin-bottom:16px;" id="metas-form-titulo">+ Nueva meta</div>
+            <input type="hidden" id="meta-form-id">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Nombre</label>
+                <input type="text" id="meta-form-nombre" placeholder="Ej: Meta Julio" maxlength="60"
+                  style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">PDV</label>
+                <select id="meta-form-pdv" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;">
+                  <option value="all">🌐 Todos los PDVs</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Desde</label>
+                <input type="date" id="meta-form-desde" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Hasta</label>
+                <input type="date" id="meta-form-hasta" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Meta facturación $</label>
+                <input type="number" id="meta-form-facturacion" min="0" placeholder="0"
+                  style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;font-family:var(--mono);">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Meta unidades totales</label>
+                <input type="number" id="meta-form-unidades" min="0" placeholder="0"
+                  style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);outline:none;font-family:var(--mono);">
+              </div>
+            </div>
+            <!-- Top 5 productos -->
+            <div style="margin-bottom:16px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">🏆 Hasta 5 productos con meta propia</div>
+              <div id="meta-form-prods" style="display:flex;flex-direction:column;gap:8px;"></div>
+              <button onclick="window.metaAgregarProd()" style="margin-top:8px;background:none;border:1px dashed var(--border);border-radius:7px;padding:7px 16px;font-size:12px;color:var(--text-muted);cursor:pointer;">+ Agregar producto</button>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button onclick="window.metaCerrarForm()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 20px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+              <button onclick="window.metaGuardar()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px 24px;font-size:13px;font-weight:800;cursor:pointer;">💾 Guardar meta</button>
             </div>
           </div>
         </div>
@@ -14493,7 +14555,6 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (t) t.value = cfg.timeout  || 5;
     if (i) i.value = cfg.intentos || 5;
     if (b) b.value = cfg.bloqueo  || 15;
-    // Mostrar estado de bloqueo actual
     const el = document.getElementById('sec-estado-bloqueo');
     if (el) {
       const data = getLoginAttempts();
@@ -14506,13 +14567,184 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         el.innerHTML = '<span style="color:#6ee7b7;">✓ Sin bloqueos activos</span>';
       }
     }
-    // Indicar si hay clave maestra configurada (sin mostrarla)
     const cm = document.getElementById('sec-clave-maestra');
     if (cm) cm.placeholder = cfg.claveMaestra ? '••••• (configurada)' : 'Nueva clave maestra';
   }
 
+  // ── METAS-DESAFÍO ─────────────────────────────────────────────────────────
+  const METAS_KEY = 'META_DESAFIO';
+
+  async function metasLeerTodas() {
+    try {
+      const r = await sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || [];
+      return r.length ? (r[0].datos || []) : [];
+    } catch(e) { return []; }
+  }
+
+  async function metasGuardarTodas(metas) {
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+    // Borrar el registro existente primero
+    await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}`, { method: 'DELETE', headers: H });
+    // Insertar nuevo
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/lista_datos`, {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ empresa_id: String(empresaActual), prod_id: METAS_KEY, datos: metas, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+  }
+
+  window.metasCargar = async function() {
+    const lista = document.getElementById('metas-lista');
+    if (!lista) return;
+    lista.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">Cargando...</div>';
+    const [metas, pdvs] = await Promise.all([metasLeerTodas(), getPdv()]);
+    const pdvMap = {}; pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre||p.name);
+    window._metasPdvs = pdvs;
+    window._metasData = metas;
+    // Llenar select de PDV en el form
+    const sel = document.getElementById('meta-form-pdv');
+    if (sel) {
+      sel.innerHTML = '<option value="all">🌐 Todos los PDVs</option>' + pdvs.map(p => `<option value="${p.id}">${p.nombre||p.name}</option>`).join('');
+    }
+    if (!metas.length) {
+      lista.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:16px 0;">No hay metas creadas todavía. Hacé clic en "+ Nueva meta" para empezar.</div>';
+      return;
+    }
+    const hoy = new Date().toISOString().slice(0,10);
+    lista.innerHTML = metas.map((m, idx) => {
+      const pdvNombre = m.pdv_id === 'all' ? '🌐 Todos' : (pdvMap[m.pdv_id] || m.pdv_id);
+      const vencida = m.hasta < hoy;
+      const activa  = m.desde <= hoy && m.hasta >= hoy;
+      const estado  = vencida ? '🔴 Vencida' : activa ? '🟢 Activa' : '⏳ Próxima';
+      return `<div style="background:var(--surface);border:1px solid ${activa?'rgba(200,240,74,.3)':vencida?'rgba(255,90,90,.2)':'var(--border)'};border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:14px;font-weight:800;color:var(--text);">${m.nombre}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${pdvNombre} &nbsp;·&nbsp; ${m.desde} → ${m.hasta}</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">
+            ${m.facturacion ? '💰 $'+parseFloat(m.facturacion).toLocaleString('es-AR') : ''}
+            ${m.unidades ? ' · 📦 '+m.unidades+' uds' : ''}
+            ${(m.productos||[]).length ? ' · 🏆 '+m.productos.length+' productos' : ''}
+          </div>
+        </div>
+        <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;background:${activa?'rgba(200,240,74,.12)':vencida?'rgba(255,90,90,.1)':'rgba(255,255,255,.05)'};color:${activa?'var(--accent)':vencida?'#ff5a5a':'var(--text-muted)'};">${estado}</span>
+        <div style="display:flex;gap:6px;">
+          <button onclick="window.metaEditar(${idx})" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;">✏️ Editar</button>
+          <button onclick="window.metaEliminar(${idx})" style="background:none;border:1px solid rgba(255,90,90,.3);border-radius:7px;padding:5px 12px;font-size:12px;color:#ff5a5a;cursor:pointer;">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  window.metaAbrirForm = function() {
+    document.getElementById('metas-form-titulo').textContent = '+ Nueva meta';
+    document.getElementById('meta-form-id').value = '';
+    document.getElementById('meta-form-nombre').value = '';
+    document.getElementById('meta-form-pdv').value = 'all';
+    document.getElementById('meta-form-desde').value = '';
+    document.getElementById('meta-form-hasta').value = '';
+    document.getElementById('meta-form-facturacion').value = '';
+    document.getElementById('meta-form-unidades').value = '';
+    document.getElementById('meta-form-prods').innerHTML = '';
+    document.getElementById('metas-form-wrap').style.display = 'block';
+    document.getElementById('metas-form-wrap').scrollIntoView({behavior:'smooth'});
+  };
+
+  window.metaCerrarForm = function() {
+    document.getElementById('metas-form-wrap').style.display = 'none';
+  };
+
+  window.metaEditar = function(idx) {
+    const m = (window._metasData||[])[idx];
+    if (!m) return;
+    document.getElementById('metas-form-titulo').textContent = '✏️ Editar meta';
+    document.getElementById('meta-form-id').value = idx;
+    document.getElementById('meta-form-nombre').value = m.nombre || '';
+    document.getElementById('meta-form-pdv').value = m.pdv_id || 'all';
+    document.getElementById('meta-form-desde').value = m.desde || '';
+    document.getElementById('meta-form-hasta').value = m.hasta || '';
+    document.getElementById('meta-form-facturacion').value = m.facturacion || '';
+    document.getElementById('meta-form-unidades').value = m.unidades || '';
+    // Productos
+    const cont = document.getElementById('meta-form-prods');
+    cont.innerHTML = '';
+    (m.productos||[]).forEach(p => window._metaAddProdRow(p));
+    document.getElementById('metas-form-wrap').style.display = 'block';
+    document.getElementById('metas-form-wrap').scrollIntoView({behavior:'smooth'});
+  };
+
+  window.metaEliminar = async function(idx) {
+    if (!confirm('¿Eliminar esta meta?')) return;
+    try {
+      const metas = await metasLeerTodas();
+      metas.splice(idx, 1);
+      await metasGuardarTodas(metas);
+      toast('✓ Meta eliminada', 'success');
+      window.metasCargar();
+    } catch(e) {
+      toast('Error al eliminar: ' + e.message, 'error');
+      console.error('[metaEliminar]', e);
+    }
+  };
+
+  window.metaAgregarProd = function() {
+    const cont = document.getElementById('meta-form-prods');
+    if (cont.children.length >= 5) { toast('Máximo 5 productos', 'error'); return; }
+    window._metaAddProdRow({});
+  };
+
+  window._metaAddProdRow = function(p = {}) {
+    const cont = document.getElementById('meta-form-prods');
+    const div = document.createElement('div');
+    div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;';
+    div.innerHTML = `
+      <input type="text" placeholder="Nombre del producto" value="${p.prod_nombre||''}"
+        class="meta-prod-nombre"
+        style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+      <input type="number" placeholder="Meta unidades" value="${p.meta||''}" min="0"
+        class="meta-prod-meta"
+        style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;font-family:var(--mono);">
+      <button onclick="this.parentElement.remove()" style="background:none;border:1px solid rgba(255,90,90,.3);border-radius:7px;padding:6px 10px;font-size:12px;color:#ff5a5a;cursor:pointer;">✕</button>`;
+    cont.appendChild(div);
+  };
+
+  window.metaGuardar = async function() {
+    const nombre = document.getElementById('meta-form-nombre').value.trim();
+    const pdv_id = document.getElementById('meta-form-pdv').value;
+    const desde  = document.getElementById('meta-form-desde').value;
+    const hasta  = document.getElementById('meta-form-hasta').value;
+    const facturacion = parseFloat(document.getElementById('meta-form-facturacion').value) || 0;
+    const unidades    = parseFloat(document.getElementById('meta-form-unidades').value) || 0;
+    if (!nombre || !desde || !hasta) { toast('Completá nombre y fechas', 'error'); return; }
+    const filas = document.querySelectorAll('#meta-form-prods > div');
+    const productos = [];
+    filas.forEach(f => {
+      const n = f.querySelector('.meta-prod-nombre').value.trim();
+      const m = parseFloat(f.querySelector('.meta-prod-meta').value) || 0;
+      if (n) productos.push({ prod_nombre: n, meta: m });
+    });
+    const nuevaMeta = { nombre, pdv_id, desde, hasta, facturacion, unidades, productos, creada: new Date().toISOString().slice(0,10) };
+    try {
+      const metas = await metasLeerTodas();
+      const idxEdit = document.getElementById('meta-form-id').value;
+      if (idxEdit !== '') metas[parseInt(idxEdit)] = nuevaMeta;
+      else metas.push(nuevaMeta);
+      await metasGuardarTodas(metas);
+      toast('✓ Meta guardada', 'success');
+      window.metaCerrarForm();
+      window.metasCargar();
+    } catch(e) {
+      toast('Error al guardar: ' + e.message, 'error');
+      console.error('[metaGuardar]', e);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   function switchCfgTab(tab) {
-    ['mensajes','efectivo','prodop','prodint','desp','egresos','seguridad'].forEach(t => {
+    ['mensajes','efectivo','prodop','prodint','desp','egresos','seguridad','metas'].forEach(t => {
       const btn = document.getElementById(`cfg-tab-btn-${t}`);
       const panel = document.getElementById(`cfg-tab-${t}`);
       const active = t === tab;
@@ -14525,6 +14757,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (tab === 'desp')       renderCfgDesp();
     if (tab === 'egresos')    renderCfgEgresos();
     if (tab === 'seguridad')  initCfgSeguridad();
+    if (tab === 'metas')      window.metasCargar();
   }
 
   async function renderControlEfectivo() {
@@ -15245,13 +15478,14 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (!body) return;
     body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
     try {
-      const [ventas, pdvs, clientes, buzon, caja, gastos] = await Promise.all([
+      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw] = await Promise.all([
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,cliente_tel,ticket_id,created_at&limit=200000`) || [],
         getPdv(),
         sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,pdv_id,telefono,created_at&order=created_at.asc&limit=50000`) || [],
         sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto,created_at`) || [],
         sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,reporte_z,efectivo,tarjetas&order=fecha.asc`) || [],
-        sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || []
+        sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || [],
+        sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || []
       ]);
 
       if (!ventas.length) {
@@ -15312,7 +15546,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       body.innerHTML = html;
 
       // Función que renderiza las métricas de los PDVs seleccionados
-      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[] };
+      const todasMetas = metasRaw.length ? (metasRaw[0].datos || []) : [];
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas };
       window._pdvMetricasActivos = 'all';
 
       window.pdvMetricasSelAll = function() {
@@ -15342,7 +15577,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       };
 
       window.renderPdvMetricas = function(ids) {
-        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos } = window._pdvMetricasData;
+        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas } = window._pdvMetricasData;
         const contenido = document.getElementById('pdvm-contenido');
         if (!contenido) return;
 
@@ -15551,6 +15786,62 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                 + '</div>'
               + '</div>'
               : '')
+            // ── Bloque: Metas-Desafío ──
+            + (() => {
+                const hoy = new Date().toISOString().slice(0,10);
+                const metasAplicables = (todasMetas||[]).filter(mt => {
+                  if (mt.hasta < desde || mt.desde > hasta) return false;
+                  if (pdvIdCard === 'all') return mt.pdv_id === 'all';
+                  return mt.pdv_id === 'all' || String(mt.pdv_id) === String(pdvIdCard);
+                });
+                if (!metasAplicables.length) return '';
+
+                const barMeta = (real, meta, color) => {
+                  const pct = meta > 0 ? Math.min(Math.round(real/meta*100), 100) : 0;
+                  const colorBar = pct >= 100 ? '#4ade80' : pct >= 70 ? '#fbbf24' : '#ff5a5a';
+                  const emoji = pct >= 100 ? '✅' : pct >= 70 ? '⚠️' : '❌';
+                  return '<div style="margin-bottom:10px;">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+                      + '<span style="font-size:12px;color:var(--text);">' + color + '</span>'
+                      + '<span style="font-size:11px;font-weight:700;color:' + colorBar + ';">' + emoji + ' ' + pct + '%</span>'
+                    + '</div>'
+                    + '<div style="background:var(--surface);border-radius:4px;height:8px;overflow:hidden;">'
+                      + '<div style="width:' + pct + '%;height:100%;background:' + colorBar + ';border-radius:4px;transition:width .4s;"></div>'
+                    + '</div>'
+                  + '</div>';
+                };
+
+                return '<div style="margin-top:16px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.2);border-radius:10px;padding:14px;">'
+                  + '<div style="font-size:13px;font-weight:700;color:#38bdf8;margin-bottom:12px;">🎯 Metas-Desafío</div>'
+                  + metasAplicables.map(mt => {
+                      const facturacionReal = m.facturacion;
+                      const unidadesReal    = (porPdv[pdvIdCard] || Object.values(porPdv).flat()).reduce((s,v) => s + parseFloat(v.cantidad||1), 0);
+
+                      let html = '<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:12px;margin-bottom:8px;">'
+                        + '<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;">' + mt.nombre + '</div>';
+
+                      if (mt.facturacion > 0) {
+                        html += barMeta(facturacionReal, mt.facturacion, '💰 Facturación: ' + fmtARS(facturacionReal) + ' de ' + fmtARS(mt.facturacion));
+                      }
+                      if (mt.unidades > 0) {
+                        html += barMeta(unidadesReal, mt.unidades, '📦 Unidades: ' + Math.round(unidadesReal) + ' de ' + mt.unidades);
+                      }
+                      if ((mt.productos||[]).length) {
+                        html += '<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;">'
+                          + '<div style="font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">🏆 Productos</div>'
+                          + mt.productos.map(p => {
+                              const vtsP = (pdvIdCard === 'all' ? ventas : (porPdv[pdvIdCard]||[]));
+                              const vendido = vtsP.filter(v => (v.prod_nombre||'').toLowerCase().trim() === p.prod_nombre.toLowerCase().trim())
+                                                  .reduce((s,v) => s + parseFloat(v.cantidad||1), 0);
+                              return barMeta(vendido, p.meta, p.prod_nombre + ': ' + Math.round(vendido) + ' de ' + p.meta + ' uds');
+                            }).join('')
+                          + '</div>';
+                      }
+                      html += '</div>';
+                      return html;
+                    }).join('')
+                  + '</div>';
+              })()
             // ── Bloque: Informe Z ──
             + (() => {
                 const cajaFiltrada = (caja||[]).filter(x => pdvIdCard === 'all' || String(x.pdv_id) === String(pdvIdCard));
