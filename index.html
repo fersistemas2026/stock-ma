@@ -15629,14 +15629,15 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           let buzon_manana = 0, buzon_tarde = 0;
           buzonFiltrado.forEach(b => {
             if (!b.created_at) return;
-            const hb = parseInt(new Date(b.created_at.replace(' ','T').replace(/(\.\d+)?$/,'Z')).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false}));
+            const hb = parseInt(new Date(normTS(b.created_at)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false}));
             const monto = parseFloat(b.monto||0);
             if (hb >= 9 && hb < 15) buzon_manana += monto;
             else if (hb >= 15 && hb < 21) buzon_tarde += monto;
           });
+          const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
           vts.forEach(v => {
             if (!v.created_at) return;
-            const hora = new Date(v.created_at.replace(' ','T').replace(/(\.\d+)?$/,'Z')).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false});
+            const hora = new Date(normTS(v.created_at)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false});
             const h = parseInt(hora);
             const imp = (v.precio||0)*(v.cantidad||1);
             const tid = v.ticket_id || null;
