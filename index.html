@@ -528,6 +528,7 @@
               <option value="descuentosAuto">🏷️ Descuentos automáticos</option>
               <option value="ranking">🏆 Ranking productos/sabores</option>
               <option value="pdvMetricas">📊 Métricas por PDV</option>
+              <option value="clientesDia">👥 Clientes incorporados por día</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
@@ -5055,7 +5056,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <table class="resumen-table">
               <thead><tr><th>Fecha</th><th>Operador</th><th>Turno</th><th>Hora</th><th class="right">Monto</th><th></th></tr></thead>
               <tbody>${items.map(x=>{
-                const hora = new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
+                const hora = new Date(x.created_at.replace(' ','T').replace(/(\.\d+)?$/,'Z')).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'});
                 return `<tr id="buzon-row-${x.id}">
                   <td style="font-family:var(--mono);font-size:12px;">${x.fecha}</td>
                   <td>${x.display_name||x.username}</td>
@@ -5370,6 +5371,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='descuentosAuto') { await loadInformesDescuentosAuto(); return; }
     if (seccion==='ranking')        { await loadInformesRanking(range.desde, range.hasta); return; }
     if (seccion==='pdvMetricas')    { await loadInformesPdvMetricas(range.desde, range.hasta); return; }
+    if (seccion==='clientesDia')    { await loadInformesClientesDia(range.desde, range.hasta); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
     if (seccion==='pedidosOnline'){ await loadInformesPedidosOnline(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
@@ -13950,7 +13952,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         <div style="padding:6px 10px;border-bottom:1px solid var(--border);">
           <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">📬 Buzón</div>
           ${buzonTurno.length
-            ? buzonTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;"><span style="color:var(--text-dim);">#${i+1} ${x.display_name||x.username||''} · ${new Date(x.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</span><span style="font-family:var(--mono);font-size:13px;">${fmt(x.monto)}</span></div>`).join('')
+            ? buzonTurno.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:13px;"><span style="color:var(--text-dim);">#${i+1} ${x.display_name||x.username||''} · ${new Date(x.created_at.replace(' ','T').replace(/(\.\d+)?$/,'Z')).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</span><span style="font-family:var(--mono);font-size:13px;">${fmt(x.monto)}</span></div>`).join('')
             : '<div style="font-size:13px;color:var(--text-dim);">Sin buzón</div>'}
           ${buzonTurnoTotal>0?`<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;"><span style="color:var(--text-muted);">Total</span><span style="font-family:var(--mono);">${fmt(buzonTurnoTotal)}</span></div>`:''}
         </div>
@@ -15004,16 +15006,252 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   }
 
   // Panel de administración de descuentos automáticos
+  async function loadInformesClientesDia(desde, hasta) {
+    const body = document.getElementById('inf-body');
+    if (!body) return;
+    body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando clientes...</p></div>`;
+    try {
+      const [pdvs, clientesRaw, ventasRaw] = await Promise.all([
+        getPdv(),
+        // Clientes incorporados en el rango (por created_at)
+        sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,telefono,pdv_id,created_at&order=created_at.asc&limit=50000`) || [],
+        // Ventas del rango para calcular compras
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cliente_tel,pdv_id,precio,cantidad,ticket_id,fecha&limit=200000`) || []
+      ]);
+
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre || p.name || p.id);
+
+      if (!clientesRaw.length) {
+        body.innerHTML = `<div class="empty-state">👥<p>No hay clientes incorporados en el período seleccionado.</p></div>`;
+        return;
+      }
+
+      // ─── Construir mapa de ventas por teléfono ─────────────────────────────
+      // Para cada tel: { totalGastado, tickets(Set), fechas(Set) }
+      const ventasPorTel = {};
+      ventasRaw.forEach(v => {
+        const tel = (v.cliente_tel||'').replace(/[^0-9]/g,'');
+        if (!tel) return;
+        if (!ventasPorTel[tel]) ventasPorTel[tel] = { total: 0, tickets: new Set(), fechas: new Set() };
+        ventasPorTel[tel].total  += (v.precio||0) * (v.cantidad||1);
+        if (v.ticket_id) ventasPorTel[tel].tickets.add(v.ticket_id);
+        if (v.fecha)     ventasPorTel[tel].fechas.add(v.fecha);
+      });
+
+      // Para "recompra" en el período: cliente que tiene MÁS DE UNA fecha distinta de compra
+      // Para "promedio": total gastado / cantidad de tickets del período
+
+      // ─── Agrupar clientes por día y por PDV ───────────────────────────────
+      // estructura: { 'YYYY-MM-DD': { pdvs: { pdv_id: [clientes] }, total: [clientes] } }
+      const porDia = {};
+      clientesRaw.forEach(c => {
+        const fechaDt = new Date(c.created_at);
+        const dia = fechaDt.toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'});
+        // Clave ISO para ordenar
+        const diaISO = new Date(fechaDt.toLocaleString('en-US',{timeZone:'America/Argentina/Buenos_Aires'}));
+        const diaKey = diaISO.getFullYear()+'-'+String(diaISO.getMonth()+1).padStart(2,'0')+'-'+String(diaISO.getDate()).padStart(2,'0');
+        if (!porDia[diaKey]) porDia[diaKey] = { label: dia, pdvs: {}, clientes: [] };
+        porDia[diaKey].clientes.push(c);
+        const pid = String(c.pdv_id||'sin-pdv');
+        if (!porDia[diaKey].pdvs[pid]) porDia[diaKey].pdvs[pid] = [];
+        porDia[diaKey].pdvs[pid].push(c);
+      });
+
+      const diasOrds = Object.keys(porDia).sort();
+
+      // ─── Totales globales ─────────────────────────────────────────────────
+      const todosLosTels = new Set(clientesRaw.map(c => (c.telefono||'').replace(/[^0-9]/g,'')).filter(Boolean));
+      let totalNuevos = clientesRaw.length;
+      let totalConCompra = 0, totalGastado = 0, totalRecompra = 0;
+      todosLosTels.forEach(tel => {
+        const vd = ventasPorTel[tel];
+        if (!vd) return;
+        totalConCompra++;
+        totalGastado += vd.total;
+        if (vd.fechas.size > 1) totalRecompra++;
+      });
+      const promGlobalCompra = totalConCompra > 0 ? totalGastado / totalConCompra : 0;
+
+      const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
+
+      // ─── Selector PDV ────────────────────────────────────────────────────
+      const allPdvIds = [...new Set(clientesRaw.map(c => String(c.pdv_id||'sin-pdv')))].sort((a,b)=>(pdvMap[a]||a).localeCompare(pdvMap[b]||b));
+
+      let html = `
+        <div style="margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:12px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">PDV:</span>
+          <button onclick="window.cdiSelPdv('all')" id="cdi-btn-all"
+            style="padding:6px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:12px;font-weight:700;cursor:pointer;">Todos</button>
+          ${allPdvIds.map(pid => `<button onclick="window.cdiSelPdv('${pid}')" id="cdi-btn-${pid}"
+            style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:12px;font-weight:600;cursor:pointer;">
+            ${pdvMap[pid]||pid}</button>`).join('')}
+        </div>
+
+        <!-- Resumen global -->
+        <div id="cdi-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:800;color:var(--accent);">${totalNuevos}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">clientes nuevos</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:800;color:#4ade80;">${totalConCompra}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">con compra en el período</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:#f97316;">${fmtARS(promGlobalCompra)}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">promedio de compra</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:28px;font-weight:800;color:#a78bfa;">${totalRecompra}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">volvieron a recomprar</div>
+            ${totalConCompra > 0 ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${Math.round(totalRecompra/totalConCompra*100)}% de quienes compraron</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Tabla por día -->
+        <div id="cdi-tabla-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;" id="cdi-tabla">
+            <thead>
+              <tr style="background:var(--surface2);border-bottom:2px solid var(--accent);">
+                <th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Día</th>
+                <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Nuevos</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Por PDV</th>
+                <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Con compra</th>
+                <th style="padding:10px 12px;text-align:right;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Prom compra</th>
+                <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Recompras</th>
+              </tr>
+            </thead>
+            <tbody id="cdi-tbody"></tbody>
+          </table>
+        </div>`;
+
+      body.innerHTML = html;
+
+      // ─── Guardar datos y funciones de render ──────────────────────────────
+      window._cdiData = { porDia, diasOrds, ventasPorTel, pdvMap, allPdvIds };
+
+      window.cdiSelPdv = function(filtro) {
+        // Resaltar botón
+        document.getElementById('cdi-btn-all').style.cssText = `padding:6px 14px;border-radius:8px;border:1px solid ${filtro==='all'?'var(--accent)':'var(--border)'};background:${filtro==='all'?'var(--accent)':'var(--surface2)'};color:${filtro==='all'?'#000':'var(--text-muted)'};font-size:12px;font-weight:700;cursor:pointer;`;
+        window._cdiData.allPdvIds.forEach(pid => {
+          const b = document.getElementById(`cdi-btn-${pid}`);
+          if (!b) return;
+          b.style.cssText = `padding:6px 14px;border-radius:8px;border:1px solid ${filtro===pid?'var(--accent)':'var(--border)'};background:${filtro===pid?'var(--accent)':'var(--surface2)'};color:${filtro===pid?'#000':'var(--text-muted)'};font-size:12px;font-weight:600;cursor:pointer;`;
+        });
+        window.cdiRender(filtro);
+      };
+
+      window.cdiRender = function(filtro) {
+        const { porDia, diasOrds, ventasPorTel, pdvMap } = window._cdiData;
+        const tbody = document.getElementById('cdi-tbody');
+        const resumen = document.getElementById('cdi-resumen');
+        if (!tbody) return;
+
+        // Recalcular resumen y filas según filtro
+        let totalN=0, totalCC=0, totalG=0, totalR=0;
+        let rows = '';
+
+        diasOrds.forEach((diaKey, idx) => {
+          const d = porDia[diaKey];
+          // Filtrar clientes del día según PDV
+          const clsDia = filtro === 'all' ? d.clientes : (d.pdvs[filtro]||[]);
+          if (!clsDia.length) return;
+
+          const tels = clsDia.map(c => (c.telefono||'').replace(/[^0-9]/g,'')).filter(Boolean);
+          let conCompra=0, gastado=0, recompra=0;
+          tels.forEach(tel => {
+            const vd = ventasPorTel[tel];
+            if (!vd) return;
+            conCompra++;
+            gastado += vd.total;
+            if (vd.fechas.size > 1) recompra++;
+          });
+          totalN += clsDia.length;
+          totalCC += conCompra;
+          totalG  += gastado;
+          totalR  += recompra;
+
+          const prom = conCompra > 0 ? gastado / conCompra : 0;
+
+          // Desglose por PDV (solo si filtro === 'all')
+          let pdvDesglose = '';
+          if (filtro === 'all') {
+            const pdvsEnDia = Object.keys(d.pdvs);
+            pdvDesglose = pdvsEnDia.map(pid => {
+              const cnt = d.pdvs[pid].length;
+              return `<span style="display:inline-block;margin-right:6px;margin-bottom:2px;font-size:11px;background:rgba(200,240,74,.1);color:var(--accent);padding:1px 7px;border-radius:10px;font-family:var(--mono);">${pdvMap[pid]||pid}: ${cnt}</span>`;
+            }).join('');
+          }
+
+          rows += `<tr style="border-top:1px solid var(--border);${idx%2===1?'background:rgba(255,255,255,.02)':''}">
+            <td style="padding:9px 14px;font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono);">${d.label}</td>
+            <td style="padding:9px 12px;text-align:center;">
+              <span style="background:rgba(200,240,74,.15);color:var(--accent);font-size:14px;font-weight:800;padding:2px 12px;border-radius:12px;">${clsDia.length}</span>
+            </td>
+            <td style="padding:9px 12px;font-size:12px;">${pdvDesglose || `<span style="color:var(--text-muted);">${pdvMap[filtro]||filtro}</span>`}</td>
+            <td style="padding:9px 12px;text-align:center;">
+              ${conCompra > 0
+                ? `<span style="color:#4ade80;font-weight:700;font-size:13px;">${conCompra}</span><span style="font-size:11px;color:var(--text-dim);"> (${Math.round(conCompra/clsDia.length*100)}%)</span>`
+                : `<span style="color:var(--text-dim);font-size:13px;">0</span>`}
+            </td>
+            <td style="padding:9px 12px;text-align:right;font-size:13px;font-weight:700;color:#f97316;">
+              ${conCompra > 0 ? fmtARS(prom) : '<span style="color:var(--text-dim);">—</span>'}
+            </td>
+            <td style="padding:9px 12px;text-align:center;">
+              ${recompra > 0
+                ? `<span style="color:#a78bfa;font-weight:700;font-size:13px;">${recompra}</span><span style="font-size:11px;color:var(--text-dim);"> (${Math.round(recompra/conCompra*100)}%)</span>`
+                : `<span style="color:var(--text-dim);font-size:13px;">0</span>`}
+            </td>
+          </tr>`;
+        });
+
+        // Fila de totales
+        const promTotal = totalCC > 0 ? totalG / totalCC : 0;
+        rows += `<tr style="border-top:2px solid var(--accent);background:rgba(200,240,74,.05);">
+          <td style="padding:10px 14px;font-size:13px;font-weight:800;color:var(--accent);font-family:var(--mono);">TOTAL</td>
+          <td style="padding:10px 12px;text-align:center;font-size:15px;font-weight:800;color:var(--accent);">${totalN}</td>
+          <td style="padding:10px 12px;"></td>
+          <td style="padding:10px 12px;text-align:center;font-size:14px;font-weight:800;color:#4ade80;">${totalCC}${totalN>0?` <span style="font-size:11px;color:var(--text-dim);">(${Math.round(totalCC/totalN*100)}%)</span>`:''}</td>
+          <td style="padding:10px 12px;text-align:right;font-size:14px;font-weight:800;color:#f97316;">${totalCC>0?fmtARS(promTotal):'—'}</td>
+          <td style="padding:10px 12px;text-align:center;font-size:14px;font-weight:800;color:#a78bfa;">${totalR}${totalCC>0?` <span style="font-size:11px;color:var(--text-dim);">(${Math.round(totalR/totalCC*100)}%)</span>`:''}</td>
+        </tr>`;
+
+        tbody.innerHTML = rows || `<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--text-muted);">Sin datos para el PDV seleccionado</td></tr>`;
+
+        // Actualizar resumen
+        if (resumen) {
+          const promRes = totalCC > 0 ? totalG / totalCC : 0;
+          resumen.children[0].querySelector('div').textContent = totalN;
+          resumen.children[1].querySelector('div').textContent = totalCC;
+          resumen.children[2].querySelector('div').textContent = fmtARS(promRes);
+          resumen.children[3].querySelector('div').textContent = totalR;
+          const pctSpan = resumen.children[3].querySelector('div:last-child');
+          if (pctSpan && totalCC > 0) pctSpan.textContent = Math.round(totalR/totalCC*100) + '% de quienes compraron';
+        }
+      };
+
+      // Render inicial
+      window.cdiRender('all');
+
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+      console.error('[ClientesDia]', e);
+    }
+  }
+
   async function loadInformesPdvMetricas(desde, hasta) {
     const body = document.getElementById('inf-body');
     if (!body) return;
     body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
     try {
-      const [ventas, pdvs, clientes, buzon] = await Promise.all([
+      const [ventas, pdvs, clientes, buzon, caja, gastos] = await Promise.all([
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,cliente_tel,ticket_id,created_at&limit=200000`) || [],
         getPdv(),
-        sbApi(`clientes?empresa_id=eq.${empresaActual}&select=id,pdv_id,telefono`) || [],
-        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto,created_at`) || []
+        sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,pdv_id,telefono,created_at&order=created_at.asc&limit=50000`) || [],
+        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto,created_at`) || [],
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,reporte_z,efectivo,tarjetas&order=fecha.asc`) || [],
+        sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || []
       ]);
 
       if (!ventas.length) {
@@ -15042,6 +15280,17 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         if (c.telefono) clientesPorPdv[pid].add(c.telefono.replace(/[^0-9]/g,''));
       });
 
+      // Ventas por teléfono (para promedio y recompra de clientes nuevos)
+      const ventasPorTelPM = {};
+      ventas.forEach(v => {
+        const tel = (v.cliente_tel||'').replace(/[^0-9]/g,'');
+        if (!tel) return;
+        if (!ventasPorTelPM[tel]) ventasPorTelPM[tel] = { total: 0, tickets: new Set(), fechas: new Set() };
+        ventasPorTelPM[tel].total += (v.precio||0)*(v.cantidad||1);
+        if (v.ticket_id) ventasPorTelPM[tel].tickets.add(v.ticket_id);
+        if (v.fecha)     ventasPorTelPM[tel].fechas.add(v.fecha);
+      });
+
       const pdvIds = Object.keys(porPdv).sort((a,b) => (pdvMap[a]||a).localeCompare(pdvMap[b]||b));
 
       // Selector de PDV
@@ -15063,7 +15312,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       body.innerHTML = html;
 
       // Función que renderiza las métricas de los PDVs seleccionados
-      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[] };
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[] };
       window._pdvMetricasActivos = 'all';
 
       window.pdvMetricasSelAll = function() {
@@ -15093,7 +15342,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       };
 
       window.renderPdvMetricas = function(ids) {
-        const { porPdv, pdvMap, clientesPorPdv, buzon } = window._pdvMetricasData;
+        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos } = window._pdvMetricasData;
         const contenido = document.getElementById('pdvm-contenido');
         if (!contenido) return;
 
@@ -15145,14 +15394,14 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           let buzon_manana = 0, buzon_tarde = 0;
           buzonFiltrado.forEach(b => {
             if (!b.created_at) return;
-            const hb = parseInt(new Date(b.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false}));
+            const hb = parseInt(new Date(b.created_at.replace(' ','T').replace(/(\.\d+)?$/,'Z')).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false}));
             const monto = parseFloat(b.monto||0);
             if (hb >= 9 && hb < 15) buzon_manana += monto;
             else if (hb >= 15 && hb < 21) buzon_tarde += monto;
           });
           vts.forEach(v => {
             if (!v.created_at) return;
-            const hora = new Date(v.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false});
+            const hora = new Date(v.created_at.replace(' ','T').replace(/(\.\d+)?$/,'Z')).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false});
             const h = parseInt(hora);
             const imp = (v.precio||0)*(v.cantidad||1);
             const tid = v.ticket_id || null;
@@ -15176,12 +15425,30 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const pctEf_t  = fac_tarde  > 0 ? Math.round(ef_tarde/fac_tarde*100)   : 0;
           const pctNoEf_t = 100 - pctEf_t;
 
+          // ── Clientes nuevos incorporados en el período ──
+          const clsFiltrados = pdvId === 'all'
+            ? clientes
+            : clientes.filter(c => String(c.pdv_id) === String(pdvId));
+          const clsNuevos = clsFiltrados.length;
+          let clsConCompra = 0, clsGastado = 0, clsRecompra = 0;
+          clsFiltrados.forEach(c => {
+            const tel = (c.telefono||'').replace(/[^0-9]/g,'');
+            if (!tel) return;
+            const vd = ventasPorTelPM[tel];
+            if (!vd) return;
+            clsConCompra++;
+            clsGastado += vd.total;
+            if (vd.fechas.size > 1) clsRecompra++;
+          });
+          const clsPromCompra = clsConCompra > 0 ? clsGastado / clsConCompra : 0;
+
           return { facturacion, clientesUnicos, ticketProm, efectivo, noEfectivo, pctEf, pctNoEf, top5,
             cl_manana: tickets_manana.size, cl_tarde: tickets_tarde.size,
             fac_manana, fac_tarde, prom_manana, prom_tarde,
             ef_manana, noef_manana, ef_tarde, noef_tarde,
             pctEf_m, pctNoEf_m, pctEf_t, pctNoEf_t,
-            buzon_manana, buzon_tarde };
+            buzon_manana, buzon_tarde,
+            clsNuevos, clsConCompra, clsPromCompra, clsRecompra };
         };
 
         const fmtARS = n => '$'+Math.round(n).toLocaleString('es-AR');
@@ -15207,7 +15474,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           return rows;
         };
 
-        const renderCard = (titulo, totalRegs, m) => {
+        const renderCard = (titulo, totalRegs, m, pdvIdCard) => {
           return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">' + titulo + '</h3>'
@@ -15258,6 +15525,177 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             + (m.ef_tarde > 0 ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:var(--text-muted);">📬 Buzón ingresado</span><span style="font-size:12px;font-weight:700;color:#fbbf24;">' + fmtARS(m.buzon_tarde) + '</span><span style="font-size:11px;color:var(--text-muted);">(' + Math.round(m.buzon_tarde / m.ef_tarde * 100) + '% del efectivo)</span></div>' : '')
             + '</div>'
             + '</div></div>'
+            // ── Bloque: Clientes nuevos ──
+            + (m.clsNuevos > 0
+              ? '<div style="margin-top:16px;background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:14px;">'
+                + '<div style="font-size:13px;font-weight:700;color:#a78bfa;margin-bottom:12px;">👥 Clientes nuevos incorporados</div>'
+                + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:22px;font-weight:800;color:#a78bfa;">' + m.clsNuevos + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">nuevos clientes</div>'
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:22px;font-weight:800;color:#4ade80;">' + m.clsConCompra + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">compraron en el período</div>'
+                  + (m.clsNuevos > 0 ? '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">' + Math.round(m.clsConCompra/m.clsNuevos*100) + '% del total</div>' : '')
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:18px;font-weight:800;color:#f97316;">' + (m.clsConCompra > 0 ? fmtARS(m.clsPromCompra) : '—') + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">prom de compra</div>'
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:22px;font-weight:800;color:#38bdf8;">' + m.clsRecompra + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">recompraron</div>'
+                  + (m.clsConCompra > 0 ? '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">' + Math.round(m.clsRecompra/m.clsConCompra*100) + '% de quienes compraron</div>' : '')
+                + '</div>'
+                + '</div>'
+              + '</div>'
+              : '')
+            // ── Bloque: Informe Z ──
+            + (() => {
+                const cajaFiltrada = (caja||[]).filter(x => pdvIdCard === 'all' || String(x.pdv_id) === String(pdvIdCard));
+                if (!cajaFiltrada.length) return '';
+
+                // Ranking de PDVs por reporte_z (solo en vista "Todos")
+                let rankingHtml = '';
+                if (pdvIdCard === 'all') {
+                  const porPdvZ = {};
+                  cajaFiltrada.forEach(x => {
+                    const pid = String(x.pdv_id||'');
+                    if (!porPdvZ[pid]) porPdvZ[pid] = { nombre: pdvMap[pid]||pid, z: 0, ef: 0, tar: 0, tarVentas: 0, buzon: 0, cantVentas: 0, gastos: 0 };
+                    porPdvZ[pid].z   += parseFloat(x.reporte_z||0);
+                    porPdvZ[pid].ef  += parseFloat(x.efectivo||0);
+                    porPdvZ[pid].tar += parseFloat(x.tarjetas||0);
+                  });
+                  // Tarjetas de ventas por PDV
+                  (ventas||[]).forEach(v => {
+                    const pid = String(v.pdv_id||'');
+                    if (!porPdvZ[pid]) return;
+                    const mp = (v.metodo_pago||'').toLowerCase();
+                    const esNoEf = mp.includes('tarjeta')||mp.includes('transferencia')||mp.includes('qr')||mp.includes('debito')||mp.includes('mp')||mp.includes('mercado');
+                    if (esNoEf) porPdvZ[pid].tarVentas += (v.precio||0)*(v.cantidad||1);
+                    // Cantidad de ventas: contar tickets únicos
+                    if (v.ticket_id) {
+                      if (!porPdvZ[pid]._tickets) porPdvZ[pid]._tickets = new Set();
+                      porPdvZ[pid]._tickets.add(v.ticket_id);
+                    }
+                  });
+                  // Buzón por PDV
+                  (buzon||[]).forEach(b => {
+                    const pid = String(b.pdv_id||'');
+                    if (!porPdvZ[pid]) return;
+                    porPdvZ[pid].buzon += parseFloat(b.monto||0);
+                  });
+                  // Gastos por PDV
+                  (gastos||[]).forEach(g => {
+                    const pid = String(g.pdv_id||'');
+                    if (!porPdvZ[pid]) return;
+                    porPdvZ[pid].gastos += parseFloat(g.monto||0);
+                  });
+                  // Pasar tickets a cantidad
+                  Object.values(porPdvZ).forEach(r => {
+                    r.cantVentas = r._tickets ? r._tickets.size : 0;
+                    delete r._tickets;
+                  });
+                  const ranking = Object.values(porPdvZ).sort((a,b) => b.z - a.z);
+                  const medalles = ['🥇','🥈','🥉'];
+                  rankingHtml = '<div style="margin-bottom:12px;">'
+                    + '<div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🏆 Ranking PDVs</div>'
+                    + ranking.map((r, i) => {
+                        const medal = medalles[i] || ('#' + (i+1));
+                        const pct = ranking[0].z > 0 ? Math.round(r.z / ranking[0].z * 100) : 0;
+                        return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+                          + '<span style="font-size:14px;min-width:28px;">' + medal + '</span>'
+                          + '<span style="font-size:13px;font-weight:600;color:var(--text);min-width:100px;">' + r.nombre + '</span>'
+                          + '<div style="background:var(--surface);border-radius:3px;height:8px;overflow:hidden;flex:1;"><div style="width:' + pct + '%;height:100%;background:' + (i===0?'var(--accent)':i===1?'#60a5fa':'#a78bfa') + ';border-radius:3px;"></div></div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:80px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">Informe Z</span>'
+                            + '<span style="font-size:13px;font-weight:800;color:' + (i===0?'var(--accent)':'var(--text)') + ';font-family:var(--mono);">' + fmtARS(r.z) + '</span>'
+                          + '</div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:80px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">💵 Efectivo</span>'
+                            + '<span style="font-size:12px;font-weight:700;color:#4ade80;font-family:var(--mono);">' + fmtARS(r.ef) + '</span>'
+                          + '</div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:80px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">💳 Tarjetas Z</span>'
+                            + '<span style="font-size:12px;font-weight:700;color:#8b5cf6;font-family:var(--mono);">' + fmtARS(r.tar) + '</span>'
+                          + '</div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:80px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">💳 Tar. ventas</span>'
+                            + '<span style="font-size:12px;font-weight:700;color:#60a5fa;font-family:var(--mono);">' + fmtARS(r.tarVentas) + '</span>'
+                          + '</div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:80px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">📬 Buzón</span>'
+                            + '<span style="font-size:12px;font-weight:700;color:#fbbf24;font-family:var(--mono);">' + fmtARS(r.buzon) + '</span>'
+                          + '</div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:70px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">🛒 Cant. ventas</span>'
+                            + '<span style="font-size:12px;font-weight:700;color:var(--text);font-family:var(--mono);">' + r.cantVentas + '</span>'
+                          + '</div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:80px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">💸 Gastos</span>'
+                            + '<span style="font-size:12px;font-weight:700;color:#ff5a5a;font-family:var(--mono);">' + fmtARS(r.gastos) + '</span>'
+                          + '</div>'
+                          + '</div>';
+                      }).join('')
+                    + '</div>';
+                }
+
+                // Datos del informe Z (suma del período para este PDV)
+                const zTotal  = cajaFiltrada.reduce((s,x) => s + parseFloat(x.reporte_z||0), 0);
+                const efTotal = cajaFiltrada.reduce((s,x) => s + parseFloat(x.efectivo||0),  0);
+                const tarTotal= cajaFiltrada.reduce((s,x) => s + parseFloat(x.tarjetas||0),  0);
+
+                // Ranking días de la semana
+                const diasNombre = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+                const porDiaSemana = {};
+                cajaFiltrada.forEach(x => {
+                  if (!x.fecha) return;
+                  const dow = new Date(x.fecha + 'T12:00:00').getDay();
+                  if (!porDiaSemana[dow]) porDiaSemana[dow] = { nombre: diasNombre[dow], total: 0, dias: 0 };
+                  porDiaSemana[dow].total += parseFloat(x.reporte_z||0);
+                  porDiaSemana[dow].dias++;
+                });
+                const diasRanking = Object.values(porDiaSemana).sort((a,b) => b.total - a.total);
+                const maxDia = diasRanking.length > 0 ? diasRanking[0].total : 1;
+
+                return '<div style="margin-top:16px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:14px;">'
+                  + '<div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:12px;">🖨️ Informe Z</div>'
+                  // Tarjetas resumen Z
+                  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;">'
+                  + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                    + '<div style="font-size:20px;font-weight:800;color:#fbbf24;">' + fmtARS(zTotal) + '</div>'
+                    + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Informe Z</div>'
+                  + '</div>'
+                  + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                    + '<div style="font-size:20px;font-weight:800;color:#4ade80;">' + fmtARS(efTotal) + '</div>'
+                    + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Efectivo declarado</div>'
+                  + '</div>'
+                  + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                    + '<div style="font-size:20px;font-weight:800;color:#8b5cf6;">' + fmtARS(tarTotal) + '</div>'
+                    + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Tarjetas declaradas</div>'
+                  + '</div>'
+                  + '</div>'
+                  // Ranking PDVs (solo en "Todos")
+                  + rankingHtml
+                  // Ranking días de la semana
+                  + (diasRanking.length > 1
+                    ? '<div style="border-top:1px solid rgba(251,191,36,.15);padding-top:12px;margin-top:4px;">'
+                      + '<div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">📅 Días de la semana (mayor → menor)</div>'
+                      + diasRanking.map((d, i) => {
+                          const pct = maxDia > 0 ? Math.round(d.total / maxDia * 100) : 0;
+                          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">'
+                            + '<span style="font-size:12px;font-weight:700;color:' + (i===0?'var(--accent)':'var(--text-muted)') + ';min-width:28px;font-family:var(--mono);">' + (i+1) + '°</span>'
+                            + '<span style="font-size:12px;font-weight:600;color:var(--text);min-width:36px;">' + d.nombre + '</span>'
+                            + '<div style="background:var(--surface);border-radius:3px;height:7px;overflow:hidden;flex:1;"><div style="width:' + pct + '%;height:100%;background:' + (i===0?'var(--accent)':'rgba(200,240,74,.35)') + ';border-radius:3px;"></div></div>'
+                            + '<span style="font-size:12px;font-weight:700;color:' + (i===0?'var(--accent)':'var(--text)') + ';min-width:80px;text-align:right;font-family:var(--mono);">' + fmtARS(d.total) + '</span>'
+                            + (d.dias > 1 ? '<span style="font-size:10px;color:var(--text-dim);min-width:60px;text-align:right;">' + d.dias + ' días</span>' : '')
+                            + '</div>';
+                        }).join('')
+                      + '</div>'
+                    : '')
+                  + '</div>';
+              })()
             + '</div>';
         };
 
@@ -15267,7 +15705,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const vtsTodas = pdvIds.flatMap(pid => porPdv[pid] || []);
           if (!vtsTodas.length) { contenido.innerHTML = `<div class="empty-state">📊<p>Sin datos.</p></div>`; return; }
           const m = calcMetricas(vtsTodas, 'all');
-          contenido.innerHTML = renderCard('🌐 Todos los PDVs', vtsTodas.length, m);
+          contenido.innerHTML = renderCard('🌐 Todos los PDVs', vtsTodas.length, m, 'all');
           return;
         }
 
@@ -15276,7 +15714,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const vts = porPdv[pid] || [];
           if (!vts.length) return;
           const m = calcMetricas(vts, pid);
-          out += renderCard('🏪 ' + (pdvMap[pid]||pid), vts.length, m);
+          out += renderCard('🏪 ' + (pdvMap[pid]||pid), vts.length, m, pid);
         });
 
         contenido.innerHTML = out || `<div class="empty-state">📊<p>No hay ventas para el PDV seleccionado.</p></div>`;
@@ -15326,7 +15764,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
         // Horarios
         if (v.created_at) {
-          const h = new Date(v.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',hour12:false});
+          const h = new Date(v.created_at.replace(' ','T').replace(/(\.\d+)?$/,'Z')).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',hour12:false});
           const hora = parseInt(h)||0;
           const addH = (map) => {
             if (!map[hora]) map[hora] = {cant:0, monto:0, tickets:new Set()};
