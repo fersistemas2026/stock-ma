@@ -15626,6 +15626,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const tickets_manana = new Set(), tickets_tarde = new Set();
           let fac_manana = 0, fac_tarde = 0;
           let ef_manana = 0, noef_manana = 0, ef_tarde = 0, noef_tarde = 0;
+          const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
           let buzon_manana = 0, buzon_tarde = 0;
           buzonFiltrado.forEach(b => {
             if (!b.created_at) return;
@@ -15634,7 +15635,6 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             if (hb >= 9 && hb < 15) buzon_manana += monto;
             else if (hb >= 15 && hb < 21) buzon_tarde += monto;
           });
-          const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
           vts.forEach(v => {
             if (!v.created_at) return;
             const hora = new Date(normTS(v.created_at)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false});
