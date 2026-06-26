@@ -527,6 +527,7 @@
               <option value="clientes">👥 Clientes</option>
               <option value="descuentosAuto">🏷️ Descuentos automáticos</option>
               <option value="ranking">🏆 Ranking productos/sabores</option>
+              <option value="pdvMetricas">📊 Métricas por PDV</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
@@ -2544,7 +2545,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   function mostrarAlertaSesionAdmin(intento) {
-    const hora = new Date(intento.created_at).toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'});
+    const hora = new Date(intento.created_at).toLocaleTimeString('es-AR', {timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;background:#2a0a0a;border:2px solid #ff5a5a;border-radius:12px;padding:16px 20px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.6);animation:slideInRight .3s ease;';
     ov.innerHTML = `
@@ -5368,6 +5369,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='clientes')     { await loadInformesClientes(range); return; }
     if (seccion==='descuentosAuto') { await loadInformesDescuentosAuto(); return; }
     if (seccion==='ranking')        { await loadInformesRanking(range.desde, range.hasta); return; }
+    if (seccion==='pdvMetricas')    { await loadInformesPdvMetricas(range.desde, range.hasta); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
     if (seccion==='pedidosOnline'){ await loadInformesPedidosOnline(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
@@ -15002,6 +15004,293 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   }
 
   // Panel de administración de descuentos automáticos
+  async function loadInformesPdvMetricas(desde, hasta) {
+    const body = document.getElementById('inf-body');
+    if (!body) return;
+    body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
+    try {
+      const [ventas, pdvs, clientes, buzon] = await Promise.all([
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,cliente_tel,ticket_id,created_at&limit=200000`) || [],
+        getPdv(),
+        sbApi(`clientes?empresa_id=eq.${empresaActual}&select=id,pdv_id,telefono`) || [],
+        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto,created_at`) || []
+      ]);
+
+      if (!ventas.length) {
+        body.innerHTML = `<div class="empty-state">📊<p>No hay ventas en el período seleccionado.</p></div>`;
+        return;
+      }
+
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre || p.name);
+
+      // Agrupar ventas por PDV
+      const porPdv = {};
+      ventas.forEach(v => {
+        const pid = String(v.pdv_id || '');
+        if (!pid) return;
+        if (!porPdv[pid]) porPdv[pid] = [];
+        porPdv[pid].push(v);
+      });
+
+      // Clientes por PDV (únicos por tel)
+      const clientesPorPdv = {};
+      clientes.forEach(c => {
+        const pid = String(c.pdv_id || '');
+        if (!pid) return;
+        if (!clientesPorPdv[pid]) clientesPorPdv[pid] = new Set();
+        if (c.telefono) clientesPorPdv[pid].add(c.telefono.replace(/[^0-9]/g,''));
+      });
+
+      const pdvIds = Object.keys(porPdv).sort((a,b) => (pdvMap[a]||a).localeCompare(pdvMap[b]||b));
+
+      // Selector de PDV
+      let html = `
+        <div style="margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:12px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">PDV:</span>
+          <button onclick="window.pdvMetricasSelAll()" id="pdvm-btn-all"
+            style="padding:6px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#000;font-size:12px;font-weight:700;cursor:pointer;">
+            Todos
+          </button>
+          ${pdvIds.map(pid => `
+            <button onclick="window.pdvMetricasSelPdv('${pid}')" id="pdvm-btn-${pid}"
+              style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:12px;font-weight:600;cursor:pointer;">
+              ${pdvMap[pid]||pid}
+            </button>`).join('')}
+        </div>
+        <div id="pdvm-contenido"></div>`;
+
+      body.innerHTML = html;
+
+      // Función que renderiza las métricas de los PDVs seleccionados
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[] };
+      window._pdvMetricasActivos = 'all';
+
+      window.pdvMetricasSelAll = function() {
+        window._pdvMetricasActivos = 'all';
+        document.getElementById('pdvm-btn-all').style.background = 'var(--accent)';
+        document.getElementById('pdvm-btn-all').style.color = '#000';
+        document.getElementById('pdvm-btn-all').style.borderColor = 'var(--accent)';
+        pdvIds.forEach(pid => {
+          const b = document.getElementById(`pdvm-btn-${pid}`);
+          if (b) { b.style.background='var(--surface2)'; b.style.color='var(--text-muted)'; b.style.borderColor='var(--border)'; }
+        });
+        window.renderPdvMetricas('all');
+      };
+
+      window.pdvMetricasSelPdv = function(pid) {
+        window._pdvMetricasActivos = pid;
+        document.getElementById('pdvm-btn-all').style.background = 'var(--surface2)';
+        document.getElementById('pdvm-btn-all').style.color = 'var(--text-muted)';
+        document.getElementById('pdvm-btn-all').style.borderColor = 'var(--border)';
+        pdvIds.forEach(p => {
+          const b = document.getElementById(`pdvm-btn-${p}`);
+          if (!b) return;
+          if (p === pid) { b.style.background='var(--accent)'; b.style.color='#000'; b.style.borderColor='var(--accent)'; }
+          else { b.style.background='var(--surface2)'; b.style.color='var(--text-muted)'; b.style.borderColor='var(--border)'; }
+        });
+        window.renderPdvMetricas([pid]);
+      };
+
+      window.renderPdvMetricas = function(ids) {
+        const { porPdv, pdvMap, clientesPorPdv, buzon } = window._pdvMetricasData;
+        const contenido = document.getElementById('pdvm-contenido');
+        if (!contenido) return;
+
+        const calcMetricas = (vts, pdvId) => {
+          const facturacion = vts.reduce((s,v) => s + (v.precio||0)*(v.cantidad||1), 0);
+          // Buzón: filtrar por pdv_id (o todos si es 'all')
+          const buzonFiltrado = (buzon||[]).filter(b => pdvId === 'all' || String(b.pdv_id) === String(pdvId));
+
+          // Tickets únicos = transacciones
+          const ticketsUnicos = new Set(vts.filter(v=>v.ticket_id).map(v=>v.ticket_id));
+          const clientesUnicos = ticketsUnicos.size || 1;
+
+          // Promedio por registro (ítem)
+          const ticketProm = clientesUnicos > 0 ? facturacion / clientesUnicos : 0;
+
+          // Efectivo vs No efectivo
+          let efectivo = 0, noEfectivo = 0;
+          vts.forEach(v => {
+            const imp = (v.precio||0)*(v.cantidad||1);
+            const mp = (v.metodo_pago||'').toLowerCase();
+            if (mp.includes('tarjeta') || mp.includes('transferencia') || mp.includes('qr') || mp.includes('debito') || mp.includes('mp') || mp.includes('mercado')) noEfectivo += imp;
+            else efectivo += imp;
+          });
+          const pctEf = facturacion > 0 ? Math.round(efectivo/facturacion*100) : 0;
+          const pctNoEf = 100 - pctEf;
+
+          // Top 5 productos por facturación y cantidad
+          const prodMap = {};
+          vts.forEach(v => {
+            const pk = v.prod_id || v.prod_nombre || '?';
+            if (!prodMap[pk]) prodMap[pk] = { nombre: v.prod_nombre||pk, cant: 0, facturacion: 0, gustos: {} };
+            const cant = parseFloat(v.cantidad||1);
+            const imp = (v.precio||0)*cant;
+            prodMap[pk].cant += cant;
+            prodMap[pk].facturacion += imp;
+            // Gustos
+            const gk = v.gusto_id || v.gusto_nombre || 'Sin gusto';
+            const gn = v.gusto_nombre || gk;
+            if (!prodMap[pk].gustos[gk]) prodMap[pk].gustos[gk] = { nombre: gn, cant: 0, facturacion: 0 };
+            prodMap[pk].gustos[gk].cant += cant;
+            prodMap[pk].gustos[gk].facturacion += imp;
+          });
+          const top5 = Object.values(prodMap).sort((a,b)=>b.facturacion-a.facturacion).slice(0,5);
+
+          // Franjas horarias: contar ticket_id únicos, efectivo/tarjeta y promedio por franja
+          const tickets_manana = new Set(), tickets_tarde = new Set();
+          let fac_manana = 0, fac_tarde = 0;
+          let ef_manana = 0, noef_manana = 0, ef_tarde = 0, noef_tarde = 0;
+          let buzon_manana = 0, buzon_tarde = 0;
+          buzonFiltrado.forEach(b => {
+            if (!b.created_at) return;
+            const hb = parseInt(new Date(b.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false}));
+            const monto = parseFloat(b.monto||0);
+            if (hb >= 9 && hb < 15) buzon_manana += monto;
+            else if (hb >= 15 && hb < 21) buzon_tarde += monto;
+          });
+          vts.forEach(v => {
+            if (!v.created_at) return;
+            const hora = new Date(v.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hour12:false});
+            const h = parseInt(hora);
+            const imp = (v.precio||0)*(v.cantidad||1);
+            const tid = v.ticket_id || null;
+            const mp = (v.metodo_pago||'').toLowerCase();
+            const esNoEf = mp.includes('tarjeta')||mp.includes('transferencia')||mp.includes('qr')||mp.includes('debito')||mp.includes('mp')||mp.includes('mercado');
+            if (h >= 9 && h < 15) {
+              fac_manana += imp;
+              if(tid) tickets_manana.add(tid);
+              if(esNoEf) noef_manana += imp; else ef_manana += imp;
+            } else if (h >= 15 && h < 21) {
+              fac_tarde += imp;
+              if(tid) tickets_tarde.add(tid);
+              if(esNoEf) noef_tarde += imp; else ef_tarde += imp;
+            }
+          });
+          const tix_m = tickets_manana.size || 1, tix_t = tickets_tarde.size || 1;
+          const prom_manana = fac_manana / tix_m;
+          const prom_tarde  = fac_tarde  / tix_t;
+          const pctEf_m  = fac_manana > 0 ? Math.round(ef_manana/fac_manana*100) : 0;
+          const pctNoEf_m = 100 - pctEf_m;
+          const pctEf_t  = fac_tarde  > 0 ? Math.round(ef_tarde/fac_tarde*100)   : 0;
+          const pctNoEf_t = 100 - pctEf_t;
+
+          return { facturacion, clientesUnicos, ticketProm, efectivo, noEfectivo, pctEf, pctNoEf, top5,
+            cl_manana: tickets_manana.size, cl_tarde: tickets_tarde.size,
+            fac_manana, fac_tarde, prom_manana, prom_tarde,
+            ef_manana, noef_manana, ef_tarde, noef_tarde,
+            pctEf_m, pctNoEf_m, pctEf_t, pctNoEf_t,
+            buzon_manana, buzon_tarde };
+        };
+
+        const fmtARS = n => '$'+Math.round(n).toLocaleString('es-AR');
+        const bar = (pct, color) => `<div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;flex:1;">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .4s;"></div></div>`;
+
+        const renderTop5Rows = (top5) => {
+          let rows = '';
+          top5.forEach((p, i) => {
+            const gustosOrds = Object.values(p.gustos).sort((a,b) => b.cant - a.cant);
+            let gustoSpans = '';
+            gustosOrds.slice(0,5).forEach(g => {
+              gustoSpans += '<span style="display:inline-block;margin-right:8px;">' + g.nombre + ': <b>' + (Number.isInteger(g.cant) ? g.cant : g.cant.toFixed(1)) + '</b> &middot; ' + fmtARS(g.facturacion) + '</span>';
+            });
+            rows += '<tr style="border-top:1px solid var(--border);">'
+              + '<td style="padding:7px 8px;font-size:13px;color:var(--accent);font-weight:700;">' + (i+1) + '</td>'
+              + '<td style="padding:7px 8px;"><div style="font-size:13px;font-weight:600;color:var(--text);">' + p.nombre + '</div>'
+              + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + gustoSpans + '</div></td>'
+              + '<td style="padding:7px 8px;text-align:right;font-size:13px;font-weight:700;color:var(--text);">' + (Number.isInteger(p.cant) ? p.cant : p.cant.toFixed(1)) + '</td>'
+              + '<td style="padding:7px 8px;text-align:right;font-size:13px;font-weight:700;color:#4ade80;">' + fmtARS(p.facturacion) + '</td>'
+              + '</tr>';
+          });
+          return rows;
+        };
+
+        const renderCard = (titulo, totalRegs, m) => {
+          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">'
+            + '<h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">' + titulo + '</h3>'
+            + '<span style="font-size:12px;color:var(--text-muted);font-family:var(--mono);">' + totalRegs + ' registros</span>'
+            + '</div>'
+            + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;">'
+            + '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--accent);">' + m.clientesUnicos + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🎫 Transacciones</div></div>'
+            + '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#4ade80;">' + fmtARS(m.facturacion) + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">💰 Facturación</div></div>'
+            + '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#f97316;">' + fmtARS(m.ticketProm) + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🎯 Promedio / transacción</div></div>'
+            + '</div>'
+            + '<div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;">'
+            + '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">💳 Método de pago</div>'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-size:12px;color:var(--text);min-width:90px;">💵 Efectivo</span>' + bar(m.pctEf, '#4ade80') + '<span style="font-size:12px;font-weight:700;color:#4ade80;min-width:50px;text-align:right;">' + m.pctEf + '%</span><span style="font-size:12px;color:var(--text-muted);min-width:90px;text-align:right;">' + fmtARS(m.efectivo) + '</span></div>'
+            + '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;color:var(--text);min-width:90px;">💳 No efectivo</span>' + bar(m.pctNoEf, '#8b5cf6') + '<span style="font-size:12px;font-weight:700;color:#8b5cf6;min-width:50px;text-align:right;">' + m.pctNoEf + '%</span><span style="font-size:12px;color:var(--text-muted);min-width:90px;text-align:right;">' + fmtARS(m.noEfectivo) + '</span></div>'
+            + '</div>'
+            + '<div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;">'
+            + '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">🏆 Top 5 productos</div>'
+            + '<table style="width:100%;border-collapse:collapse;"><thead><tr style="border-bottom:1px solid var(--border);">'
+            + '<th style="font-size:10px;color:var(--text-muted);padding:4px 8px;text-align:left;font-family:var(--mono);font-weight:600;">#</th>'
+            + '<th style="font-size:10px;color:var(--text-muted);padding:4px 8px;text-align:left;font-family:var(--mono);font-weight:600;">Producto</th>'
+            + '<th style="font-size:10px;color:var(--text-muted);padding:4px 8px;text-align:right;font-family:var(--mono);font-weight:600;">Cantidad</th>'
+            + '<th style="font-size:10px;color:var(--text-muted);padding:4px 8px;text-align:right;font-family:var(--mono);font-weight:600;">Facturación</th>'
+            + '</tr></thead><tbody>' + renderTop5Rows(m.top5) + '</tbody></table>'
+            + '</div>'
+            + '<div style="background:var(--surface2);border-radius:10px;padding:14px;">'
+            + '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">🕐 Franjas horarias</div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+            + '<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:8px;padding:14px;">'
+            + '<div style="font-size:13px;font-weight:700;color:#f97316;margin-bottom:10px;">☀️ 09:00 – 15:00</div>'
+            + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">'
+            + '<div style="text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--text);">' + m.cl_manana + '</div><div style="font-size:10px;color:var(--text-muted);">transacciones</div></div>'
+            + '<div style="text-align:center;"><div style="font-size:18px;font-weight:800;color:#4ade80;">' + fmtARS(m.fac_manana) + '</div><div style="font-size:10px;color:var(--text-muted);">facturación</div></div>'
+            + '<div style="text-align:center;"><div style="font-size:18px;font-weight:800;color:#f97316;">' + fmtARS(m.prom_manana) + '</div><div style="font-size:10px;color:var(--text-muted);">prom/transacción</div></div>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:11px;color:var(--text);min-width:80px;">💵 Efectivo</span><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden;flex:1;"><div style="width:' + m.pctEf_m + '%;height:100%;background:#4ade80;"></div></div><span style="font-size:11px;font-weight:700;color:#4ade80;min-width:32px;text-align:right;">' + m.pctEf_m + '%</span><span style="font-size:11px;color:var(--text-muted);min-width:70px;text-align:right;">' + fmtARS(m.ef_manana) + '</span></div>'
+            + '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:var(--text);min-width:80px;">💳 No efectivo</span><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden;flex:1;"><div style="width:' + m.pctNoEf_m + '%;height:100%;background:#8b5cf6;"></div></div><span style="font-size:11px;font-weight:700;color:#8b5cf6;min-width:32px;text-align:right;">' + m.pctNoEf_m + '%</span><span style="font-size:11px;color:var(--text-muted);min-width:70px;text-align:right;">' + fmtARS(m.noef_manana) + '</span></div>'
+            + (m.ef_manana > 0 ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:var(--text-muted);">📬 Buzón ingresado</span><span style="font-size:12px;font-weight:700;color:#fbbf24;">' + fmtARS(m.buzon_manana) + '</span><span style="font-size:11px;color:var(--text-muted);">(' + Math.round(m.buzon_manana / m.ef_manana * 100) + '% del efectivo)</span></div>' : '')
+            + '</div>'
+            + '<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:8px;padding:14px;">'
+            + '<div style="font-size:13px;font-weight:700;color:#8b5cf6;margin-bottom:10px;">🌆 15:00 – 21:00</div>'
+            + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">'
+            + '<div style="text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--text);">' + m.cl_tarde + '</div><div style="font-size:10px;color:var(--text-muted);">transacciones</div></div>'
+            + '<div style="text-align:center;"><div style="font-size:18px;font-weight:800;color:#4ade80;">' + fmtARS(m.fac_tarde) + '</div><div style="font-size:10px;color:var(--text-muted);">facturación</div></div>'
+            + '<div style="text-align:center;"><div style="font-size:18px;font-weight:800;color:#8b5cf6;">' + fmtARS(m.prom_tarde) + '</div><div style="font-size:10px;color:var(--text-muted);">prom/transacción</div></div>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:11px;color:var(--text);min-width:80px;">💵 Efectivo</span><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden;flex:1;"><div style="width:' + m.pctEf_t + '%;height:100%;background:#4ade80;"></div></div><span style="font-size:11px;font-weight:700;color:#4ade80;min-width:32px;text-align:right;">' + m.pctEf_t + '%</span><span style="font-size:11px;color:var(--text-muted);min-width:70px;text-align:right;">' + fmtARS(m.ef_tarde) + '</span></div>'
+            + '<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:var(--text);min-width:80px;">💳 No efectivo</span><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden;flex:1;"><div style="width:' + m.pctNoEf_t + '%;height:100%;background:#8b5cf6;"></div></div><span style="font-size:11px;font-weight:700;color:#8b5cf6;min-width:32px;text-align:right;">' + m.pctNoEf_t + '%</span><span style="font-size:11px;color:var(--text-muted);min-width:70px;text-align:right;">' + fmtARS(m.noef_tarde) + '</span></div>'
+            + (m.ef_tarde > 0 ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;color:var(--text-muted);">📬 Buzón ingresado</span><span style="font-size:12px;font-weight:700;color:#fbbf24;">' + fmtARS(m.buzon_tarde) + '</span><span style="font-size:11px;color:var(--text-muted);">(' + Math.round(m.buzon_tarde / m.ef_tarde * 100) + '% del efectivo)</span></div>' : '')
+            + '</div>'
+            + '</div></div>'
+            + '</div>';
+        };
+
+        // Si es 'all': consolidar todos los PDVs en una sola card
+        if (ids === 'all') {
+          const { pdvIds } = window._pdvMetricasData;
+          const vtsTodas = pdvIds.flatMap(pid => porPdv[pid] || []);
+          if (!vtsTodas.length) { contenido.innerHTML = `<div class="empty-state">📊<p>Sin datos.</p></div>`; return; }
+          const m = calcMetricas(vtsTodas, 'all');
+          contenido.innerHTML = renderCard('🌐 Todos los PDVs', vtsTodas.length, m);
+          return;
+        }
+
+        let out = '';
+        ids.forEach(pid => {
+          const vts = porPdv[pid] || [];
+          if (!vts.length) return;
+          const m = calcMetricas(vts, pid);
+          out += renderCard('🏪 ' + (pdvMap[pid]||pid), vts.length, m);
+        });
+
+        contenido.innerHTML = out || `<div class="empty-state">📊<p>No hay ventas para el PDV seleccionado.</p></div>`;
+      };
+
+      // Render inicial: todos consolidados
+      window.renderPdvMetricas('all');
+
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+      console.error('[PdvMetricas]', e);
+    }
+  }
+
   async function loadInformesRanking(desde, hasta) {
     const body = document.getElementById('inf-body');
     if (!body) return;
@@ -16372,7 +16661,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     const renderCard = p => {
       const esPre = esPrePedido(p) && estaActivo(p);
       const items = Array.isArray(p.items) ? p.items : [];
-      const hora = new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const hora = new Date(p.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       const fechaEntrega = p.fecha_especial ? new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'}) : '';
       const horarioEntrega = p.envio_horario ? p.envio_horario.replace('-',' a ') + ' hs' : '';
       return `<div style="background:${esPre?'rgba(147,51,234,.06)':'var(--surface)'};border:${esPre?'2px solid #9333ea':'1px solid var(--border)'};border-radius:12px;padding:16px;margin-bottom:12px;${esPre?'box-shadow:0 2px 12px rgba(147,51,234,.15)':''}">
@@ -17753,7 +18042,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     el.style.gap='14px';
     el.innerHTML=lista.map(p=>{
       const items=Array.isArray(p.items)?p.items:[];
-      const horaRecibido=new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const horaRecibido=new Date(p.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       const esPre = p.fecha_especial || (p.envio_plazo && p.envio_plazo.startsWith('pre-pedido:'));
       let fechaEntregaLabel = '';
       if (esPre && p.fecha_especial) {
@@ -17810,7 +18099,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     const p = _poOpPedidos.find(x => x.id === id);
     if (!p) { toast('Pedido no encontrado','error'); return; }
     const items = Array.isArray(p.items) ? p.items : [];
-    const hora = new Date(p.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const hora = new Date(p.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const esPre = p.fecha_especial || (p.envio_plazo && p.envio_plazo.startsWith('pre-pedido:'));
     let fechaLabel = '';
     if (esPre && p.fecha_especial) {
@@ -17902,7 +18191,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     const sig={nuevo:'en_preparacion',en_preparacion:'listo',listo:'entregado'};
     const sigl={nuevo:'👨‍🍳 Iniciar preparación',en_preparacion:'✅ Listo para entregar',listo:'📦 Entregar'};
     const estadoColor={nuevo:'#D85A30',en_preparacion:'#E6A817',listo:'#1D9E75'};
-    const hora=new Date(ped.created_at).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const hora=new Date(ped.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     m.innerHTML=`<div style="background:var(--surface);border-radius:16px;max-width:400px;width:100%;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-size:18px;font-weight:700">🆕 Nuevo pedido</div>
