@@ -15686,7 +15686,12 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,reporte_z,efectivo,tarjetas&order=fecha.asc`) || [],
         sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || [],
         sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || [],
-        sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio`) || []
+        (() => {
+          const desdeUTC = new Date(desde + 'T03:00:00Z');
+          const hastaUTC = new Date(hasta + 'T03:00:00Z');
+          hastaUTC.setDate(hastaUTC.getDate() + 1);
+          return sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desdeUTC.toISOString()}&created_at=lt.${hastaUTC.toISOString()}&select=pdv_id,pagina,convirtio&limit=50000`) || [];
+        })()
       ]);
 
       if (!ventas.length) {
