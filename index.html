@@ -989,90 +989,39 @@
 
       <!-- MENSAJES -->
       <div id="neg-mensajes" class="neg-panel" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-          <div>
-            <div class="form-title" style="margin-bottom:2px">💬 Mensajes</div>
-            <p style="font-size:13px;color:var(--text-muted);margin:0;">Comunicación interna en tiempo real</p>
-          </div>
-          <button onclick="msgNuevoClick()" id="msg-btn-nuevo" style="display:none;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;">✉️ Nuevo mensaje</button>
-        </div>
-
-        <!-- Panel admin -->
-        <div id="msg-admin-panel" style="display:none;">
-          <!-- Composer (oculto por defecto, se muestra al hacer clic en Nuevo) -->
-          <div id="msg-composer" style="display:none;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:24px;">
-            <div style="font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">✉️ Nuevo mensaje</div>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              <div>
-                <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Para</label>
-                <select id="msg-destinatario" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;">
-                  <option value="todos">📢 Todos los PDVs</option>
-                </select>
-              </div>
-              <textarea id="msg-texto" rows="2" maxlength="500" placeholder="Escribí el mensaje..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);box-sizing:border-box;"></textarea>
-              <div style="display:flex;gap:8px;">
-                <button onclick="msgAdminEnviar()" style="flex:1;background:var(--accent);color:#000;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;">📤 Enviar</button>
-                <button onclick="document.getElementById('msg-composer').style.display='none'" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 16px;font-size:13px;color:var(--text-muted);cursor:pointer;">Cancelar</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Cuadros de conversación por interlocutor -->
-          <div id="msg-hilos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;"></div>
-          <div id="msg-hilos-empty" style="display:none;" class="empty-state">💬<p>Sin conversaciones aún. Enviá el primer mensaje.</p></div>
-        </div>
-
-        <!-- Panel operador/PDV -->
-        <div id="msg-op-panel" style="display:none;">
-          <!-- Composer operador -->
-          <div id="msg-op-composer" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;max-width:520px;">
-            <div style="font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">✉️ Enviar mensaje</div>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              <div>
-                <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Para</label>
-                <select id="msg-op-destinatario" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;">
-                  <option value="admin">👤 Administrador</option>
-                </select>
-              </div>
-              <textarea id="msg-op-texto" rows="2" maxlength="300" placeholder="Escribí tu mensaje..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);box-sizing:border-box;"></textarea>
-              <button onclick="msgOpEnviar()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;">📤 Enviar</button>
-            </div>
-          </div>
-          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Mensajes recibidos</div>
-          <div id="msg-op-recibidos" style="display:flex;flex-direction:column;gap:8px;max-width:520px;"></div>
-        </div>
+        <div class="form-title" style="margin-bottom:4px">💬 MapChat</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:0;">El chat de mensajería está disponible desde el botón flotante en la esquina inferior derecha.</p>
       </div>
 
-      <!-- OVERLAY MENSAJE URGENTE -->
-      <!-- CHAT OVERLAY -->
-      <div id="msg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
-        <div id="msg-overlay-inner" class="msg-pulse" style="background:var(--surface);border:2px solid var(--accent);border-radius:20px;width:100%;max-width:420px;margin:16px;display:flex;flex-direction:column;max-height:85vh;overflow:hidden;">
-          <div style="padding:14px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:38px;height:38px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">💬</div>
-              <div>
-                <div id="msg-overlay-titulo" style="font-size:14px;font-weight:800;"></div>
-                <div style="font-size:11px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Mensaje urgente</div>
-              </div>
-            </div>
-            <div style="display:flex;gap:6px;">
-              <button onclick="msgMinimizar()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;">— Min</button>
-              <button onclick="msgCerrar()" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text-muted);cursor:pointer;">✕</button>
-            </div>
+      <!-- ══ MAPCHAT ══════════════════════════════════════════════════ -->
+      <!-- Botón flotante -->
+      <div id="mc-fab" onclick="mcToggle()" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9990;cursor:pointer;">
+        <div style="width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:transform .15s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">💬</div>
+        <div id="mc-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff5a5a;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:11px;font-weight:900;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--bg);">0</div>
+      </div>
+
+      <!-- Panel MapChat -->
+      <div id="mc-panel" style="display:none;position:fixed;bottom:88px;right:20px;z-index:9991;width:340px;max-height:520px;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden;">
+        <!-- Header -->
+        <div id="mc-header" style="padding:14px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+          <div id="mc-header-titulo" style="font-size:15px;font-weight:900;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:18px;">💬</span> MapChat
           </div>
-          <div id="msg-overlay-hilo" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-height:120px;"></div>
-          <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;flex-shrink:0;background:var(--surface2);">
-            <textarea id="msg-overlay-respuesta" rows="2" maxlength="300" placeholder="Responder... (Enter = enviar)" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();msgResponder();}"></textarea>
-            <button onclick="msgResponder()" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:11px 16px;font-size:18px;font-weight:900;cursor:pointer;flex-shrink:0;align-self:flex-end;">➤</button>
+          <button onclick="mcToggle()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;padding:0;">✕</button>
+        </div>
+        <!-- Lista de conversaciones -->
+        <div id="mc-lista" style="flex:1;overflow-y:auto;"></div>
+        <!-- Chat abierto -->
+        <div id="mc-chat" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div id="mc-chat-mensajes" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:200px;max-height:320px;"></div>
+          <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:var(--surface2);flex-shrink:0;">
+            <textarea id="mc-input" rows="1" maxlength="300" placeholder="Mensaje..." style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);max-height:80px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();mcEnviar();}"></textarea>
+            <button onclick="mcEnviar()" style="width:36px;height:36px;background:var(--accent);color:#000;border:none;border-radius:50%;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">➤</button>
           </div>
         </div>
       </div>
 
-      <!-- BOTÓN MINIMIZADO -->
-      <div id="msg-mini" onclick="msgMaximizar()" style="display:none;position:fixed;bottom:80px;right:16px;background:var(--accent);color:#000;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:900;cursor:pointer;z-index:99998;box-shadow:0 4px 20px rgba(0,0,0,.4);">
-        💬 Chat activo
-      </div>
-
+      <!-- AVISOS -->
       <!-- AVISOS -->
       <div id="neg-avisos" class="neg-panel" style="display:none">
         <div class="form-title" style="margin-bottom:4px">🔔 Avisos</div>
@@ -2580,6 +2529,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       });
       if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.message || `Error ${r.status}`); }
       _sesionId = pdvId;
+      // Actualizar MapChat con pdv nombre
+      try { mcCargarPdvMap(); } catch(e) {}
       // Ping cada 60s para mantener sesión activa
       if (_sesionPingInterval) clearInterval(_sesionPingInterval);
       _sesionPingInterval = setInterval(async () => {
@@ -12018,382 +11969,272 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (btn) { btn.textContent='💬 Mensajes'; btn.style.color=''; }
   }
 
+  // ══ MAPCHAT ════════════════════════════════════════════════════
+  let _mcPollTimer = null;
+  let _mcNoLeidos = 0;
+  let _mcChatActual = null; // { interlocutor, nombre }
+  let _mcPanelAbierto = false;
+  let _mcPdvMap = {}; // username -> pdvNombre
+  let _mcMiPdvNombre = null;
+
   async function checkNuevosMensajes() {
-    try {
-      const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&leido=eq.false&select=id&limit=1`) || [];
-      if (r.length > 0) iniciarParpadeoMensajes(); else detenerParpadeoMensajes();
-    } catch(e){}
+    // Wrapper para compatibilidad
+    try { mcCheckNuevos(); } catch(e) {}
   }
 
-  // ── MENSAJERÍA URGENTE ──
-  let _msgPollTimer = null;
-  let _msgIdsMostrados = new Set();
-  let _msgHiloActual = null;
-  let _msgActualId = null;
-
-  function msgIniciarPolling() {
-    if (_msgPollTimer) clearInterval(_msgPollTimer);
-    _msgPollTimer = setInterval(msgCheckNuevos, 8000);
-    setTimeout(msgCheckNuevos, 2000);
+  function mcIniciar() {
+    mcCargarPdvMap().then(() => {
+      mcMostrarFab();
+      mcCargarLista();
+    });
+    if (_mcPollTimer) clearInterval(_mcPollTimer);
+    _mcPollTimer = setInterval(mcCheckNuevos, 6000);
+    setTimeout(mcCheckNuevos, 2000);
   }
 
-  async function msgCheckNuevos() {
-    if (!currentUser) return;
+  function msgIniciarPolling() { mcIniciar(); }
+
+  function mcMostrarFab() {
+    const fab = document.getElementById('mc-fab');
+    if (fab) fab.style.display = 'block';
+  }
+
+  async function mcCargarPdvMap() {
     try {
-      const username = currentUser.username;
-      const queries = [
-        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${username}&leido=eq.false&order=created_at.desc&select=*`) || [],
-        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.todos&leido=eq.false&order=created_at.desc&select=*`) || []
-      ];
-      if (_sesionId) {
-        queries.push(sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.pdv_${_sesionId}&leido=eq.false&order=created_at.desc&select=*`) || []);
-      }
-      const results = await Promise.all(queries);
-      const nuevos = results.flat().filter(m => m.desde !== username && !_msgIdsMostrados.has(m.id));
-      if (nuevos.length > 0) {
-        const m = nuevos[0];
-        _msgIdsMostrados.add(m.id);
-        _msgActualId = m.id;
-        await msgActualizarOverlay();
-        if (document.getElementById('msg-overlay').style.display !== 'flex') msgMostrarOverlay();
-        iniciarParpadeoMensajes();
-        await sbApi(`mensajes?id=eq.${m.id}`, { method: 'PATCH', body: JSON.stringify({ leido: true }) });
-      }
-      // Si admin está en mensajes, refrescar hilos
-      if (currentUser.role === 'admin') {
-        const negMsj = document.getElementById('neg-mensajes');
-        if (negMsj && negMsj.classList.contains('active')) msgCargarHilos();
-      }
+      const [pdvs, sesiones] = await Promise.all([
+        getPdv(),
+        sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&select=username,pdv_id,pdv_nombre`) || []
+      ]);
+      const pdvById = {};
+      pdvs.forEach(p => pdvById[String(p.id)] = p.nombre||p.name);
+      sesiones.forEach(s => { _mcPdvMap[s.username] = s.pdv_nombre || pdvById[String(s.pdv_id)] || s.username; });
+      // Mi propio nombre de PDV
+      if (_sesionId) _mcMiPdvNombre = pdvById[String(_sesionId)] || currentUser?.displayName || currentUser?.username;
+      else _mcMiPdvNombre = currentUser?.displayName || currentUser?.username;
     } catch(e) {}
   }
 
-  async function msgActualizarOverlay() {
-    if (!_msgHiloActual) return;
-    const { interlocutor, pdvNombre, nombre } = _msgHiloActual;
-    const tituloEl = document.getElementById('msg-overlay-titulo');
-    const hiloEl = document.getElementById('msg-overlay-hilo');
-    if (!tituloEl || !hiloEl) return;
-    tituloEl.textContent = pdvNombre || nombre || interlocutor;
-    const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+  function mcNombre(username) {
+    if (username === currentUser?.username) return _mcMiPdvNombre || 'Yo';
+    if (username === 'admin') return '👤 Admin';
+    if (username === 'todos') return '📢 Todos';
+    return _mcPdvMap[username] || username;
+  }
+
+  function mcToggle() {
+    const panel = document.getElementById('mc-panel');
+    if (!panel) return;
+    _mcPanelAbierto = !_mcPanelAbierto;
+    panel.style.display = _mcPanelAbierto ? 'flex' : 'none';
+    if (_mcPanelAbierto) {
+      if (_mcChatActual) mcAbrirChat(_mcChatActual.interlocutor, _mcChatActual.nombre);
+      else mcMostrarLista();
+      mcCargarLista();
+    }
+  }
+
+  function mcMostrarLista() {
+    _mcChatActual = null;
+    const lista = document.getElementById('mc-lista');
+    const chat = document.getElementById('mc-chat');
+    const header = document.getElementById('mc-header-titulo');
+    if (lista) lista.style.display = '';
+    if (chat) chat.style.display = 'none';
+    if (header) header.innerHTML = '<span style="font-size:18px;">💬</span> MapChat';
+  }
+
+  async function mcCargarLista() {
+    const cont = document.getElementById('mc-lista');
+    if (!cont) return;
+    try {
+      await mcCargarPdvMap();
+      const [env, rec] = await Promise.all([
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&order=created_at.desc&select=*`) || [],
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || []
+      ]);
+      const normTS = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+      const todos = [...(env||[]),...(rec||[])];
+
+      // Agrupar por interlocutor
+      const hilos = {};
+      todos.forEach(m => {
+        const otro = m.desde===currentUser.username ? m.para : m.desde;
+        if (!hilos[otro]) hilos[otro] = { interlocutor:otro, ultimo:null, noLeidos:0 };
+        const ts = new Date(normTS(m.created_at));
+        if (!hilos[otro].ultimo || ts > new Date(normTS(hilos[otro].ultimo.created_at))) hilos[otro].ultimo = m;
+        if (m.para===currentUser.username && !m.leido) hilos[otro].noLeidos++;
+      });
+
+      // Agregar PDVs/operadores sin conversación previa (solo para admin)
+      if (currentUser.role === 'admin') {
+        try {
+          const sesiones = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&select=username,pdv_nombre`) || [];
+          sesiones.forEach(s => {
+            if (s.username !== currentUser.username && !hilos[s.username]) {
+              hilos[s.username] = { interlocutor:s.username, ultimo:null, noLeidos:0 };
+              _mcPdvMap[s.username] = s.pdv_nombre||s.username;
+            }
+          });
+        } catch(e) {}
+        // Siempre mostrar "Todos"
+        if (!hilos['todos']) hilos['todos'] = { interlocutor:'todos', ultimo:null, noLeidos:0 };
+      } else {
+        // Operador siempre ve Admin
+        if (!hilos['admin']) hilos['admin'] = { interlocutor:'admin', ultimo:null, noLeidos:0 };
+      }
+
+      const lista = Object.values(hilos).sort((a,b) => {
+        const ta = a.ultimo ? new Date(normTS(a.ultimo.created_at)) : new Date(0);
+        const tb = b.ultimo ? new Date(normTS(b.ultimo.created_at)) : new Date(0);
+        return tb - ta;
+      });
+
+      const fmtHora = s => {
+        if (!s) return '';
+        const d = new Date(normTS(s));
+        const esHoy = d.toDateString()===new Date().toDateString();
+        return esHoy ? d.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'})
+          : d.toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit'});
+      };
+
+      cont.innerHTML = lista.map(h => {
+        const nombre = mcNombre(h.interlocutor);
+        const u = h.ultimo;
+        const esMio = u && u.desde===currentUser.username;
+        const preview = u ? (esMio?'Vos: ':'')+(u.mensaje||'').substring(0,45)+((u.mensaje||'').length>45?'…':'') : 'Sin mensajes';
+        const badge = h.noLeidos>0 ? `<span style="background:#25d366;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;">${h.noLeidos}</span>` : '';
+        const leido = u ? (u.leido ? '✓✓' : '✓') : '';
+        const leidoColor = u?.leido ? '#53bdeb' : 'var(--text-muted)';
+        return `<div onclick="mcAbrirChat('${h.interlocutor}','${nombre.replace(/'/g,"\'")}');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          <div style="width:44px;height:44px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${h.interlocutor==='todos'?'📢':h.interlocutor==='admin'?'👤':'🏪'}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${nombre}</span>
+              <span style="font-size:11px;color:var(--text-muted);flex-shrink:0;margin-left:4px;">${fmtHora(u?.created_at)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;">${esMio?`<span style="color:${leidoColor};font-size:11px;">${leido}</span> `:''} ${preview}</span>
+              ${badge}
+            </div>
+          </div>
+        </div>`;
+      }).join('') || '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">Sin conversaciones aún</div>';
+    } catch(e) { if(cont) cont.innerHTML='<div style="padding:16px;color:var(--text-muted);">Error cargando</div>'; }
+  }
+
+  async function mcAbrirChat(interlocutor, nombre) {
+    _mcChatActual = { interlocutor, nombre };
+    const lista = document.getElementById('mc-lista');
+    const chat = document.getElementById('mc-chat');
+    const header = document.getElementById('mc-header-titulo');
+    if (lista) lista.style.display = 'none';
+    if (chat) chat.style.display = 'flex';
+    if (header) header.innerHTML = `<button onclick="mcMostrarLista()" style="background:none;border:none;color:var(--accent);font-size:20px;cursor:pointer;padding:0 6px 0 0;">‹</button> ${nombre}`;
+    await mcCargarMensajes();
+    // Marcar como leídos
+    try { await sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${interlocutor}&para=eq.${currentUser.username}&leido=eq.false`, {method:'PATCH',body:JSON.stringify({leido:true})}); } catch(e) {}
+    mcActualizarBadge();
+  }
+
+  async function mcCargarMensajes() {
+    if (!_mcChatActual) return;
+    const { interlocutor } = _mcChatActual;
+    const cont = document.getElementById('mc-chat-mensajes');
+    if (!cont) return;
+    const normTS = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\.\d+$/,'')+'Z'; return t; };
     try {
       const [env, rec] = await Promise.all([
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&para=eq.${interlocutor}&order=created_at.asc&select=*`) || [],
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${interlocutor}&para=eq.${currentUser.username}&order=created_at.asc&select=*`) || []
       ]);
-      const todos = [...(env||[]), ...(rec||[])].sort((a,b)=>new Date(normTS(a.created_at))-new Date(normTS(b.created_at)));
-      hiloEl.innerHTML = todos.slice(-20).map(m => {
-        const esMio = m.desde === currentUser.username;
+      const todos = [...(env||[]),...(rec||[])].sort((a,b)=>new Date(normTS(a.created_at))-new Date(normTS(b.created_at)));
+      cont.innerHTML = todos.slice(-50).map(m => {
+        const esMio = m.desde===currentUser.username;
         const hora = new Date(normTS(m.created_at)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
-        return `<div style="display:flex;${esMio?'justify-content:flex-end':'justify-content:flex-start'}">
-          <div style="max-width:82%;background:${esMio?'var(--accent)':'var(--surface2)'};color:${esMio?'#000':'var(--text)'};border-radius:${esMio?'14px 14px 2px 14px':'14px 14px 14px 2px'};padding:9px 13px;font-size:14px;line-height:1.4;">
-            ${!esMio?`<div style="font-size:10px;font-weight:700;opacity:.6;margin-bottom:3px;">${pdvNombre||m.desde_nombre||m.desde}</div>`:''}
+        const tilde = esMio ? `<span style="color:${m.leido?'#53bdeb':'rgba(255,255,255,.6)'};font-size:11px;margin-left:4px;">${m.leido?'✓✓':'✓'}</span>` : '';
+        return `<div style="display:flex;${esMio?'justify-content:flex-end':'justify-content:flex-start'};margin-bottom:2px;">
+          <div style="max-width:78%;background:${esMio?'#005c4b':'var(--surface2)'};color:${esMio?'#e9edef':'var(--text)'};border-radius:${esMio?'12px 12px 2px 12px':'12px 12px 12px 2px'};padding:7px 12px 5px;font-size:14px;line-height:1.4;box-shadow:0 1px 2px rgba(0,0,0,.2);">
+            ${!esMio?`<div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:2px;">${mcNombre(m.desde)}</div>`:''}
             <div>${m.mensaje||''}</div>
-            <div style="font-size:10px;opacity:.5;margin-top:3px;text-align:right;">${hora}</div>
+            <div style="font-size:10px;opacity:.7;text-align:right;margin-top:2px;">${hora}${tilde}</div>
           </div>
         </div>`;
       }).join('');
-      hiloEl.scrollTop = hiloEl.scrollHeight;
+      cont.scrollTop = cont.scrollHeight;
     } catch(e) {}
   }
 
-    function msgMostrarOverlay() {
-    document.getElementById('msg-overlay').style.display = 'flex';
-    document.getElementById('msg-mini').style.display = 'none';
-    // Sonido
+  async function mcEnviar() {
+    if (!_mcChatActual) return;
+    const input = document.getElementById('mc-input');
+    const texto = input?.value?.trim();
+    if (!texto) return;
+    input.value = '';
+    input.style.height = 'auto';
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      [440, 554, 659].forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = freq; osc.type = 'sine';
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + i*0.13);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.13 + 0.18);
-        osc.start(ctx.currentTime + i*0.13);
-        osc.stop(ctx.currentTime + i*0.13 + 0.2);
-      });
+      const desde_nombre = _mcMiPdvNombre || currentUser?.displayName || currentUser?.username;
+      await sbApi('mensajes', {method:'POST', body:JSON.stringify({
+        empresa_id: String(empresaActual), desde: currentUser.username,
+        desde_nombre, para: _mcChatActual.interlocutor, mensaje: texto, leido: false
+      })});
+      await mcCargarMensajes();
+    } catch(e) { toast('Error enviando','error'); }
+  }
+
+  async function mcCheckNuevos() {
+    if (!currentUser) return;
+    try {
+      const username = currentUser.username;
+      const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${username}&leido=eq.false&order=created_at.desc&select=*`) || [];
+      const nuevos = (r||[]).filter(m => m.desde !== username);
+      if (nuevos.length > 0) {
+        // Actualizar pdvMap con remitentes nuevos
+        await mcCargarPdvMap();
+        // Sonido
+        try {
+          const ctx=new(window.AudioContext||window.webkitAudioContext)();
+          [523,659,784].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0.25,ctx.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*.1+.15);o.start(ctx.currentTime+i*.1);o.stop(ctx.currentTime+i*.1+.18);});
+        } catch(e) {}
+        iniciarParpadeoMensajes();
+        // Si el chat del remitente está abierto, recargar
+        if (_mcPanelAbierto && _mcChatActual?.interlocutor === nuevos[0].desde) {
+          await mcCargarMensajes();
+          // Marcar como leídos
+          await sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${nuevos[0].desde}&para=eq.${username}&leido=eq.false`, {method:'PATCH',body:JSON.stringify({leido:true})});
+        } else {
+          // Badge
+          mcActualizarBadge(nuevos.length);
+        }
+        if (_mcPanelAbierto && !_mcChatActual) mcCargarLista();
+      } else {
+        detenerParpadeoMensajes();
+      }
     } catch(e) {}
-    // Reiniciar animación pulso
-    const inner = document.getElementById('msg-overlay-inner');
-    if (inner) { inner.classList.remove('msg-pulse'); void inner.offsetWidth; inner.classList.add('msg-pulse'); }
   }
 
-  function msgMinimizar() {
-    document.getElementById('msg-overlay').style.display = 'none';
-    document.getElementById('msg-mini').style.display = 'block';
-  }
-
-  function msgMaximizar() {
-    document.getElementById('msg-overlay').style.display = 'flex';
-    document.getElementById('msg-mini').style.display = 'none';
-    msgActualizarOverlay();
-  }
-
-  function msgCerrar() {
-    // Para operadores: mantener overlay abierto para seguir contestando
-    if (currentUser?.role !== 'admin') {
-      document.getElementById('msg-overlay-respuesta').value = '';
-      // No cerramos — el operador puede minimizar si quiere
-      return;
+  function mcActualizarBadge(n) {
+    const badge = document.getElementById('mc-badge');
+    if (!badge) return;
+    if (n && n > 0) {
+      badge.textContent = n;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
     }
-    document.getElementById('msg-overlay').style.display = 'none';
-    document.getElementById('msg-mini').style.display = 'none';
-    _msgActualId = null;
   }
 
   function initChat() {
-    const isAdmin = currentUser?.role === 'admin';
-    document.getElementById('msg-admin-panel').style.display = isAdmin ? '' : 'none';
-    document.getElementById('msg-op-panel').style.display = isAdmin ? 'none' : '';
-    const btnNuevo = document.getElementById('msg-btn-nuevo');
-    if (btnNuevo) btnNuevo.style.display = '';
-    msgCargarDestinatarios();
-    if (isAdmin) {
-      msgCargarHilos();
-      // Refrescar hilos cada 10s mientras está abierto
-      if (window._msgHilosTimer) clearInterval(window._msgHilosTimer);
-      window._msgHilosTimer = setInterval(() => {
-        if (document.getElementById('neg-mensajes')?.classList.contains('active')) msgCargarHilos();
-      }, 10000);
-    } else {
-      msgCargarOpRecibidos();
-    }
+    const isAdmin = currentUser?.role==='admin';
+    // MapChat visible para todos
+    mcIniciar();
+    // Panel de mensajes simple (solo referencia)
+    const adminP = document.getElementById('msg-admin-panel');
+    const opP = document.getElementById('msg-op-panel');
+    if (adminP) adminP.style.display = isAdmin ? '' : 'none';
+    if (opP) opP.style.display = isAdmin ? 'none' : '';
   }
 
-  async function msgCargarDestinatarios() {
-    try {
-      const pdvs = await getPdv();
-      const usuarios = await sbApi(`usuarios?role=eq.operador&select=username,display_name`) || [];
-      const sel = document.getElementById('msg-destinatario');
-      if (!sel) return;
-      sel.innerHTML = '<option value="todos">📢 Todos los PDVs</option>';
-      // Agregar por PDV
-      pdvs.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = 'pdv_' + p.id;
-        opt.textContent = '🏪 ' + (p.nombre || p.name);
-        sel.appendChild(opt);
-      });
-      // Agregar por operador
-      usuarios.forEach(u => {
-        const opt = document.createElement('option');
-        opt.value = 'op_' + u.username;
-        opt.textContent = '👤 ' + (u.display_name || u.username);
-        sel.appendChild(opt);
-      });
-    } catch(e) {}
-  }
-
-  async function msgAdminEnviar() {
-    const dest = document.getElementById('msg-destinatario')?.value;
-    const texto = document.getElementById('msg-texto')?.value?.trim();
-    if (!texto) { toast('Escribí un mensaje','error'); return; }
-    try {
-      const rows = [];
-      if (dest === 'todos') {
-        const usuarios = await sbApi(`usuarios?role=eq.operador&select=username,display_name`) || [];
-        usuarios.forEach(u => rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: u.username, mensaje: texto, leido: false }));
-        rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: 'todos', mensaje: texto, leido: false });
-      } else if (dest.startsWith('pdv_')) {
-        const pdvId = dest.replace('pdv_','');
-        const sesiones = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&select=username`) || [];
-        if (sesiones.length) {
-          sesiones.forEach(s => rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: s.username, mensaje: texto, leido: false, grupo_id: pdvId }));
-        } else {
-          rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: 'pdv_'+pdvId, mensaje: texto, leido: false, grupo_id: pdvId });
-        }
-      } else if (dest.startsWith('op_')) {
-        const username = dest.replace('op_','');
-        rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: username, mensaje: texto, leido: false });
-      }
-      for (const row of rows) await sbApi('mensajes', { method: 'POST', body: JSON.stringify(row) });
-      document.getElementById('msg-texto').value = '';
-      document.getElementById('msg-composer').style.display = 'none';
-      toast('✓ Mensaje enviado', 'success');
-      setTimeout(msgCargarHilos, 500);
-    } catch(e) { toast('Error: '+e.message,'error'); }
-  }
-
-  async function msgOpEnviar() {
-    const dest = document.getElementById('msg-op-destinatario')?.value || 'admin';
-    const texto = document.getElementById('msg-op-texto')?.value?.trim();
-    if (!texto) { toast('Escribí un mensaje','error'); return; }
-    try {
-      await sbApi('mensajes', { method: 'POST', body: JSON.stringify({
-        empresa_id: String(empresaActual), desde: currentUser.username,
-        desde_nombre: currentUser.displayName||currentUser.username,
-        para: dest, mensaje: texto, leido: false
-      })});
-      document.getElementById('msg-op-texto').value = '';
-      toast('✓ Mensaje enviado','success');
-      setTimeout(msgCargarOpRecibidos, 500);
-    } catch(e) { toast('Error: '+e.message,'error'); }
-  }
-
-  async function msgCargarHilos() {
-    const cont = document.getElementById('msg-hilos');
-    const empty = document.getElementById('msg-hilos-empty');
-    if (!cont) return;
-    try {
-      const [enviados, recibidos] = await Promise.all([
-        sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&order=created_at.desc&select=*`) || [],
-        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || []
-      ]);
-      const todos = [...(enviados||[]), ...(recibidos||[])];
-      if (!todos.length) { cont.innerHTML=''; empty.style.display=''; return; }
-      empty.style.display = 'none';
-
-      const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
-      const fmtFechaHora = s => {
-        const d = new Date(normTS(s));
-        const hoy = new Date();
-        const esHoy = d.toDateString() === hoy.toDateString();
-        return esHoy
-          ? d.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'})
-          : d.toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
-      };
-
-      // Agrupar por interlocutor, guardar solo último mensaje
-      const hilosMap = {};
-      todos.forEach(m => {
-        const interlocutor = m.desde === currentUser.username ? m.para : m.desde;
-        const interlocutorNombre = m.desde === currentUser.username
-          ? (m.para==='todos'?'📢 Todos los PDVs': m.para)
-          : (m.desde_nombre||m.desde);
-        if (!hilosMap[interlocutor]) hilosMap[interlocutor] = { key: interlocutor, nombre: interlocutorNombre, ultimo: null, noLeidos: 0 };
-        const ts = new Date(normTS(m.created_at));
-        if (!hilosMap[interlocutor].ultimo || ts > new Date(normTS(hilosMap[interlocutor].ultimo.created_at))) {
-          hilosMap[interlocutor].ultimo = m;
-        }
-        if (m.para === currentUser.username && !m.leido) hilosMap[interlocutor].noLeidos++;
-      });
-
-      // Ordenar por último mensaje más reciente
-      const hilos = Object.values(hilosMap).sort((a,b) => new Date(normTS(b.ultimo.created_at)) - new Date(normTS(a.ultimo.created_at)));
-
-      cont.innerHTML = hilos.map(h => {
-        const u = h.ultimo;
-        const esMio = u.desde === currentUser.username;
-        const preview = (esMio ? 'Vos: ' : '') + (u.mensaje||'').substring(0,80) + ((u.mensaje||'').length>80?'…':'');
-        const badge = h.noLeidos > 0 ? `<span style="background:#ff5a5a;color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;min-width:20px;text-align:center;">${h.noLeidos}</span>` : '';
-        return `<div style="background:var(--surface);border:1px solid ${h.noLeidos?'#ff5a5a44':'var(--border)'};border-radius:14px;overflow:hidden;">
-          <!-- Header hilo -->
-          <div style="padding:14px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-              <div style="width:38px;height:38px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🏪</div>
-              <div style="min-width:0;">
-                <div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.nombre}</div>
-                <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">${preview}</div>
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-              <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${fmtFechaHora(u.created_at)}</span>
-              ${badge}
-            </div>
-          </div>
-          <!-- Responder -->
-          <div style="padding:12px 14px;display:flex;gap:8px;align-items:center;">
-            <input type="text" placeholder="Responder a ${h.nombre}..." maxlength="300" data-para="${h.key}"
-              style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--font);"
-              onkeydown="if(event.key==='Enter')msgResponderHilo(this)">
-            <button onclick="msgResponderHilo(this.previousElementSibling)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:9px 14px;font-size:15px;font-weight:900;cursor:pointer;flex-shrink:0;">➤</button>
-          </div>
-        </div>`;
-      }).join('');
-    } catch(e) { if(cont) cont.innerHTML='<div class="empty-state">❌<p>Error cargando mensajes</p></div>'; }
-  }
-
-  async function msgResponderHilo(input) {
-    const texto = input?.value?.trim();
-    const para = input?.dataset?.para;
-    if (!texto || !para) return;
-    try {
-      await sbApi('mensajes', { method: 'POST', body: JSON.stringify({
-        empresa_id: String(empresaActual), desde: currentUser.username,
-        desde_nombre: currentUser.displayName||currentUser.username,
-        para, mensaje: texto, leido: false
-      })});
-      input.value = '';
-      setTimeout(msgCargarHilos, 400);
-    } catch(e) { toast('Error: '+e.message,'error'); }
-  }
-
-  async function msgCargarOpRecibidos() {
-    const cont = document.getElementById('msg-op-recibidos');
-    if (!cont) return;
-    try {
-      const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || [];
-      const r2 = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.todos&order=created_at.desc&select=*`) || [];
-      const todos = [...r, ...r2].filter(m => m.desde !== currentUser.username).sort((a,b) => new Date(b.created_at)-new Date(a.created_at));
-      const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
-      if (!todos.length) { cont.innerHTML='<div style="font-size:13px;color:var(--text-muted);">Sin mensajes recibidos.</div>'; return; }
-      cont.innerHTML = todos.map(m => {
-        const hora = new Date(normTS(m.created_at)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-            <span style="font-size:12px;font-weight:700;color:var(--accent);">${m.desde_nombre||m.desde}</span>
-            <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${hora}</span>
-          </div>
-          <div style="font-size:14px;color:var(--text);line-height:1.4;">${m.mensaje||''}</div>
-        </div>`;
-      }).join('');
-      // Marcar como leídos
-      todos.filter(m=>!m.leido).forEach(m => sbApi(`mensajes?id=eq.${m.id}`,{method:'PATCH',body:JSON.stringify({leido:true})}).catch(()=>{}));
-    } catch(e) {}
-  }
-
-  function msgNuevoClick() {
-    const comp = document.getElementById('msg-composer');
-    if (comp) { comp.style.display = comp.style.display==='none'?'':'none'; }
-  }
-
-  async function msgCargarDestinatarios() {
-    try {
-      const [pdvs, usuarios] = await Promise.all([
-        getPdv(),
-        sbApi(`usuarios?role=eq.operador&select=username,display_name`) || []
-      ]);
-      const sel = document.getElementById('msg-destinatario');
-      const selOp = document.getElementById('msg-op-destinatario');
-      if (sel) {
-        sel.innerHTML = '<option value="todos">📢 Todos los PDVs</option>';
-        pdvs.forEach(p => { const o=document.createElement('option'); o.value='pdv_'+p.id; o.textContent='🏪 '+(p.nombre||p.name); sel.appendChild(o); });
-        usuarios.forEach(u => { const o=document.createElement('option'); o.value='op_'+u.username; o.textContent='👤 '+(u.display_name||u.username); sel.appendChild(o); });
-      }
-      if (selOp) {
-        selOp.innerHTML = '<option value="admin">👤 Administrador</option>';
-        pdvs.forEach(p => {
-          const o=document.createElement('option');
-          o.value='pdv_'+p.id;
-          o.textContent='🏪 '+(p.nombre||p.name);
-          selOp.appendChild(o);
-        });
-      }
-    } catch(e) {}
-  }
-
-  async function msgResponder() {
-    const texto = document.getElementById('msg-overlay-respuesta')?.value?.trim();
-    if (!texto || !_msgHiloActual) { toast('Escribí una respuesta','error'); return; }
-    try {
-      const pdvNombre = _msgHiloActual.pdvNombre || currentUser.displayName || currentUser.username;
-      await sbApi('mensajes', { method:'POST', body: JSON.stringify({
-        empresa_id: String(empresaActual), desde: currentUser.username,
-        desde_nombre: pdvNombre,
-        para: _msgHiloActual.interlocutor, mensaje: texto, leido: false
-      })});
-      document.getElementById('msg-overlay-respuesta').value = '';
-      await msgActualizarOverlay();
-      if (currentUser.role === 'admin') setTimeout(msgCargarHilos, 400);
-    } catch(e) { toast('Error: '+e.message,'error'); }
-  }
-
-
-
-
-
-
-  function initConfig() {
+    function initConfig() {
     const key = localStorage.getItem('resend_key')||'';
     const from = localStorage.getItem('resend_from')||'onboarding@resend.dev';
     const emails = localStorage.getItem('resend_emails')||'';
