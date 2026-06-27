@@ -19794,15 +19794,43 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       const fmtHora = s => s ? new Date(normTS(s)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}) : '';
       const fmtFecha = s => s ? new Date(normTS(s)).toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit'}) : '';
 
-      // Indexar cancelaciones NO repasadas (sin venta posterior) por fecha+pdv+username
+      // Indexar cancelaciones NO repasadas por fecha+pdv+username
       const cancelSet = new Set();
-      const cancelMap = {}; // key -> cancelacion
+      const cancelMap = {}; // key -> [cancelaciones]
       (cancels||[]).filter(c => !c.repasada).forEach(c => {
         const k = `${(c.fecha||'').slice(0,10)}_${c.pdv_id}_${c.username}`;
         cancelSet.add(k);
         if (!cancelMap[k]) cancelMap[k] = [];
         cancelMap[k].push(c);
       });
+
+      // Función que evalúa motivos de sospecha para un ticket dado sus cancelaciones previas
+      const motivosSospecha = (cancelaciones, ticketTotal) => {
+        const motivos = [];
+        if (!cancelaciones || !cancelaciones.length) return motivos;
+        // 1. Cliente ya entregó dinero
+        const conDinero = cancelaciones.filter(c => (c.monto_cliente||0) > 0);
+        if (conDinero.length) {
+          const montos = conDinero.map(c => fmtARS(c.monto_cliente)).join(', ');
+          motivos.push({ label: `🔴 Cliente entregó ${montos}`, color: '#ff5a5a' });
+        }
+        // 2. Cancelaciones repetidas (más de 1)
+        if (cancelaciones.length > 1) {
+          motivos.push({ label: `🟡 ${cancelaciones.length} cancelaciones sin repasar`, color: '#fbbf24' });
+        }
+        // 3. Venta posterior menor a lo cancelado
+        if (ticketTotal > 0) {
+          const cancelMayor = cancelaciones.find(c => (c.total||0) > ticketTotal * 1.1);
+          if (cancelMayor) {
+            motivos.push({ label: `🟡 Canceló ${fmtARS(cancelMayor.total)} vendió ${fmtARS(ticketTotal)}`, color: '#fbbf24' });
+          }
+        }
+        // Si no hay motivo específico pero hay cancelación previa
+        if (!motivos.length) {
+          motivos.push({ label: '🚨 Cancelación previa sin repasar', color: '#ff5a5a' });
+        }
+        return motivos;
+      };
 
       // Indexar arqueos con diferencia por pdv+fecha
       const arqueoMap = {};
@@ -19871,8 +19899,11 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
           const cancelKey = `${(tk.created_at||'').slice(0,10)}_${tk.pdv_id}_${tk.username}`;
           const tieneCancelPrev = cancelSet.has(cancelKey);
           const eventos = [];
-          if (tieneVarios) eventos.push({ label: '⚠️ Varios', color: '#fbbf24' });
-          if (tieneCancelPrev) eventos.push({ label: '🚨 Cancelación previa', color: '#ff5a5a' });
+          if (tieneVarios) eventos.push({ label: '⚠️ Producto "Varios"', color: '#fbbf24' });
+          if (tieneCancelPrev) {
+            const motivos = motivosSospecha(cancelMap[cancelKey], tk.total);
+            motivos.forEach(m => eventos.push(m));
+          }
           if (eventos.length) totalAlertas++;
 
           if (eventos.length) {
