@@ -15663,7 +15663,6 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`usuarios?select=username,display_name`) || []
       ]);
 
-      console.log('[Auditoria] cancels:', cancels?.length, 'arqueos:', arqueos?.length, 'ventas:', ventas?.length);
       const pdvMap = {};
       pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre || p.name);
       const userMap = {};
