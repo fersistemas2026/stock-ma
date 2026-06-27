@@ -316,7 +316,7 @@
       <button class="tab" onclick="switchTab(&#39;productos&#39;)" id="tab-btn-productos" style="display:none">Productos</button>
       <button class="tab" onclick="switchTab(&#39;empresa&#39;)" id="tab-btn-empresa" style="display:none">Empresa</button>
       <button class="tab" onclick="switchTab(&#39;usuarios&#39;)" id="tab-btn-usuarios" style="display:none">Usuarios</button>
-      <button class="tab" onclick="switchTab('auditoria');setTimeout(()=>{try{initAuditoriaFechas();}catch(e){}},100);" id="tab-btn-auditoria" style="display:none">🔐 Auditoría</button>
+
     </div>
 
     <!-- AGREGAR -->
@@ -395,6 +395,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;recibo-pedido&#39;)" id="neg-btn-recibo-pedido" style="display:none">📥 Pedidos internos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;ventas&#39;)" id="neg-btn-ventas" style="display:none">🛒 Ventas</button>
         <button class="neg-stab" onclick="switchNeg(&#39;monitor&#39;)" id="neg-btn-monitor" style="display:none">📡 Monitor</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;auditoria&#39;);setTimeout(()=>{try{initAuditoriaFechas();}catch(e){}},100);" id="neg-btn-auditoria" style="display:none">🔐 Auditoría</button>
         <button class="neg-stab" onclick="switchNeg(&#39;pedido-recibido&#39;)" id="neg-btn-pedido-recibido" style="display:none">📬 Pedido recibido</button>
         <button class="neg-stab" onclick="switchNeg(&#39;promociones-op&#39;)" id="neg-btn-promociones-op" style="display:none">🏷️ Promociones</button>
       </div>
@@ -1401,6 +1402,22 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>
 
       <!-- CASHFLOW -->
+      <div id="neg-auditoria" class="neg-panel" style="display:none;">
+        <div style="padding:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+            <div class="form-title" style="margin:0;">🔐 Auditoría</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="date" id="audit-desde" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text);">
+              <span style="color:var(--text-muted);font-size:13px;">→</span>
+              <input type="date" id="audit-hasta" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text);">
+              <button onclick="cargarAuditoria()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🔍 Buscar</button>
+            </div>
+          </div>
+          <div id="audit-body">
+            <div class="empty-state">🔐<p>Seleccioná un período y hacé clic en Buscar.</p></div>
+          </div>
+        </div>
+      </div>
       <div id="neg-cashflow" class="neg-panel" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <div class="form-title" style="margin-bottom:0;">💹 Cashflow</div>
@@ -1449,21 +1466,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     </div><!-- /tab-negocios -->
 
     <!-- USUARIOS (solo admin) -->
-    <div id="tab-auditoria" class="panel" style="display:none;">
-      <div style="padding:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-          <h2 style="margin:0;font-size:18px;font-weight:900;">🔐 Panel de Seguridad / Auditoría</h2>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input type="date" id="audit-desde" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);">
-            <input type="date" id="audit-hasta" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);">
-            <button onclick="cargarAuditoria()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🔍 Buscar</button>
-          </div>
-        </div>
-        <div id="audit-body">
-          <div class="empty-state">🔐<p>Seleccioná un período y hacé clic en Buscar</p></div>
-        </div>
-      </div>
-    </div>
+
 
     <div id="tab-usuarios" class="panel">
       <div style="margin-bottom:24px;">
@@ -2906,7 +2909,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         hide(document.getElementById('tab-btn-productos'));
         hide(document.getElementById('tab-btn-empresa'));
         show(document.getElementById('btn-export'));
-        show(document.getElementById('tab-btn-auditoria'));
+
         // Show empresa selector
         initEmpresaSelector();
         const btnSes = document.getElementById('btn-sesiones-admin');
@@ -12310,6 +12313,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       show('neg-btn-envio-pedido'); show('neg-btn-recibo-pedido');
       show('neg-btn-avisos');
       show('neg-btn-pedidos-online');
+      show('neg-btn-auditoria');
       setupNegLayout(true);
       const tabAgAdmin = document.getElementById('tab-btn-agregar');
       if (tabAgAdmin) tabAgAdmin.textContent = '+ Agregar';
