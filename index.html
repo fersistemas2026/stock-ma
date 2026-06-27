@@ -19430,7 +19430,8 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       // Si el último evento es 'cierre' → bloquear
       const bloq = document.getElementById('ventas-turno-bloqueado');
       if (bloq) {
-        bloq.style.display = (ultimo === 'cierre') ? 'flex' : 'none';
+        // Bloquear si el último evento es 'cierre' O si no hay ningún turno hoy
+        bloq.style.display = (ultimo === 'cierre' || !ultimo) ? 'flex' : 'none';
       }
     } catch(e) { console.warn('[Turno]', e); }
   }
