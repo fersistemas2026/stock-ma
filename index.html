@@ -19773,11 +19773,10 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando auditoría...</p></div>';
 
     try {
-      console.log('[Auditoria] cargando desde', desde, 'hasta', hasta);
       const [cancels, arqueos, ventas, pdvs, usuarios] = await Promise.all([
-        sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
-        sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
-        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at`) || [],
+        sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.asc&select=*`) || [],
+        sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.asc&select=*`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at&order=created_at.asc`) || [],
         getPdv(),
         sbApi(`usuarios?select=username,display_name`) || []
       ]);
@@ -19787,148 +19786,184 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       const userMap = {};
       (usuarios||[]).forEach(u => userMap[u.username] = u.display_name || u.username);
       const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
-
-      // ── 1. Cancelaciones sospechosas ──
-      const cancelSosp = (cancels||[]).filter(c => !c.repasada);
-
-      // ── 2. Arqueos con diferencia ──
-      const arqueosDif = (arqueos||[]).filter(a => Math.abs(a.diferencia||0) > 100);
-
-      // ── 3. Tickets sospechosos (producto "Varios") ──
-      const ticketsSosp = [];
-      const ticketMap = {};
-      (ventas||[]).forEach(v => {
-        const nombre = (v.prod_nombre||'').toLowerCase().trim();
-        if (nombre === 'varios') {
-          const key = v.ticket_id || (v.created_at + v.pdv_id);
-          if (!ticketMap[key]) {
-            ticketMap[key] = { ticket_id: key, pdv_id: v.pdv_id, username: v.username, created_at: v.created_at, total: 0, items: [] };
-            ticketsSosp.push(ticketMap[key]);
-          }
-          ticketMap[key].total += (v.precio||0) * (v.cantidad||1);
-          ticketMap[key].items.push(v.prod_nombre);
-        }
-      });
-
-      // ── 4. Ratio cancelaciones/ventas por operador ──
-      const ratioMap = {};
-      (ventas||[]).forEach(v => {
-        const op = v.username || '?';
-        const pdv = String(v.pdv_id||'');
-        const key = op + '|' + pdv;
-        if (!ratioMap[key]) ratioMap[key] = { op, pdv, ventas: new Set(), cancels: 0 };
-        if (v.ticket_id) ratioMap[key].ventas.add(v.ticket_id);
-      });
-      (cancels||[]).forEach(c => {
-        const key = (c.username||'?') + '|' + String(c.pdv_id||'');
-        if (!ratioMap[key]) ratioMap[key] = { op: c.username||'?', pdv: String(c.pdv_id||''), ventas: new Set(), cancels: 0 };
-        ratioMap[key].cancels++;
-      });
-      const ratioSosp = Object.values(ratioMap).filter(r => r.cancels > 0 && (r.cancels / (r.ventas.size || 1)) >= 0.3);
-
       const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
-      const fmtHora = s => s ? new Date(normTS(s)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      const fmtHora = s => s ? new Date(normTS(s)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}) : '';
+      const fmtFecha = s => s ? new Date(normTS(s)).toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit'}) : '';
 
-      let html = '';
-
-      // Resumen general
-      const totalAlertas = cancelSosp.length + arqueosDif.length + ticketsSosp.length + ratioSosp.length;
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">';
-      const cards = [
-        { n: cancelSosp.length,  label: '🚨 Cancelaciones sospechosas', color: '#ff5a5a' },
-        { n: arqueosDif.length,  label: '💰 Arqueos con diferencia',    color: '#f97316' },
-        { n: ticketsSosp.length, label: '⚠️ Tickets "Varios"',          color: '#fbbf24' },
-        { n: ratioSosp.length,   label: '📊 Ratio alto cancel/ventas',  color: '#a78bfa' },
-      ];
-      cards.forEach(c => {
-        html += `<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;border:1px solid ${c.color}33;">
-          <div style="font-size:28px;font-weight:900;color:${c.color};">${c.n}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${c.label}</div>
-        </div>`;
+      // Indexar cancelaciones por ticket aproximado (misma fecha+pdv+username)
+      const cancelSet = new Set();
+      const cancelMap = {}; // key -> cancelacion
+      (cancels||[]).forEach(c => {
+        const k = `${(c.fecha||'').slice(0,10)}_${c.pdv_id}_${c.username}`;
+        cancelSet.add(k);
+        if (!cancelMap[k]) cancelMap[k] = [];
+        cancelMap[k].push(c);
       });
-      html += '</div>';
 
-      if (totalAlertas === 0) {
-        html += '<div class="empty-state">✅<p>Sin alertas en el período seleccionado.</p></div>';
-        body.innerHTML = html;
+      // Indexar arqueos con diferencia por pdv+fecha
+      const arqueoMap = {};
+      (arqueos||[]).filter(a => Math.abs(a.diferencia||0) > 100).forEach(a => {
+        const k = `${a.fecha}_${a.pdv_id}`;
+        arqueoMap[k] = a;
+      });
+
+      // Agrupar ventas en tickets
+      const ticketMap = {};
+      const ticketOrder = [];
+      (ventas||[]).forEach(v => {
+        const key = v.ticket_id || `${v.created_at}_${v.pdv_id}_${v.username}`;
+        if (!ticketMap[key]) {
+          ticketMap[key] = { key, pdv_id: v.pdv_id, username: v.username, created_at: v.created_at, metodo: v.metodo_pago, items: [], total: 0 };
+          ticketOrder.push(key);
+        }
+        ticketMap[key].items.push(v.prod_nombre || '?');
+        ticketMap[key].total += (v.precio||0) * (v.cantidad||1);
+      });
+
+      if (!ticketOrder.length && !cancels.length && !Object.keys(arqueoMap).length) {
+        body.innerHTML = '<div class="empty-state">📋<p>Sin movimientos en el período seleccionado.</p></div>';
         return;
       }
 
-      const seccion = (titulo, color, filas) => {
-        if (!filas.length) return '';
-        return `<div style="background:var(--surface);border:1px solid ${color}44;border-radius:12px;margin-bottom:16px;overflow:hidden;">
-          <div style="padding:12px 16px;background:${color}11;border-bottom:1px solid ${color}33;font-weight:800;font-size:14px;color:${color};">${titulo} (${filas.length})</div>
-          <table style="width:100%;border-collapse:collapse;">${filas.join('')}</table>
-        </div>`;
-      };
+      // Resumen contadores
+      let totalAlertas = 0;
+      let html = '';
 
-      const thRow = cols => '<tr style="background:var(--surface2);">' + cols.map(c => `<th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">${c}</th>`).join('') + '</tr>';
-      const td = (v, style='') => `<td style="padding:7px 10px;font-size:13px;${style}">${v}</td>`;
-
-      // Sección cancelaciones
-      const filasCancels = [thRow(['Hora','PDV','Operador','Total','Pagó cliente','Productos'])];
-      cancelSosp.forEach(c => {
-        const items = Array.isArray(c.items) ? c.items.slice(0,3).map(i=>(i.prod_nombre||'?')+' x'+(i.cantidad||1)).join(', ') : '';
-        filasCancels.push('<tr style="border-top:1px solid var(--border);">'
-          + td(fmtHora(c.created_at), 'color:var(--text-muted);')
-          + td(pdvMap[String(c.pdv_id)]||c.pdv_id||'?', 'font-weight:600;')
-          + td(userMap[c.username]||c.username||'?')
-          + td(fmtARS(c.total||0), 'font-weight:700;color:#ff5a5a;font-family:var(--mono);')
-          + td(c.monto_cliente > 0 ? fmtARS(c.monto_cliente) : '—', 'color:var(--text-muted);')
-          + td(items||'—', 'color:var(--text-muted);font-size:11px;')
-          + '</tr>');
+      // Agrupar por fecha
+      const byFecha = {};
+      ticketOrder.forEach(key => {
+        const tk = ticketMap[key];
+        const fecha = fmtFecha(tk.created_at);
+        if (!byFecha[fecha]) byFecha[fecha] = { tickets: [], cancels: [], arqueos: [] };
+        byFecha[fecha].tickets.push(key);
       });
-      html += seccion('🚨 Cancelaciones sospechosas (sin venta posterior)', '#ff5a5a', filasCancels);
-
-      // Sección arqueos
-      const filasArqueos = [thRow(['Fecha','PDV','Operador','Declarado','Sistema','Diferencia'])];
-      arqueosDif.forEach(a => {
-        const dif = a.diferencia || 0;
-        const color = dif > 0 ? '#fbbf24' : '#ff5a5a';
-        filasArqueos.push('<tr style="border-top:1px solid var(--border);">'
-          + td(a.fecha||'', 'color:var(--text-muted);')
-          + td(pdvMap[String(a.pdv_id)]||a.pdv_id||'?', 'font-weight:600;')
-          + td(userMap[a.username]||a.username||'?')
-          + td(fmtARS(a.total_declarado||0), 'font-family:var(--mono);')
-          + td(fmtARS(a.total_sistema||0), 'font-family:var(--mono);color:var(--text-muted);')
-          + td((dif>=0?'+':'')+fmtARS(dif), `font-weight:800;font-family:var(--mono);color:${color};`)
-          + '</tr>');
+      // Agregar cancelaciones sin ticket correspondiente
+      (cancels||[]).forEach(c => {
+        const fecha = (c.fecha||'').slice(5).split('-').reverse().join('/'); // DD/MM
+        if (!byFecha[fecha]) byFecha[fecha] = { tickets: [], cancels: [], arqueos: [] };
+        byFecha[fecha].cancels.push(c);
       });
-      html += seccion('💰 Arqueos con diferencia', '#f97316', filasArqueos);
-
-      // Sección tickets Varios
-      const filasVarios = [thRow(['Hora','PDV','Operador','Total'])];
-      ticketsSosp.forEach(t => {
-        filasVarios.push('<tr style="border-top:1px solid var(--border);">'
-          + td(fmtHora(t.created_at), 'color:var(--text-muted);')
-          + td(pdvMap[String(t.pdv_id)]||t.pdv_id||'?', 'font-weight:600;')
-          + td(userMap[t.username]||t.username||'?')
-          + td(fmtARS(t.total), 'font-weight:700;color:#fbbf24;font-family:var(--mono);')
-          + '</tr>');
+      // Agregar arqueos
+      Object.values(arqueoMap).forEach(a => {
+        const d = new Date(a.fecha+'T12:00:00');
+        const fecha = d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
+        if (!byFecha[fecha]) byFecha[fecha] = { tickets: [], cancels: [], arqueos: [] };
+        byFecha[fecha].arqueos.push(a);
       });
-      html += seccion('⚠️ Tickets con producto "Varios"', '#fbbf24', filasVarios);
 
-      // Sección ratio
-      const filasRatio = [thRow(['PDV','Operador','Ventas','Cancelaciones','Ratio'])];
-      ratioSosp.sort((a,b)=>(b.cancels/(b.ventas.size||1))-(a.cancels/(a.ventas.size||1))).forEach(r => {
-        const ratio = Math.round(r.cancels/(r.ventas.size||1)*100);
-        filasRatio.push('<tr style="border-top:1px solid var(--border);">'
-          + td(pdvMap[r.pdv]||r.pdv||'?', 'font-weight:600;')
-          + td(userMap[r.op]||r.op||'?')
-          + td(r.ventas.size, 'text-align:center;')
-          + td(r.cancels, 'text-align:center;color:#ff5a5a;font-weight:700;')
-          + td(ratio+'%', `font-weight:800;color:${ratio>=50?'#ff5a5a':'#fbbf24'};`)
-          + '</tr>');
+      Object.entries(byFecha).forEach(([fecha, grupo]) => {
+        html += `<div style="margin-bottom:24px;">
+          <div style="font-size:12px;font-weight:800;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:6px 0;border-bottom:2px solid var(--accent);margin-bottom:10px;">📅 ${fecha}</div>`;
+
+        // Tickets de ventas
+        grupo.tickets.forEach(key => {
+          const tk = ticketMap[key];
+          const pdvNombre = pdvMap[String(tk.pdv_id)] || tk.pdv_id || '?';
+          const opNombre = userMap[tk.username] || tk.username || '?';
+          const hora = fmtHora(tk.created_at);
+          const total = fmtARS(tk.total);
+          const metodo = (tk.metodo||'').includes('tarjeta') ? '💳' : '💵';
+          const tieneVarios = tk.items.some(i => (i||'').toLowerCase() === 'varios');
+          const cancelKey = `${(tk.created_at||'').slice(0,10)}_${tk.pdv_id}_${tk.username}`;
+          const tieneCancelPrev = cancelSet.has(cancelKey);
+          const eventos = [];
+          if (tieneVarios) eventos.push({ label: '⚠️ Varios', color: '#fbbf24' });
+          if (tieneCancelPrev) eventos.push({ label: '🚨 Cancelación previa', color: '#ff5a5a' });
+          if (eventos.length) totalAlertas++;
+
+          if (eventos.length) {
+            // Ticket con alerta — card destacada
+            const badges = eventos.map(e => `<span style="background:${e.color}22;color:${e.color};border:1px solid ${e.color}44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${e.label}</span>`).join(' ');
+            html += `<div style="background:var(--surface);border:1px solid #ff5a5a44;border-left:3px solid #ff5a5a;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
+                  <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                  <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+                  <span style="font-size:14px;">${metodo}</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  ${badges}
+                  <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);">${total}</span>
+                </div>
+              </div>
+              <div style="margin-top:6px;font-size:12px;color:var(--text-muted);">${tk.items.join(', ')}</div>
+            </div>`;
+          } else {
+            // Ticket normal — fila compacta
+            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;border-radius:5px;gap:8px;opacity:.75;">
+              <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text-muted);">
+                <span style="font-family:var(--mono);">${hora}</span>
+                <span>${pdvNombre}</span>
+                <span>${opNombre}</span>
+                <span>${metodo}</span>
+                <span style="opacity:.6;">${tk.items.slice(0,3).join(', ')}${tk.items.length>3?' +'+( tk.items.length-3):''}</span>
+              </div>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--text-muted);white-space:nowrap;">${total}</span>
+            </div>`;
+          }
+        });
+
+        // Cancelaciones sin venta
+        grupo.cancels.forEach(c => {
+          const pdvNombre = pdvMap[String(c.pdv_id)] || c.pdv_id || '?';
+          const opNombre = userMap[c.username] || c.username || '?';
+          const hora = fmtHora(c.created_at);
+          const items = Array.isArray(c.items) ? c.items.slice(0,3).map(i=>(i.prod_nombre||'?')).join(', ') : '';
+          totalAlertas++;
+          html += `<div style="background:var(--surface);border:1px solid #ff5a5a44;border-left:3px solid #ff5a5a;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;gap:10px;align-items:center;">
+                <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
+                <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="background:#ff5a5a22;color:#ff5a5a;border:1px solid #ff5a5a44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">🚨 Cancelación</span>
+                <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:#ff5a5a;">${fmtARS(c.total||0)}</span>
+              </div>
+            </div>
+            ${items ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted);">${items}${c.monto_cliente>0?' · cliente entregó '+fmtARS(c.monto_cliente):''}</div>` : ''}
+          </div>`;
+        });
+
+        // Arqueos con diferencia
+        grupo.arqueos.forEach(a => {
+          const pdvNombre = pdvMap[String(a.pdv_id)] || a.pdv_id || '?';
+          const opNombre = userMap[a.username] || a.username || '?';
+          const dif = a.diferencia || 0;
+          const color = dif > 0 ? '#fbbf24' : '#ff5a5a';
+          const label = dif > 0 ? '⚠️ Sobrante' : '🚨 Faltante';
+          totalAlertas++;
+          html += `<div style="background:var(--surface);border:1px solid ${color}44;border-left:3px solid ${color};border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+              <div style="display:flex;gap:10px;align-items:center;">
+                <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+                <span style="font-size:12px;color:var(--text-muted);">Arqueo cierre</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${label} ${fmtARS(Math.abs(dif))}</span>
+              </div>
+            </div>
+          </div>`;
+        });
+
+        html += '</div>';
       });
-      html += seccion('📊 Ratio alto cancelaciones/ventas (≥30%)', '#a78bfa', filasRatio);
 
-      body.innerHTML = html;
+      // Header con total alertas
+      const headerHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;color:var(--text-muted);">${ticketOrder.length} tickets · ${totalAlertas > 0 ? `<span style="color:#ff5a5a;font-weight:700;">${totalAlertas} alertas</span>` : '<span style="color:#6ee7b7;">sin alertas</span>'}</div>
+      </div>`;
+
+      body.innerHTML = headerHtml + (html || '<div class="empty-state">📋<p>Sin movimientos.</p></div>');
     } catch(e) {
       body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
     }
   }
 
-  // Alerta al admin cuando hay arqueo con diferencia
+    // Alerta al admin cuando hay arqueo con diferencia
   window._notificarArqueoAdmin = function(data) {
     if (currentUser?.role !== 'admin') return;
     const sign = data.diferencia > 0 ? 'Sobrante' : 'Faltante';
