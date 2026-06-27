@@ -8997,9 +8997,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           const hace2h = new Date(Date.now() - 2*60*60*1000).toISOString();
           const cancels = await sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvIdV}&username=eq.${currentUser?.username||''}&repasada=eq.false&created_at=gte.${hace2h}&select=id,total,items`) || [];
           for (const c of cancels) {
-            // Comparar monto total (tolerancia 5%)
+            if ((c.total||0) < 100) continue; // ignorar cancelaciones de prueba
+            // Comparar monto total (tolerancia 5%) y que los productos coincidan
             const diff = Math.abs(c.total - totalV) / (totalV || 1);
-            if (diff <= 0.05) {
+            const itemsC = Array.isArray(c.items) ? c.items : [];
+            const prodIdsC = itemsC.map(i => i.prod_id).sort().join(',');
+            const prodIdsV = itemsV.map(i => i.prod_id).sort().join(',');
+            if (diff <= 0.05 && prodIdsC === prodIdsV) {
               // Marcar como repasada
               await sbApi(`cancelaciones_venta?id=eq.${c.id}`, { method: 'PATCH', body: JSON.stringify({ repasada: true }) });
             }
