@@ -8625,10 +8625,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
       const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
       const items = (_ventasItems || []).map(i => ({
-        prod_id: i.prod_id || '',
-        prod_nombre: i.prod_nombre || '',
-        gusto_id: i.gusto_id || '',
-        gusto_nombre: i.gusto_nombre || '',
+        prod_id: i.prodId || '',
+        prod_nombre: i.prod || '',
+        gusto_id: i.gustoId || '',
+        gusto_nombre: i.gusto || '',
         cantidad: i.cant || 1,
         precio: parsePrecioAR(i.precio)
       }));
@@ -8709,10 +8709,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
       const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
       const items = (_ventasItems || []).map(i => ({
-        prod_id: i.prod_id || '',
-        prod_nombre: i.prod_nombre || '',
-        gusto_id: i.gusto_id || '',
-        gusto_nombre: i.gusto_nombre || '',
+        prod_id: i.prodId || '',
+        prod_nombre: i.prod || '',
+        gusto_id: i.gustoId || '',
+        gusto_nombre: i.gusto || '',
         cantidad: i.cant || 1,
         precio: parsePrecioAR(i.precio)
       }));
@@ -8800,7 +8800,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._ventasClienteNombreGuardar = '';
     // Guardar snapshot de items para comparar con cancelaciones posteriores
     window._lastVentaItems = (_ventasItems || []).map(i => ({
-      prod_id: i.prod_id || '',
+      prod_id: i.prodId || '',
       cantidad: i.cant || 1,
       precio: parsePrecioAR(i.precio)
     }));
