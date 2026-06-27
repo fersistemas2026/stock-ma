@@ -137,6 +137,11 @@
       50% { box-shadow: 0 24px 60px rgba(0,0,0,.7), 0 0 0 16px rgba(200,240,74,0); }
     }
     .msg-pulse { animation: msgPulse 1.2s ease-in-out 4; }
+    @keyframes mcFabPulse {
+      0%,100% { box-shadow: 0 4px 20px rgba(0,0,0,.4), 0 0 0 0 rgba(255,90,90,.6); transform:scale(1); }
+      50% { box-shadow: 0 4px 20px rgba(0,0,0,.4), 0 0 0 12px rgba(255,90,90,0); transform:scale(1.08); }
+    }
+    .mc-fab-alerta { animation: mcFabPulse 1s ease-in-out infinite !important; background:#ff5a5a !important; }
     .neg-panel { display:none; animation:fadeIn .2s ease; width:100%; }
     #neg-layout > div:last-child { flex:1; min-width:0; }
     #neg-content-wrap { flex:1; min-width:0; }
@@ -996,7 +1001,7 @@
       <!-- ══ MAPCHAT ══════════════════════════════════════════════════ -->
       <!-- Botón flotante -->
       <div id="mc-fab" onclick="mcToggle()" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9990;cursor:pointer;">
-        <div style="width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:transform .15s;" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">💬</div>
+        <div id="mc-fab-btn" style="width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:background .3s;">💬</div>
         <div id="mc-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff5a5a;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:11px;font-weight:900;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--bg);">0</div>
       </div>
 
@@ -12181,35 +12186,57 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     } catch(e) { toast('Error enviando','error'); }
   }
 
+  let _mcIdsNotificados = new Set();
+
   async function mcCheckNuevos() {
     if (!currentUser) return;
     try {
       const username = currentUser.username;
       const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${username}&leido=eq.false&order=created_at.desc&select=*`) || [];
-      const nuevos = (r||[]).filter(m => m.desde !== username);
-      if (nuevos.length > 0) {
-        // Actualizar pdvMap con remitentes nuevos
+      const pendientes = (r||[]).filter(m => m.desde !== username);
+      const realmente_nuevos = pendientes.filter(m => !_mcIdsNotificados.has(m.id));
+
+      if (realmente_nuevos.length > 0) {
+        realmente_nuevos.forEach(m => _mcIdsNotificados.add(m.id));
         await mcCargarPdvMap();
         // Sonido
         try {
           const ctx=new(window.AudioContext||window.webkitAudioContext)();
-          [523,659,784].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0.25,ctx.currentTime+i*.1);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*.1+.15);o.start(ctx.currentTime+i*.1);o.stop(ctx.currentTime+i*.1+.18);});
+          [523,659,784].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0.3,ctx.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*.12+.2);o.start(ctx.currentTime+i*.12);o.stop(ctx.currentTime+i*.12+.22);});
         } catch(e) {}
+        // Parpadeo + color rojo en el botón
+        mcActivarAlerta(pendientes.length);
         iniciarParpadeoMensajes();
-        // Si el chat del remitente está abierto, recargar
-        if (_mcPanelAbierto && _mcChatActual?.interlocutor === nuevos[0].desde) {
-          await mcCargarMensajes();
-          // Marcar como leídos
-          await sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${nuevos[0].desde}&para=eq.${username}&leido=eq.false`, {method:'PATCH',body:JSON.stringify({leido:true})});
-        } else {
-          // Badge
-          mcActualizarBadge(nuevos.length);
+      }
+
+      if (pendientes.length > 0) {
+        // Si el chat está abierto con el remitente, recargar y marcar leído
+        if (_mcPanelAbierto && _mcChatActual) {
+          const delActual = pendientes.filter(m => m.desde === _mcChatActual.interlocutor);
+          if (delActual.length > 0) {
+            await mcCargarMensajes();
+            await sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${_mcChatActual.interlocutor}&para=eq.${username}&leido=eq.false`, {method:'PATCH',body:JSON.stringify({leido:true})});
+            delActual.forEach(m => _mcIdsNotificados.add(m.id));
+          }
         }
         if (_mcPanelAbierto && !_mcChatActual) mcCargarLista();
       } else {
+        mcDesactivarAlerta();
         detenerParpadeoMensajes();
       }
     } catch(e) {}
+  }
+
+  function mcActivarAlerta(n) {
+    const btn = document.getElementById('mc-fab-btn');
+    if (btn) btn.classList.add('mc-fab-alerta');
+    mcActualizarBadge(n);
+  }
+
+  function mcDesactivarAlerta() {
+    const btn = document.getElementById('mc-fab-btn');
+    if (btn) btn.classList.remove('mc-fab-alerta');
+    mcActualizarBadge(0);
   }
 
   function mcActualizarBadge(n) {
