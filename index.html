@@ -19377,6 +19377,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     // Calcular efectivo vendido en el turno actual
     let efectivoSistema = 0;
     let buzonTurno = 0;
+    let gastosTurno = 0;
     try {
       // Buscar inicio de turno más reciente
       const turnos = await sbApi(`turnos_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&username=eq.${currentUser?.username||''}&fecha=eq.${fecha}&order=created_at.desc&select=id,tipo,created_at`) || [];
@@ -19384,15 +19385,21 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       const desdeTs = ultimoInicio?.created_at || `${fecha}T00:00:00Z`;
 
       // Ventas en efectivo desde el inicio del turno
-      const ventas = await sbApi(`ventas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=eq.${fecha}&metodo_pago=eq.efectivo&select=precio,cantidad`) || [];
+      const normTs = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+      const desdeIso = normTs(desdeTs) || `${fecha}T03:00:00Z`;
+      const ventas = await sbApi(`ventas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&metodo_pago=eq.efectivo&created_at=gte.${desdeIso}&select=precio,cantidad`) || [];
       efectivoSistema = ventas.reduce((s, v) => s + (v.precio || 0) * (v.cantidad || 1), 0);
 
       // Buzón del turno
-      const buzon = await sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=eq.${fecha}&select=monto`) || [];
+      const buzon = await sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&created_at=gte.${desdeIso}&select=monto`) || [];
       buzonTurno = buzon.reduce((s, b) => s + parseFloat(b.monto || 0), 0);
+
+      // Gastos del turno
+      const gastos = await sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&created_at=gte.${desdeIso}&select=monto`) || [];
+      gastosTurno = gastos.reduce((s, g) => s + parseFloat(g.monto || 0), 0);
     } catch(e) {}
 
-    const esperado = efectivoSistema - buzonTurno;
+    const esperado = efectivoSistema - buzonTurno - gastosTurno;
     const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
 
     const denominaciones = [
@@ -19430,14 +19437,13 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
               <span style="font-size:13px;color:var(--text-muted);">Total declarado</span>
               <span id="arqueo-total" style="font-size:20px;font-weight:900;font-family:var(--mono);color:var(--text);">$0</span>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:13px;color:var(--text-muted);">Diferencia</span>
-              <span id="arqueo-diferencia" style="font-size:20px;font-weight:900;font-family:var(--mono);color:#fbbf24;">$0</span>
+            <div style="display:none;">
+              <span id="arqueo-diferencia">$0</span>
             </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:4px;">
             <button onclick="document.getElementById('modal-cierre-turno').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;">Cancelar</button>
-            <button onclick="confirmarCierreTurno(${efectivoSistema},${buzonTurno},${esperado})" style="flex:2;background:#f97316;color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;">🔒 Confirmar Cierre</button>
+            <button onclick="confirmarCierreTurno(${efectivoSistema},${buzonTurno},${gastosTurno},${esperado})" style="flex:2;background:#f97316;color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;">🔒 Confirmar Cierre</button>
           </div>
         </div>
       </div>`;
@@ -19465,7 +19471,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     }
   };
 
-  async function confirmarCierreTurno(efectivoSistema, buzonTurno, esperado) {
+  async function confirmarCierreTurno(efectivoSistema, buzonTurno, gastosTurno, esperado) {
     const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
     const fecha = fechaHoyAR();
     const denoms = [20000, 10000, 5000, 2000, 1000, 200, 100];
@@ -19494,6 +19500,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
         total_declarado: totalDeclarado,
         total_sistema: efectivoSistema,
         total_buzon: buzonTurno,
+        total_gastos: gastosTurno,
         diferencia, fecha
       })});
 
