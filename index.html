@@ -134,7 +134,7 @@
     .neg-stab-vertical.active { background:#fff176; color:#000; font-weight:800; font-size:16px; border-color:#e6b800; box-shadow:0 2px 10px rgba(255,215,0,.5); }
     @keyframes msgPulse {
       0%,100% { box-shadow: 0 24px 60px rgba(0,0,0,.7), 0 0 0 0 rgba(200,240,74,.7); }
-      50% { box-shadow: 0 24px 60px rgba(0,0,0,.7), 0 0 0 14px rgba(200,240,74,0); }
+      50% { box-shadow: 0 24px 60px rgba(0,0,0,.7), 0 0 0 16px rgba(200,240,74,0); }
     }
     .msg-pulse { animation: msgPulse 1.2s ease-in-out 4; }
     .neg-panel { display:none; animation:fadeIn .2s ease; width:100%; }
@@ -1043,6 +1043,7 @@
         </div>
       </div>
 
+      <!-- OVERLAY MENSAJE URGENTE -->
       <!-- CHAT OVERLAY -->
       <div id="msg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
         <div id="msg-overlay-inner" class="msg-pulse" style="background:var(--surface);border:2px solid var(--accent);border-radius:20px;width:100%;max-width:420px;margin:16px;display:flex;flex-direction:column;max-height:85vh;overflow:hidden;">
@@ -12027,6 +12028,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   // ── MENSAJERÍA URGENTE ──
   let _msgPollTimer = null;
   let _msgIdsMostrados = new Set();
+  let _msgHiloActual = null;
   let _msgActualId = null;
 
   function msgIniciarPolling() {
@@ -12052,7 +12054,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         const m = nuevos[0];
         _msgIdsMostrados.add(m.id);
         _msgActualId = m.id;
-        msgMostrarOverlay(m);
+        await msgActualizarOverlay();
+        if (document.getElementById('msg-overlay').style.display !== 'flex') msgMostrarOverlay();
         iniciarParpadeoMensajes();
         await sbApi(`mensajes?id=eq.${m.id}`, { method: 'PATCH', body: JSON.stringify({ leido: true }) });
       }
@@ -12064,7 +12067,36 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     } catch(e) {}
   }
 
-  function msgMostrarOverlay() {
+  async function msgActualizarOverlay() {
+    if (!_msgHiloActual) return;
+    const { interlocutor, pdvNombre, nombre } = _msgHiloActual;
+    const tituloEl = document.getElementById('msg-overlay-titulo');
+    const hiloEl = document.getElementById('msg-overlay-hilo');
+    if (!tituloEl || !hiloEl) return;
+    tituloEl.textContent = pdvNombre || nombre || interlocutor;
+    const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+    try {
+      const [env, rec] = await Promise.all([
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&para=eq.${interlocutor}&order=created_at.asc&select=*`) || [],
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${interlocutor}&para=eq.${currentUser.username}&order=created_at.asc&select=*`) || []
+      ]);
+      const todos = [...(env||[]), ...(rec||[])].sort((a,b)=>new Date(normTS(a.created_at))-new Date(normTS(b.created_at)));
+      hiloEl.innerHTML = todos.slice(-20).map(m => {
+        const esMio = m.desde === currentUser.username;
+        const hora = new Date(normTS(m.created_at)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+        return `<div style="display:flex;${esMio?'justify-content:flex-end':'justify-content:flex-start'}">
+          <div style="max-width:82%;background:${esMio?'var(--accent)':'var(--surface2)'};color:${esMio?'#000':'var(--text)'};border-radius:${esMio?'14px 14px 2px 14px':'14px 14px 14px 2px'};padding:9px 13px;font-size:14px;line-height:1.4;">
+            ${!esMio?`<div style="font-size:10px;font-weight:700;opacity:.6;margin-bottom:3px;">${pdvNombre||m.desde_nombre||m.desde}</div>`:''}
+            <div>${m.mensaje||''}</div>
+            <div style="font-size:10px;opacity:.5;margin-top:3px;text-align:right;">${hora}</div>
+          </div>
+        </div>`;
+      }).join('');
+      hiloEl.scrollTop = hiloEl.scrollHeight;
+    } catch(e) {}
+  }
+
+    function msgMostrarOverlay() {
     document.getElementById('msg-overlay').style.display = 'flex';
     document.getElementById('msg-mini').style.display = 'none';
     // Sonido
@@ -12081,7 +12113,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         osc.stop(ctx.currentTime + i*0.13 + 0.2);
       });
     } catch(e) {}
-    // Reiniciar animación
+    // Reiniciar animación pulso
     const inner = document.getElementById('msg-overlay-inner');
     if (inner) { inner.classList.remove('msg-pulse'); void inner.offsetWidth; inner.classList.add('msg-pulse'); }
   }
@@ -12094,6 +12126,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   function msgMaximizar() {
     document.getElementById('msg-overlay').style.display = 'flex';
     document.getElementById('msg-mini').style.display = 'none';
+    msgActualizarOverlay();
   }
 
   function msgCerrar() {
@@ -12341,16 +12374,17 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
   async function msgResponder() {
     const texto = document.getElementById('msg-overlay-respuesta')?.value?.trim();
-    if (!texto) { toast('Escribí una respuesta','error'); return; }
+    if (!texto || !_msgHiloActual) { toast('Escribí una respuesta','error'); return; }
     try {
-      await sbApi('mensajes', { method: 'POST', body: JSON.stringify({
+      const pdvNombre = _msgHiloActual.pdvNombre || currentUser.displayName || currentUser.username;
+      await sbApi('mensajes', { method:'POST', body: JSON.stringify({
         empresa_id: String(empresaActual), desde: currentUser.username,
-        desde_nombre: currentUser.displayName||currentUser.username,
-        para: 'admin', mensaje: texto, leido: false
+        desde_nombre: pdvNombre,
+        para: _msgHiloActual.interlocutor, mensaje: texto, leido: false
       })});
-      toast('✓ Respuesta enviada','success');
-      msgCerrar();
-      if (document.getElementById('msg-op-recibidos')) setTimeout(msgCargarOpRecibidos, 400);
+      document.getElementById('msg-overlay-respuesta').value = '';
+      await msgActualizarOverlay();
+      if (currentUser.role === 'admin') setTimeout(msgCargarHilos, 400);
     } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
