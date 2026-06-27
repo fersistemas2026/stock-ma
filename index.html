@@ -10872,7 +10872,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       if (p.fecha_especial_nombre) fechaLabel = p.fecha_especial_nombre+' · '+fechaLabel;
     } else {
       const pl=p.envio_plazo||'';
-      fechaLabel = pl==='hoy'?'Hoy':pl==='mañana'?'Mañana':pl==='2-dias'?('En 2 días (' + poDiaDesde(p.created_at, 2) + ')'):pl;
+      fechaLabel = pl==='hoy'?('Hoy (' + poDiaDesde(p.created_at, 0) + ')'):pl==='mañana'?('Mañana (' + poDiaDesde(p.created_at, 1) + ')'):pl==='2-dias'?('En 2 días (' + poDiaDesde(p.created_at, 2) + ')'):pl;
     }
     const horario = p.envio_horario?p.envio_horario.replace('-',' a ')+' hs':'';
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:'Courier New',monospace;font-size:13px;width:80mm;margin:0 auto;padding:8px;color:#000}.centro{text-align:center}.linea{border-top:1px dashed #000;margin:6px 0}.grande{font-size:16px;font-weight:bold}.negrita{font-weight:bold}.item{display:flex;justify-content:space-between}@media print{body{margin:0;padding:4px}}</style></head><body>
@@ -15686,12 +15686,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,reporte_z,efectivo,tarjetas&order=fecha.asc`) || [],
         sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || [],
         sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || [],
-        (() => {
-          const desdeUTC = new Date(desde + 'T03:00:00Z');
-          const hastaUTC = new Date(hasta + 'T03:00:00Z');
-          hastaUTC.setDate(hastaUTC.getDate() + 1);
-          return sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desdeUTC.toISOString()}&created_at=lt.${hastaUTC.toISOString()}&select=pdv_id,pagina,convirtio&limit=50000`) || [];
-        })()
+        sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio`) || []
       ]);
 
       if (!ventas.length) {
@@ -19032,7 +19027,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       } else {
         const plazo = p.envio_plazo || '';
         if (plazo === 'hoy') fechaEntregaLabel = '📅 Hoy';
-        else if (plazo === 'mañana' || plazo === 'ma\u00f1ana') fechaEntregaLabel = '📅 Mañana';
+        else if (plazo === 'mañana' || plazo === 'ma\u00f1ana') fechaEntregaLabel = '📅 Mañana (' + poDiaDesde(p.created_at, 1) + ')';
         else if (plazo === '2-dias') fechaEntregaLabel = '📅 En 2 días (' + poDiaDesde(p.created_at, 2) + ')';
         else fechaEntregaLabel = '📅 ' + plazo;
       }
@@ -19088,7 +19083,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       if (p.fecha_especial_nombre) fechaLabel = p.fecha_especial_nombre + ' · ' + fechaLabel;
     } else {
       const pl = p.envio_plazo || '';
-      fechaLabel = pl === 'hoy' ? 'Hoy' : pl === 'mañana' ? 'Mañana' : pl === '2-dias' ? ('En 2 días (' + poDiaDesde(p.created_at, 2) + ')') : pl;
+      fechaLabel = pl === 'hoy' ? ('Hoy (' + poDiaDesde(p.created_at, 0) + ')') : pl === 'mañana' ? ('Mañana (' + poDiaDesde(p.created_at, 1) + ')') : pl === '2-dias' ? ('En 2 días (' + poDiaDesde(p.created_at, 2) + ')') : pl;
     }
     const horario = p.envio_horario ? p.envio_horario.replace('-',' a ') + ' hs' : '';
     const pago = p.metodo_pago === 'transfe' ? 'Transferencia' : 'Efectivo';
