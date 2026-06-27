@@ -9814,7 +9814,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const hasta = range.hasta || range.to;
       const [pdvs, ventas] = await Promise.all([
         getPdv(),
-        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*&order=created_at.desc`) || []
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*&order=created_at.desc&limit=100000`) || []
       ]);
 
       if (!ventas.length) {
@@ -9878,21 +9878,64 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   function renderInfVentasResumen(ventas, pdvMap, container) {
     const byPdv = {};
+    // Para contar tickets agrupamos por fecha+hora+username igual que en detalle
+    const ticketsPorPdv = {};
     ventas.forEach(v => {
       const pdvNombre = pdvMap[String(v.pdv_id)] || v.pdv_id;
-      if (!byPdv[pdvNombre]) byPdv[pdvNombre] = { efectivo: 0, tarjeta: 0, unidades: 0 };
+      if (!byPdv[pdvNombre]) byPdv[pdvNombre] = { efectivo: 0, tarjeta: 0, unidades: 0, tickets: 0 };
       const imp = (v.precio||0)*(v.cantidad||0);
-      if (v.metodo_pago === 'tarjeta') byPdv[pdvNombre].tarjeta += imp;
+      if ((v.metodo_pago||'').includes('tarjeta')) byPdv[pdvNombre].tarjeta += imp;
       else byPdv[pdvNombre].efectivo += imp;
       byPdv[pdvNombre].unidades += v.cantidad||0;
+      // Ticket único por minuto+username
+      if (!ticketsPorPdv[pdvNombre]) ticketsPorPdv[pdvNombre] = new Set();
+      const ts = v.created_at ? new Date(v.created_at) : new Date();
+      const hora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+      const fecha = ts.toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'});
+      ticketsPorPdv[pdvNombre].add(`${fecha}_${hora}_${v.username||''}`);
+    });
+    // Asignar conteo de tickets
+    Object.keys(byPdv).forEach(pdv => {
+      byPdv[pdv].tickets = ticketsPorPdv[pdv] ? ticketsPorPdv[pdv].size : 0;
     });
 
-    let grandEf = 0, grandTj = 0, grandUn = 0;
+    let grandEf = 0, grandTj = 0, grandUn = 0, grandTk = 0;
     let html = '';
+
+    // ── Cuadros resumen rápido por PDV ──
+    let summaryHtml = `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;">`;
+    Object.entries(byPdv).sort(([a],[b])=>a.localeCompare(b)).forEach(([pdvNombre, data]) => {
+      const tot = data.efectivo + data.tarjeta;
+      summaryHtml += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;min-width:180px;flex:1;">
+        <div style="font-size:12px;font-weight:800;color:var(--accent);font-family:var(--mono);text-transform:uppercase;margin-bottom:10px;letter-spacing:.05em;">🏪 ${pdvNombre}</div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-family:var(--mono);font-size:13px;">
+          <div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--text-muted);">🧾 Tickets</span><strong>${data.tickets}</strong></div>
+          <div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#6ee7b7;">💵 Efectivo</span><strong>$${data.efectivo.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+          <div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#93c5fd;">💳 Tarjeta</span><strong>$${data.tarjeta.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+          <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px;display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--accent);font-weight:700;">Total</span><strong style="color:var(--accent);font-size:14px;">$${tot.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+        </div>
+      </div>`;
+    });
+    // Card total general
+    const gtEf = Object.values(byPdv).reduce((s,d)=>s+d.efectivo,0);
+    const gtTj = Object.values(byPdv).reduce((s,d)=>s+d.tarjeta,0);
+    const gtTk = Object.values(byPdv).reduce((s,d)=>s+d.tickets,0);
+    const gtTot = gtEf + gtTj;
+    summaryHtml += `<div style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:14px 18px;min-width:180px;flex:1;">
+      <div style="font-size:12px;font-weight:800;color:var(--accent);font-family:var(--mono);text-transform:uppercase;margin-bottom:10px;letter-spacing:.05em;">📊 TOTAL</div>
+      <div style="display:flex;flex-direction:column;gap:5px;font-family:var(--mono);font-size:13px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--text-muted);">🧾 Tickets</span><strong>${gtTk}</strong></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#6ee7b7;">💵 Efectivo</span><strong>$${gtEf.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#93c5fd;">💳 Tarjeta</span><strong>$${gtTj.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+        <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px;display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--accent);font-weight:700;">Total</span><strong style="color:var(--accent);font-size:16px;">$${gtTot.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+      </div>
+    </div>`;
+    summaryHtml += `</div>`;
+    html += summaryHtml;
 
     Object.entries(byPdv).sort(([a],[b])=>a.localeCompare(b)).forEach(([pdvNombre, data]) => {
       const total = data.efectivo + data.tarjeta;
-      grandEf += data.efectivo; grandTj += data.tarjeta; grandUn += data.unidades;
+      grandEf += data.efectivo; grandTj += data.tarjeta; grandUn += data.unidades; grandTk += data.tickets;
 
       // Por producto
       const byProd = {};
@@ -9910,7 +9953,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;">
         <div style="background:var(--surface2);padding:12px 18px;border-bottom:2px solid var(--accent);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <span style="font-size:15px;font-weight:800;">🏪 ${pdvNombre}</span>
-          <div style="display:flex;gap:14px;font-family:var(--mono);font-size:13px;">
+          <div style="display:flex;gap:14px;font-family:var(--mono);font-size:13px;align-items:center;">
+            <span style="color:var(--text-muted);">🧾 <strong style="color:var(--text);">${data.tickets}</strong> tickets</span>
             <span style="color:#6ee7b7;">💵 $${data.efectivo.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             <span style="color:#93c5fd;">💳 $${data.tarjeta.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             <span style="color:var(--accent);font-weight:700;">Total $${total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -9945,7 +9989,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const grandTotal = grandEf + grandTj;
     html += `<div style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:14px 20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <span style="font-size:15px;font-weight:900;">📊 TOTAL GENERAL</span>
-      <div style="display:flex;gap:20px;font-family:var(--mono);">
+      <div style="display:flex;gap:20px;font-family:var(--mono);align-items:center;">
+        <span style="color:var(--text-muted);font-size:13px;">🧾 <strong style="color:var(--text);">${grandTk}</strong> tickets</span>
         <span style="color:#6ee7b7;font-size:13px;">💵 $${grandEf.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
         <span style="color:#93c5fd;font-size:13px;">💳 $${grandTj.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
         <span style="font-size:20px;font-weight:900;color:var(--accent);">$${grandTotal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
