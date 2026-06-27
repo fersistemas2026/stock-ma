@@ -529,6 +529,7 @@
               <option value="ranking">🏆 Ranking productos/sabores</option>
               <option value="pdvMetricas">📊 Métricas por PDV</option>
               <option value="clientesDia">👥 Clientes incorporados por día</option>
+              <option value="cancelaciones">⚠️ Cancelaciones</option>
             </select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;">
@@ -2431,6 +2432,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       try { poOpIniciarConSesion(); } catch(e) {}
     };
   }
+  // Arrancar polling de cancelaciones para admin
+  if (currentUser?.role === 'admin') { try { cancelAdminStartPolling(); } catch(e) {} }
 
   let _sesionId = null;
   let _sesionPingInterval = null;
@@ -2727,6 +2730,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function doLogout() {
     cerrarSesionActiva().catch(()=>{});
     if (_sesionesAdminPollInterval) { clearInterval(_sesionesAdminPollInterval); _sesionesAdminPollInterval = null; }
+    if (_cancelInterval) { clearInterval(_cancelInterval); _cancelInterval = null; _cancelIdsConocidos = null; }
     currentUser = null;
     document.getElementById('app-screen').style.display='none';
     document.getElementById('login-screen').style.display='flex';
@@ -5434,6 +5438,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='ranking')        { await loadInformesRanking(range.desde, range.hasta); return; }
     if (seccion==='pdvMetricas')    { await loadInformesPdvMetricas(range.desde, range.hasta); return; }
     if (seccion==='clientesDia')    { await loadInformesClientesDia(range.desde, range.hasta); return; }
+    if (seccion==='cancelaciones')  { await loadInformesCancelaciones(range.desde, range.hasta); return; }
     if (seccion==='pedidosInt')   { await loadInformesPedidosInt(range.desde, range.hasta); return; }
     if (seccion==='pedidosOnline'){ await loadInformesPedidosOnline(range.desde, range.hasta); return; }
     if (seccion==='informeZ')     { await loadInformesInformeZ(range.desde, range.hasta); return; }
@@ -8581,7 +8586,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function abrirModalVuelto(total, onConfirm) {
     const overlay = document.createElement('div');
     overlay.id = 'modal-vuelto';
-    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.onclick = e => { if(e.target===overlay) { window._vueltoRegistrarCancel(total); overlay.remove(); } };
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
     overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:360px;overflow:hidden;">
       <div style="padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
@@ -8590,25 +8595,59 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       </div>
       <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
         <div>
-          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">¿Cuánto entrega el cliente?</label>
-          <input type="number" id="vuelto-monto-input" min="0" step="any" placeholder="0,00"
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">¿Cuánto entrega el cliente? <span style="color:#ff5a5a;">*</span></label>
+          <input type="number" id="vuelto-monto-input" min="0" step="any" placeholder="Ingresá el monto"
             style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:22px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;box-sizing:border-box;"
             oninput="calcularVuelto(${total})" />
+          <div style="font-size:11px;color:#ff5a5a;margin-top:4px;display:none;" id="vuelto-monto-error">⚠️ Ingresá el monto que entrega el cliente</div>
         </div>
         <div id="vuelto-resultado" style="background:var(--surface2);border-radius:8px;padding:14px;text-align:center;display:none;">
           <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Vuelto</div>
           <div id="vuelto-monto" style="font-size:32px;font-weight:900;font-family:var(--mono);color:#6ee7b7;"></div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button onclick="document.getElementById('modal-vuelto').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
-          <button onclick="document.getElementById('modal-vuelto').remove(); window._vueltoConfirmed=true; window._vueltoOnConfirm && window._vueltoOnConfirm();" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
+          <button onclick="window._vueltoRegistrarCancel(${total}); document.getElementById('modal-vuelto').remove();" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button id="btn-vuelto-confirmar" onclick="const v=parseFloat(document.getElementById('vuelto-monto-input')?.value||0); if(!v||v<=0){document.getElementById('vuelto-monto-error').style.display='';return;} document.getElementById('modal-vuelto').remove(); window._vueltoConfirmed=true; window._vueltoOnConfirm && window._vueltoOnConfirm();" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
         </div>
       </div>
     </div>`;
     window._vueltoOnConfirm = onConfirm;
+    window._vueltoTotal = total;
     document.body.appendChild(overlay);
     setTimeout(() => document.getElementById('vuelto-monto-input')?.focus(), 100);
   }
+
+  // Registrar cancelación cuando el operador cancela el modal de vuelto
+  window._vueltoRegistrarCancel = async function(total) {
+    try {
+      const montoIngresado = parseFloat(document.getElementById('vuelto-monto-input')?.value || 0);
+      // Solo registrar si ingresó algún monto (el cliente ya había entregado dinero)
+      const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+      const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
+      const items = (_ventasItems || []).map(i => ({
+        prod_id: i.prod_id || '',
+        prod_nombre: i.prod_nombre || '',
+        gusto_id: i.gusto_id || '',
+        gusto_nombre: i.gusto_nombre || '',
+        cantidad: i.cant || 1,
+        precio: parsePrecioAR(i.precio)
+      }));
+      if (!items.length) return;
+      const cancelacion = {
+        empresa_id: empresaActual,
+        pdv_id: pdvId,
+        username: currentUser?.username || '',
+        items: items,
+        total: total,
+        monto_cliente: montoIngresado,
+        fecha: fecha,
+        metodo_pago: 'efectivo'
+      };
+      await sbApi('cancelaciones_venta', { method: 'POST', body: JSON.stringify(cancelacion) });
+      // Alertar al admin
+      window._notificarCancelAdmin && window._notificarCancelAdmin(cancelacion);
+    } catch(e) { console.warn('[Cancel]', e); }
+  };
 
   function calcularVuelto(total) {
     const val = parseFloat(document.getElementById('vuelto-monto-input')?.value || 0);
@@ -8654,7 +8693,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <span style="font-size:20px;">📲</span><div><div>Transferencia</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;">Transferencia bancaria / QR</div></div>
         </button>
         <div style="display:flex;gap:8px;margin-top:4px;">
-          <button onclick="document.getElementById('modal-tarjeta').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="window._tarjetaRegistrarCancel(); document.getElementById('modal-tarjeta').remove();" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
           <button id="tarj-confirmar" onclick="confirmarTarjeta()" disabled
             style="flex:2;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-weight:800;color:var(--text-muted);cursor:not-allowed;opacity:.5;">💾 Confirmar y guardar</button>
         </div>
@@ -8664,6 +8703,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._tarjetaOnConfirm = onConfirm;
     document.body.appendChild(overlay);
   }
+
+  window._tarjetaRegistrarCancel = async function() {
+    try {
+      const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+      const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
+      const items = (_ventasItems || []).map(i => ({
+        prod_id: i.prod_id || '',
+        prod_nombre: i.prod_nombre || '',
+        gusto_id: i.gusto_id || '',
+        gusto_nombre: i.gusto_nombre || '',
+        cantidad: i.cant || 1,
+        precio: parsePrecioAR(i.precio)
+      }));
+      if (!items.length) return;
+      const total = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
+      const cancelacion = {
+        empresa_id: empresaActual,
+        pdv_id: pdvId,
+        username: currentUser?.username || '',
+        items: items,
+        total: total,
+        monto_cliente: 0,
+        fecha: fecha,
+        metodo_pago: 'tarjeta'
+      };
+      await sbApi('cancelaciones_venta', { method: 'POST', body: JSON.stringify(cancelacion) });
+      window._notificarCancelAdmin && window._notificarCancelAdmin(cancelacion);
+    } catch(e) { console.warn('[CancelTarjeta]', e); }
+  };
 
   function selTarjetaTipo(tipo, btn) {
     window._tarjetaTipo = tipo;
@@ -8730,6 +8798,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._tarjetaConfirmed = false;
     window._ventasClienteTelGuardar = '';
     window._ventasClienteNombreGuardar = '';
+    // Guardar snapshot de items para comparar con cancelaciones posteriores
+    window._lastVentaItems = (_ventasItems || []).map(i => ({
+      prod_id: i.prod_id || '',
+      cantidad: i.cant || 1,
+      precio: parsePrecioAR(i.precio)
+    }));
 
     const pdvs = await getPdv();
     const metodoPago = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1' ? 'efectivo' :
@@ -8829,8 +8903,29 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           } catch(ev) { console.warn('Error marcando voucher:', ev); }
         })();
       }
-      toast('✓ Venta guardada correctamente','success');
+      toast('\u2713 Venta guardada correctamente','success');
       checkAvisosSeccion('ventas');
+      // Verificar si hay cancelaciones recientes similares y marcarlas como repasadas
+      (async () => {
+        try {
+          const pdvIdV = document.getElementById('ventas-pdv-sel')?.value || '';
+          const fechaV = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
+          const itemsV = (window._lastVentaItems || []);
+          if (!itemsV.length || !pdvIdV) return;
+          const totalV = itemsV.reduce((s,i) => s + i.precio * i.cantidad, 0);
+          // Buscar cancelaciones del mismo PDV/operador en las últimas 2 horas
+          const hace2h = new Date(Date.now() - 2*60*60*1000).toISOString();
+          const cancels = await sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvIdV}&username=eq.${currentUser?.username||''}&repasada=eq.false&created_at=gte.${hace2h}&select=id,total,items`) || [];
+          for (const c of cancels) {
+            // Comparar monto total (tolerancia 5%)
+            const diff = Math.abs(c.total - totalV) / (totalV || 1);
+            if (diff <= 0.05) {
+              // Marcar como repasada
+              await sbApi(`cancelaciones_venta?id=eq.${c.id}`, { method: 'PATCH', body: JSON.stringify({ repasada: true }) });
+            }
+          }
+        } catch(e) { console.warn('[CancelCheck]', e); }
+      })();
 
       // ── Control de efectivo ──
       if (metodoPago === 'efectivo') {
@@ -15473,6 +15568,78 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     }
   }
 
+  async function loadInformesCancelaciones(desde, hasta) {
+    const body = document.getElementById('inf-body');
+    if (!body) return;
+    body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando cancelaciones...</p></div>`;
+    try {
+      const [cancels, pdvs, usuarios] = await Promise.all([
+        sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
+        getPdv(),
+        sbApi(`usuarios?select=username,display_name`) || []
+      ]);
+
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre || p.name);
+      const userMap = {};
+      (usuarios||[]).forEach(u => userMap[u.username] = u.display_name || u.username);
+      const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
+      const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+
+      const sospechosas = cancels.filter(c => !c.repasada);
+      const repasadas   = cancels.filter(c => c.repasada);
+
+      let html = '<div style="margin-bottom:18px;">';
+      // Resumen
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;">';
+      html += '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;border:1px solid rgba(255,90,90,.3);">';
+      html += '<div style="font-size:28px;font-weight:900;color:#ff5a5a;">' + sospechosas.length + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🚨 Sospechosas (sin venta posterior)</div></div>';
+      html += '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;border:1px solid rgba(74,222,128,.2);">';
+      html += '<div style="font-size:28px;font-weight:900;color:#4ade80;">' + repasadas.length + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">✅ Repasadas (venta registrada)</div></div>';
+      html += '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;">';
+      html += '<div style="font-size:28px;font-weight:900;color:var(--text);">' + cancels.length + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">📋 Total cancelaciones</div></div>';
+      html += '</div>';
+
+      const renderFila = (c, sospechosa) => {
+        const hora = c.created_at ? new Date(normTS(c.created_at)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+        const items = Array.isArray(c.items) ? c.items : [];
+        const prodResumen = items.slice(0,3).map(i => (i.prod_nombre||'?') + (i.gusto_nombre ? ' ' + i.gusto_nombre : '') + ' x' + i.cantidad).join(', ');
+        const montoCliente = c.monto_cliente > 0 ? ' · 💵 pagó ' + fmtARS(c.monto_cliente) : '';
+        return '<tr style="border-top:1px solid var(--border);">'
+          + '<td style="padding:8px 10px;font-size:12px;color:var(--text-muted);">' + hora + '</td>'
+          + '<td style="padding:8px 10px;font-size:13px;font-weight:600;color:' + (sospechosa?'#ff5a5a':'#4ade80') + ';">' + (sospechosa?'🚨 Sospechosa':'✅ Repasada') + '</td>'
+          + '<td style="padding:8px 10px;font-size:13px;">' + (pdvMap[String(c.pdv_id)]||c.pdv_id||'?') + '</td>'
+          + '<td style="padding:8px 10px;font-size:13px;">' + (userMap[c.username]||c.username||'?') + '</td>'
+          + '<td style="padding:8px 10px;font-size:13px;font-family:var(--mono);font-weight:700;color:#f97316;">' + fmtARS(c.total||0) + montoCliente + '</td>'
+          + '<td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">' + prodResumen + (items.length>3?'...':'') + '</td>'
+          + '</tr>';
+      };
+
+      if (cancels.length === 0) {
+        html += '<div class="empty-state">✅<p>No hay cancelaciones en el período seleccionado.</p></div>';
+      } else {
+        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">';
+        html += '<table style="width:100%;border-collapse:collapse;">';
+        html += '<thead><tr style="background:var(--surface2);">';
+        ['Hora','Estado','PDV','Operador','Total','Productos'].forEach(h => {
+          html += '<th style="padding:8px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">' + h + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        sospechosas.forEach(c => { html += renderFila(c, true); });
+        repasadas.forEach(c => { html += renderFila(c, false); });
+        html += '</tbody></table></div>';
+      }
+
+      html += '</div>';
+      body.innerHTML = html;
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
   async function loadInformesPdvMetricas(desde, hasta) {
     const body = document.getElementById('inf-body');
     if (!body) return;
@@ -19075,6 +19242,63 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     poOpStartPolling();
   }
   // ══════════════════════════════════════ / PEDIDOS ONLINE ══
+
+  // ══════════════════════════════════════ CANCELACIONES ADMIN ══
+  let _cancelInterval = null;
+  let _cancelIdsConocidos = null;
+
+  window._notificarCancelAdmin = function(cancelacion) {
+    // Notificación inmediata cuando el operador cancela (solo para admins logueados)
+    if (currentUser?.role !== 'admin') return;
+    const pdvNombre = cancelacion.pdv_nombre || cancelacion.pdv_id || '';
+    const op = cancelacion.username || '';
+    const total = '$' + Math.round(cancelacion.total||0).toLocaleString('es-AR');
+    const monto = cancelacion.monto_cliente > 0 ? ` (cliente entregó $${Math.round(cancelacion.monto_cliente).toLocaleString('es-AR')})` : '';
+    toast(`🚨 Cancelación en ${pdvNombre} · ${op} · ${total}${monto}`, 'error');
+  };
+
+  async function cancelAdminStartPolling() {
+    if (currentUser?.role !== 'admin') return;
+    if (_cancelInterval) return;
+    // Inicializar con las cancelaciones ya existentes para no alertar sobre las viejas
+    try {
+      const hace1h = new Date(Date.now() - 60*60*1000).toISOString();
+      const existentes = await sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&repasada=eq.false&created_at=gte.${hace1h}&select=id`) || [];
+      _cancelIdsConocidos = existentes.map(c => c.id);
+    } catch(e) { _cancelIdsConocidos = []; }
+
+    _cancelInterval = setInterval(async () => {
+      if (currentUser?.role !== 'admin') return;
+      try {
+        const hace2h = new Date(Date.now() - 2*60*60*1000).toISOString();
+        const recientes = await sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&repasada=eq.false&created_at=gte.${hace2h}&order=created_at.desc&select=id,pdv_id,username,total,monto_cliente,items`) || [];
+        if (_cancelIdsConocidos !== null) {
+          const nuevas = recientes.filter(c => !_cancelIdsConocidos.includes(c.id));
+          if (nuevas.length > 0) {
+            _cancelIdsConocidos = [..._cancelIdsConocidos, ...nuevas.map(c => c.id)];
+            // Obtener PDVs para el nombre
+            const pdvs = await getPdv();
+            const pdvMap = {};
+            pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre || p.name);
+            nuevas.forEach(c => {
+              const pdvNombre = pdvMap[String(c.pdv_id)] || c.pdv_id || '?';
+              const total = '$' + Math.round(c.total||0).toLocaleString('es-AR');
+              const monto = c.monto_cliente > 0 ? ` · cliente entregó $${Math.round(c.monto_cliente).toLocaleString('es-AR')}` : '';
+              toast(`🚨 Cancelación sospechosa: ${pdvNombre} · ${c.username||'?'} · ${total}${monto}`, 'error');
+            });
+          }
+        } else {
+          _cancelIdsConocidos = recientes.map(c => c.id);
+        }
+      } catch(e) {}
+    }, 30000); // cada 30 segundos
+  }
+
+  // Iniciar polling de cancelaciones cuando el admin está logueado
+  const _origLoginAdmin = window.loginAdmin;
+  // Arrancar polling después del login
+  const _origInitApp = window.initApp;
+  // ══════════════════════════════════════ / CANCELACIONES ADMIN ══
 
 </script>
 
