@@ -19790,10 +19790,10 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       const fmtHora = s => s ? new Date(normTS(s)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}) : '';
       const fmtFecha = s => s ? new Date(normTS(s)).toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit'}) : '';
 
-      // Indexar cancelaciones por ticket aproximado (misma fecha+pdv+username)
+      // Indexar cancelaciones NO repasadas (sin venta posterior) por fecha+pdv+username
       const cancelSet = new Set();
       const cancelMap = {}; // key -> cancelacion
-      (cancels||[]).forEach(c => {
+      (cancels||[]).filter(c => !c.repasada).forEach(c => {
         const k = `${(c.fecha||'').slice(0,10)}_${c.pdv_id}_${c.username}`;
         cancelSet.add(k);
         if (!cancelMap[k]) cancelMap[k] = [];
