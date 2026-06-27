@@ -12019,6 +12019,67 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   let _msgIdsMostrados = new Set();
   let _msgActualId = null;
 
+  function msgIniciarPolling() {
+    if (_msgPollTimer) clearInterval(_msgPollTimer);
+    _msgPollTimer = setInterval(msgCheckNuevos, 8000);
+    setTimeout(msgCheckNuevos, 2000);
+  }
+
+  async function msgCheckNuevos() {
+    if (!currentUser) return;
+    try {
+      const username = currentUser.username;
+      const queries = [
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${username}&leido=eq.false&order=created_at.desc&select=*`) || [],
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.todos&leido=eq.false&order=created_at.desc&select=*`) || []
+      ];
+      if (_sesionId) {
+        queries.push(sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.pdv_${_sesionId}&leido=eq.false&order=created_at.desc&select=*`) || []);
+      }
+      const results = await Promise.all(queries);
+      const nuevos = results.flat().filter(m => m.desde !== username && !_msgIdsMostrados.has(m.id));
+      if (nuevos.length > 0) {
+        const m = nuevos[0];
+        _msgIdsMostrados.add(m.id);
+        _msgActualId = m.id;
+        msgMostrarOverlay(m);
+        iniciarParpadeoMensajes();
+        await sbApi(`mensajes?id=eq.${m.id}`, { method: 'PATCH', body: JSON.stringify({ leido: true }) });
+      }
+      // Si admin está en mensajes, refrescar hilos
+      if (currentUser.role === 'admin') {
+        const negMsj = document.getElementById('neg-mensajes');
+        if (negMsj && negMsj.classList.contains('active')) msgCargarHilos();
+      }
+    } catch(e) {}
+  }
+
+  function msgMostrarOverlay(m) {
+    const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+    const hora = new Date(normTS(m.created_at)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+    document.getElementById('msg-overlay-desde').textContent = `De: ${m.desde_nombre||m.desde} · ${hora}`;
+    document.getElementById('msg-overlay-texto').textContent = m.mensaje || '';
+    document.getElementById('msg-overlay-respuesta').value = '';
+    document.getElementById('msg-overlay').style.display = 'flex';
+    document.getElementById('msg-mini').style.display = 'none';
+  }
+
+  function msgMinimizar() {
+    document.getElementById('msg-overlay').style.display = 'none';
+    document.getElementById('msg-mini').style.display = 'block';
+  }
+
+  function msgMaximizar() {
+    document.getElementById('msg-overlay').style.display = 'flex';
+    document.getElementById('msg-mini').style.display = 'none';
+  }
+
+  function msgCerrar() {
+    document.getElementById('msg-overlay').style.display = 'none';
+    document.getElementById('msg-mini').style.display = 'none';
+    _msgActualId = null;
+  }
+
   function initChat() {
     const isAdmin = currentUser?.role === 'admin';
     document.getElementById('msg-admin-panel').style.display = isAdmin ? '' : 'none';
