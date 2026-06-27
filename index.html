@@ -15765,7 +15765,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
       // Función que renderiza las métricas de los PDVs seleccionados
       const todasMetas = metasRaw.length ? (metasRaw[0].datos || []) : [];
-      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[] };
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[], ventas, desde, hasta };
       window._pdvMetricasActivos = 'all';
 
       window.pdvMetricasSelAll = function() {
@@ -15795,7 +15795,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       };
 
       window.renderPdvMetricas = function(ids) {
-        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas } = window._pdvMetricasData;
+        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas, ventas, desde, hasta } = window._pdvMetricasData;
         const contenido = document.getElementById('pdvm-contenido');
         if (!contenido) return;
 
