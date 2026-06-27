@@ -984,35 +984,57 @@
 
       <!-- MENSAJES -->
       <div id="neg-mensajes" class="neg-panel" style="display:none">
-        <div class="form-title" style="margin-bottom:4px">💬 Mensajes</div>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Enviá un mensaje urgente a un PDV o a todos.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div class="form-title" style="margin-bottom:2px">💬 Mensajes</div>
+            <p style="font-size:13px;color:var(--text-muted);margin:0;">Comunicación interna en tiempo real</p>
+          </div>
+          <button onclick="msgNuevoClick()" id="msg-btn-nuevo" style="display:none;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;">✉️ Nuevo mensaje</button>
+        </div>
 
         <!-- Panel admin -->
         <div id="msg-admin-panel" style="display:none;">
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:520px;">
-            <div style="display:flex;flex-direction:column;gap:14px;">
+          <!-- Composer (oculto por defecto, se muestra al hacer clic en Nuevo) -->
+          <div id="msg-composer" style="display:none;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:24px;">
+            <div style="font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">✉️ Nuevo mensaje</div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
               <div>
-                <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Destinatario</label>
+                <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Para</label>
                 <select id="msg-destinatario" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;">
                   <option value="todos">📢 Todos los PDVs</option>
                 </select>
               </div>
-              <div>
-                <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;">Mensaje</label>
-                <textarea id="msg-texto" rows="3" maxlength="500" placeholder="Escribí el mensaje urgente..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:vertical;font-family:var(--font);box-sizing:border-box;"></textarea>
+              <textarea id="msg-texto" rows="2" maxlength="500" placeholder="Escribí el mensaje..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);box-sizing:border-box;"></textarea>
+              <div style="display:flex;gap:8px;">
+                <button onclick="msgAdminEnviar()" style="flex:1;background:var(--accent);color:#000;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;">📤 Enviar</button>
+                <button onclick="document.getElementById('msg-composer').style.display='none'" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 16px;font-size:13px;color:var(--text-muted);cursor:pointer;">Cancelar</button>
               </div>
-              <button onclick="msgAdminEnviar()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;">📤 Enviar mensaje</button>
             </div>
           </div>
-          <div style="margin-top:20px;">
-            <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Respuestas recibidas</div>
-            <div id="msg-respuestas" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;"></div>
-          </div>
+
+          <!-- Cuadros de conversación por interlocutor -->
+          <div id="msg-hilos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;"></div>
+          <div id="msg-hilos-empty" style="display:none;" class="empty-state">💬<p>Sin conversaciones aún. Enviá el primer mensaje.</p></div>
         </div>
 
-        <!-- Panel operador -->
+        <!-- Panel operador/PDV -->
         <div id="msg-op-panel" style="display:none;">
-          <div class="empty-state">💬<p>Los mensajes urgentes aparecen como un diálogo en pantalla.</p></div>
+          <!-- Composer operador -->
+          <div id="msg-op-composer" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;max-width:520px;">
+            <div style="font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">✉️ Enviar mensaje</div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Para</label>
+                <select id="msg-op-destinatario" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;">
+                  <option value="admin">👤 Administrador</option>
+                </select>
+              </div>
+              <textarea id="msg-op-texto" rows="2" maxlength="300" placeholder="Escribí tu mensaje..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);box-sizing:border-box;"></textarea>
+              <button onclick="msgOpEnviar()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;">📤 Enviar</button>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Mensajes recibidos</div>
+          <div id="msg-op-recibidos" style="display:flex;flex-direction:column;gap:8px;max-width:520px;"></div>
         </div>
       </div>
 
@@ -12001,9 +12023,18 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     const isAdmin = currentUser?.role === 'admin';
     document.getElementById('msg-admin-panel').style.display = isAdmin ? '' : 'none';
     document.getElementById('msg-op-panel').style.display = isAdmin ? 'none' : '';
+    const btnNuevo = document.getElementById('msg-btn-nuevo');
+    if (btnNuevo) btnNuevo.style.display = '';
+    msgCargarDestinatarios();
     if (isAdmin) {
-      msgCargarDestinatarios();
-      msgCargarRespuestas();
+      msgCargarHilos();
+      // Refrescar hilos cada 10s mientras está abierto
+      if (window._msgHilosTimer) clearInterval(window._msgHilosTimer);
+      window._msgHilosTimer = setInterval(() => {
+        if (document.getElementById('neg-mensajes')?.classList.contains('active')) msgCargarHilos();
+      }, 10000);
+    } else {
+      msgCargarOpRecibidos();
     }
   }
 
@@ -12038,127 +12069,167 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     try {
       const rows = [];
       if (dest === 'todos') {
-        // Mandar a todos los operadores
         const usuarios = await sbApi(`usuarios?role=eq.operador&select=username,display_name`) || [];
-        usuarios.forEach(u => rows.push({
-          empresa_id: String(empresaActual), desde: currentUser.username,
-          desde_nombre: currentUser.displayName || currentUser.username,
-          para: u.username, mensaje: texto, leido: false
-        }));
-        // También uno genérico
-        rows.push({ empresa_id: String(empresaActual), desde: currentUser.username,
-          desde_nombre: currentUser.displayName || currentUser.username,
-          para: 'todos', mensaje: texto, leido: false });
+        usuarios.forEach(u => rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: u.username, mensaje: texto, leido: false }));
+        rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: 'todos', mensaje: texto, leido: false });
       } else if (dest.startsWith('pdv_')) {
-        // Mandar a sesiones activas de ese PDV
         const pdvId = dest.replace('pdv_','');
         const sesiones = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&select=username`) || [];
         if (sesiones.length) {
-          sesiones.forEach(s => rows.push({
-            empresa_id: String(empresaActual), desde: currentUser.username,
-            desde_nombre: currentUser.displayName || currentUser.username,
-            para: s.username, mensaje: texto, leido: false, grupo_id: pdvId
-          }));
+          sesiones.forEach(s => rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: s.username, mensaje: texto, leido: false, grupo_id: pdvId }));
         } else {
-          // PDV sin sesión activa — guardar con para=pdv_ID para que lo vea cuando entre
-          rows.push({ empresa_id: String(empresaActual), desde: currentUser.username,
-            desde_nombre: currentUser.displayName || currentUser.username,
-            para: 'pdv_' + pdvId, mensaje: texto, leido: false, grupo_id: pdvId });
+          rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: 'pdv_'+pdvId, mensaje: texto, leido: false, grupo_id: pdvId });
         }
       } else if (dest.startsWith('op_')) {
         const username = dest.replace('op_','');
-        rows.push({ empresa_id: String(empresaActual), desde: currentUser.username,
-          desde_nombre: currentUser.displayName || currentUser.username,
-          para: username, mensaje: texto, leido: false });
+        rows.push({ empresa_id: String(empresaActual), desde: currentUser.username, desde_nombre: currentUser.displayName||currentUser.username, para: username, mensaje: texto, leido: false });
       }
-      for (const row of rows) {
-        await sbApi('mensajes', { method: 'POST', body: JSON.stringify(row) });
-      }
+      for (const row of rows) await sbApi('mensajes', { method: 'POST', body: JSON.stringify(row) });
       document.getElementById('msg-texto').value = '';
+      document.getElementById('msg-composer').style.display = 'none';
       toast('✓ Mensaje enviado', 'success');
-      setTimeout(msgCargarRespuestas, 1000);
-    } catch(e) { toast('Error: ' + e.message, 'error'); }
+      setTimeout(msgCargarHilos, 500);
+    } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
-  async function msgCargarRespuestas() {
-    const cont = document.getElementById('msg-respuestas');
+  async function msgOpEnviar() {
+    const dest = document.getElementById('msg-op-destinatario')?.value || 'admin';
+    const texto = document.getElementById('msg-op-texto')?.value?.trim();
+    if (!texto) { toast('Escribí un mensaje','error'); return; }
+    try {
+      await sbApi('mensajes', { method: 'POST', body: JSON.stringify({
+        empresa_id: String(empresaActual), desde: currentUser.username,
+        desde_nombre: currentUser.displayName||currentUser.username,
+        para: dest, mensaje: texto, leido: false
+      })});
+      document.getElementById('msg-op-texto').value = '';
+      toast('✓ Mensaje enviado','success');
+      setTimeout(msgCargarOpRecibidos, 500);
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  async function msgCargarHilos() {
+    const cont = document.getElementById('msg-hilos');
+    const empty = document.getElementById('msg-hilos-empty');
     if (!cont) return;
     try {
-      const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&desde=neq.${currentUser.username}&order=created_at.desc&select=*`) || [];
-      if (!r.length) { cont.innerHTML = '<div style="font-size:13px;color:var(--text-muted);padding:8px 0;">Sin respuestas aún.</div>'; return; }
+      // Traer todos los mensajes enviados y recibidos por admin
+      const [enviados, recibidos] = await Promise.all([
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&order=created_at.desc&select=*`) || [],
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || []
+      ]);
+      const todos = [...(enviados||[]), ...(recibidos||[])];
+      if (!todos.length) { cont.innerHTML=''; empty.style.display=''; return; }
+      empty.style.display = 'none';
+
+      // Agrupar por interlocutor
+      const hilosMap = {};
       const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
-      cont.innerHTML = r.map(m => {
+      todos.forEach(m => {
+        const interlocutor = m.desde === currentUser.username ? m.para : m.desde;
+        const interlocutorNombre = m.desde === currentUser.username ? (m.para==='todos'?'Todos los PDVs':m.para) : (m.desde_nombre||m.desde);
+        if (!hilosMap[interlocutor]) hilosMap[interlocutor] = { key: interlocutor, nombre: interlocutorNombre, mensajes: [], noLeidos: 0 };
+        hilosMap[interlocutor].mensajes.push(m);
+        if (m.para === currentUser.username && !m.leido) hilosMap[interlocutor].noLeidos++;
+      });
+
+      cont.innerHTML = Object.values(hilosMap).map(h => {
+        const msgs = h.mensajes.sort((a,b) => new Date(normTS(a.created_at))-new Date(normTS(b.created_at)));
+        const badgeHtml = h.noLeidos > 0 ? `<span style="background:#ff5a5a;color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;">${h.noLeidos}</span>` : '';
+        const msgsHtml = msgs.slice(-10).map(m => {
+          const esMio = m.desde === currentUser.username;
+          const hora = new Date(normTS(m.created_at)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+          return `<div style="display:flex;${esMio?'justify-content:flex-end':'justify-content:flex-start'};margin-bottom:6px;">
+            <div style="max-width:80%;background:${esMio?'var(--accent)':'var(--surface2)'};color:${esMio?'#000':'var(--text)'};border-radius:${esMio?'12px 12px 2px 12px':'12px 12px 12px 2px'};padding:8px 12px;font-size:13px;line-height:1.4;">
+              <div>${m.mensaje||''}</div>
+              <div style="font-size:10px;opacity:.6;margin-top:3px;text-align:${esMio?'right':'left'};">${hora}</div>
+            </div>
+          </div>`;
+        }).join('');
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface2);">
+            <span style="font-size:14px;font-weight:800;">${h.nombre}</span>
+            ${badgeHtml}
+          </div>
+          <div style="padding:12px 16px;flex:1;max-height:220px;overflow-y:auto;">${msgsHtml}</div>
+          <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;">
+            <input type="text" placeholder="Responder..." maxlength="300" data-para="${h.key}"
+              style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--font);"
+              onkeydown="if(event.key==='Enter')msgResponderHilo(this)">
+            <button onclick="msgResponderHilo(this.previousElementSibling)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 14px;font-size:14px;font-weight:800;cursor:pointer;">➤</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) { if(cont) cont.innerHTML='<div class="empty-state">❌<p>Error cargando mensajes</p></div>'; }
+  }
+
+  async function msgResponderHilo(input) {
+    const texto = input?.value?.trim();
+    const para = input?.dataset?.para;
+    if (!texto || !para) return;
+    try {
+      await sbApi('mensajes', { method: 'POST', body: JSON.stringify({
+        empresa_id: String(empresaActual), desde: currentUser.username,
+        desde_nombre: currentUser.displayName||currentUser.username,
+        para, mensaje: texto, leido: false
+      })});
+      input.value = '';
+      setTimeout(msgCargarHilos, 400);
+    } catch(e) { toast('Error: '+e.message,'error'); }
+  }
+
+  async function msgCargarOpRecibidos() {
+    const cont = document.getElementById('msg-op-recibidos');
+    if (!cont) return;
+    try {
+      const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || [];
+      const r2 = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.todos&order=created_at.desc&select=*`) || [];
+      const todos = [...r, ...r2].filter(m => m.desde !== currentUser.username).sort((a,b) => new Date(b.created_at)-new Date(a.created_at));
+      const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+      if (!todos.length) { cont.innerHTML='<div style="font-size:13px;color:var(--text-muted);">Sin mensajes recibidos.</div>'; return; }
+      cont.innerHTML = todos.map(m => {
         const hora = new Date(normTS(m.created_at)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
         return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
             <span style="font-size:12px;font-weight:700;color:var(--accent);">${m.desde_nombre||m.desde}</span>
             <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${hora}</span>
           </div>
-          <div style="font-size:14px;color:var(--text);">${m.mensaje||''}</div>
+          <div style="font-size:14px;color:var(--text);line-height:1.4;">${m.mensaje||''}</div>
         </div>`;
       }).join('');
+      // Marcar como leídos
+      todos.filter(m=>!m.leido).forEach(m => sbApi(`mensajes?id=eq.${m.id}`,{method:'PATCH',body:JSON.stringify({leido:true})}).catch(()=>{}));
     } catch(e) {}
   }
 
-  function msgIniciarPolling() {
-    if (_msgPollTimer) clearInterval(_msgPollTimer);
-    _msgPollTimer = setInterval(msgCheckNuevos, 8000);
-    setTimeout(msgCheckNuevos, 2000);
+  function msgNuevoClick() {
+    const comp = document.getElementById('msg-composer');
+    if (comp) { comp.style.display = comp.style.display==='none'?'':'none'; }
   }
 
-  async function msgCheckNuevos() {
-    if (!currentUser) return;
+  async function msgCargarDestinatarios() {
     try {
-      const username = currentUser.username;
-      // Buscar mensajes dirigidos a este usuario, a 'todos', o al PDV activo
-      const queries = [
-        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${username}&leido=eq.false&order=created_at.desc&select=*`) || [],
-        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.todos&leido=eq.false&order=created_at.desc&select=*`) || []
-      ];
-      if (_sesionId) {
-        queries.push(sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.pdv_${_sesionId}&leido=eq.false&order=created_at.desc&select=*`) || []);
+      const [pdvs, usuarios] = await Promise.all([
+        getPdv(),
+        sbApi(`usuarios?role=eq.operador&select=username,display_name`) || []
+      ]);
+      const sel = document.getElementById('msg-destinatario');
+      const selOp = document.getElementById('msg-op-destinatario');
+      if (sel) {
+        sel.innerHTML = '<option value="todos">📢 Todos los PDVs</option>';
+        pdvs.forEach(p => { const o=document.createElement('option'); o.value='pdv_'+p.id; o.textContent='🏪 '+(p.nombre||p.name); sel.appendChild(o); });
+        usuarios.forEach(u => { const o=document.createElement('option'); o.value='op_'+u.username; o.textContent='👤 '+(u.display_name||u.username); sel.appendChild(o); });
       }
-      const results = await Promise.all(queries);
-      const todos = results.flat().filter(m => m.desde !== username && !_msgIdsMostrados.has(m.id));
-      if (todos.length > 0) {
-        const m = todos[0];
-        _msgIdsMostrados.add(m.id);
-        _msgActualId = m.id;
-        msgMostrarOverlay(m);
-        iniciarParpadeoMensajes();
-        await sbApi(`mensajes?id=eq.${m.id}`, { method: 'PATCH', body: JSON.stringify({ leido: true }) });
-      }
-      if (currentUser.role === 'admin') {
-        const negMsj = document.getElementById('neg-mensajes');
-        if (negMsj && negMsj.classList.contains('active')) msgCargarRespuestas();
+      if (selOp) {
+        selOp.innerHTML = '<option value="admin">👤 Administrador</option>';
+        pdvs.forEach(p => {
+          const o=document.createElement('option');
+          o.value='pdv_'+p.id;
+          o.textContent='🏪 '+(p.nombre||p.name);
+          selOp.appendChild(o);
+        });
       }
     } catch(e) {}
-  }
-
-  function msgMostrarOverlay(m) {
-    const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
-    const hora = new Date(normTS(m.created_at)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
-    document.getElementById('msg-overlay-desde').textContent = `De: ${m.desde_nombre||m.desde} · ${hora}`;
-    document.getElementById('msg-overlay-texto').textContent = m.mensaje || '';
-    document.getElementById('msg-overlay-respuesta').value = '';
-    document.getElementById('msg-overlay').style.display = 'flex';
-    document.getElementById('msg-mini').style.display = 'none';
-  }
-
-  function msgMinimizar() {
-    document.getElementById('msg-overlay').style.display = 'none';
-    document.getElementById('msg-mini').style.display = 'block';
-  }
-
-  function msgMaximizar() {
-    document.getElementById('msg-overlay').style.display = 'flex';
-    document.getElementById('msg-mini').style.display = 'none';
-  }
-
-  function msgCerrar() {
-    document.getElementById('msg-overlay').style.display = 'none';
-    document.getElementById('msg-mini').style.display = 'none';
-    _msgActualId = null;
   }
 
   async function msgResponder() {
@@ -12166,17 +12237,17 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (!texto) { toast('Escribí una respuesta','error'); return; }
     try {
       await sbApi('mensajes', { method: 'POST', body: JSON.stringify({
-        empresa_id: String(empresaActual),
-        desde: currentUser.username,
-        desde_nombre: currentUser.displayName || currentUser.username,
-        para: 'admin',
-        mensaje: texto,
-        leido: false
+        empresa_id: String(empresaActual), desde: currentUser.username,
+        desde_nombre: currentUser.displayName||currentUser.username,
+        para: 'admin', mensaje: texto, leido: false
       })});
-      toast('✓ Respuesta enviada', 'success');
+      toast('✓ Respuesta enviada','success');
       msgCerrar();
-    } catch(e) { toast('Error: ' + e.message, 'error'); }
+      if (document.getElementById('msg-op-recibidos')) setTimeout(msgCargarOpRecibidos, 400);
+    } catch(e) { toast('Error: '+e.message,'error'); }
   }
+
+
 
 
 
