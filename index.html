@@ -8640,7 +8640,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
         <div style="display:flex;gap:8px;">
           <button onclick="window._vueltoIntentarCancelar(${total});" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
-          <button id="btn-vuelto-confirmar" onclick="const v=parseFloat(document.getElementById('vuelto-monto-input')?.value||0); if(!v||v<=0){document.getElementById('vuelto-monto-error').style.display='';return;} document.getElementById('modal-vuelto').remove(); window._vueltoConfirmed=true; window._vueltoOnConfirm && window._vueltoOnConfirm();" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
+          <button id="btn-vuelto-confirmar" onclick="const v=parseFloat(document.getElementById('vuelto-monto-input')?.value||0); if(!v||v<=0){document.getElementById('vuelto-monto-error').style.display='';return;} document.getElementById('modal-vuelto').remove(); window._vueltoOnConfirm && window._vueltoOnConfirm();" style="flex:2;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
         </div>
       </div>
     </div>`;
@@ -8811,7 +8811,6 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   function confirmarTarjeta() {
     if (!window._tarjetaTipo) return;
-    window._tarjetaConfirmed = true;
     document.getElementById('modal-tarjeta')?.remove();
     window._tarjetaOnConfirm && window._tarjetaOnConfirm();
   }
@@ -8827,7 +8826,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!fecha || fecha === 'undefined') { toast('Seleccioná una fecha','error'); return; }
 
     // Guardar datos del cliente antes de abrir modal (para que no se pierdan)
-    if (!window._vueltoConfirmed && !window._tarjetaConfirmed) {
+    if (!window._ventaPaso) {
       window._ventasClienteTelGuardar = (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
       window._ventasClienteNombreGuardar = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
     }
@@ -8835,17 +8834,48 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // Modal según método de pago
     const esEfectivo = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1';
     const esTarjeta = document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1';
-    if (esEfectivo && !window._vueltoConfirmed) {
+
+    // Paso 1: confirmar método
+    if (!window._ventaPaso) window._ventaPaso = 0;
+
+    if (window._ventaPaso === 0) {
       const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
-      abrirModalVuelto(total, () => guardarVenta());
+      const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
+      const metodoLabel = esEfectivo ? '💵 Efectivo' : esTarjeta ? '💳 Tarjeta' : '💵 Efectivo';
+      const metodoColor = esEfectivo ? '#4ade80' : '#8b5cf6';
+      const ov = document.createElement('div');
+      ov.id = 'modal-confirmar-metodo';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
+      ov.innerHTML = `
+        <div style="background:var(--surface);border:2px solid ${metodoColor};border-radius:16px;width:100%;max-width:340px;padding:24px;text-align:center;">
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">Confirmar venta</div>
+          <div style="font-size:36px;font-weight:900;color:${metodoColor};margin:12px 0;">${fmtARS(total)}</div>
+          <div style="font-size:20px;font-weight:800;color:${metodoColor};margin-bottom:20px;">${metodoLabel}</div>
+          <div style="display:flex;gap:10px;">
+            <button onclick="document.getElementById('modal-confirmar-metodo').remove();window._ventaPaso=0;window._registrarCancelMetodo && window._registrarCancelMetodo();" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;font-weight:700;">✗ Cancelar</button>
+            <button onclick="document.getElementById('modal-confirmar-metodo').remove();window._ventaPaso=1;guardarVenta();" style="flex:2;background:${metodoColor};color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;">✓ Confirmar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
       return;
     }
-    if (esTarjeta && !window._tarjetaConfirmed) {
-      abrirModalTarjeta(() => guardarVenta());
-      return;
+
+    // Paso 2: vuelto o tarjeta
+    if (window._ventaPaso === 1) {
+      if (esEfectivo) {
+        const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
+        abrirModalVuelto(total, () => { window._ventaPaso = 2; guardarVenta(); });
+        return;
+      }
+      if (esTarjeta) {
+        abrirModalTarjeta(() => { window._ventaPaso = 2; guardarVenta(); });
+        return;
+      }
+      window._ventaPaso = 2;
     }
-    window._vueltoConfirmed = false;
-    window._tarjetaConfirmed = false;
+
+    // Paso 3: guardar
+    window._ventaPaso = 0;
     window._ventasClienteTelGuardar = '';
     window._ventasClienteNombreGuardar = '';
     // Guardar snapshot de items para comparar con cancelaciones posteriores
@@ -19296,6 +19326,38 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
   // ══════════════════════════════════════ CANCELACIONES ADMIN ══
   let _cancelInterval = null;
   let _cancelIdsConocidos = null;
+
+  // Registrar cuando el operador cancela en el modal de confirmación de método
+  window._registrarCancelMetodo = async function() {
+    try {
+      const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+      const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
+      const items = (_ventasItems || []).map(i => ({
+        prod_id: i.prodId || '',
+        prod_nombre: i.prod || '',
+        gusto_id: i.gustoId || '',
+        gusto_nombre: i.gusto || '',
+        cantidad: i.cant || 1,
+        precio: parsePrecioAR(i.precio)
+      }));
+      if (!items.length) return;
+      const total = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
+      const esEfectivo = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1';
+      const cancelacion = {
+        empresa_id: empresaActual,
+        pdv_id: pdvId,
+        username: currentUser?.username || '',
+        items: items,
+        total: total,
+        monto_cliente: 0,
+        fecha: fecha,
+        metodo_pago: esEfectivo ? 'efectivo' : 'tarjeta',
+        motivo: 'cancelacion_confirmacion_metodo'
+      };
+      await sbApi('cancelaciones_venta', { method: 'POST', body: JSON.stringify(cancelacion) });
+      window._notificarCancelAdmin && window._notificarCancelAdmin(cancelacion);
+    } catch(e) { console.warn('[CancelMetodo]', e); }
+  };
 
   window._notificarCancelAdmin = function(cancelacion) {
     // Notificación inmediata cuando el operador cancela (solo para admins logueados)
