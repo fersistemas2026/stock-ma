@@ -1019,40 +1019,54 @@
 
         <!-- Panel operador/PDV -->
         <div id="msg-op-panel" style="display:none;">
-          <!-- Composer operador -->
-          <div id="msg-op-composer" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;max-width:520px;">
-            <div style="font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">✉️ Enviar mensaje</div>
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              <div>
-                <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Para</label>
-                <select id="msg-op-destinatario" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;">
-                  <option value="admin">👤 Administrador</option>
-                </select>
+          <div style="max-width:480px;">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+              <div style="padding:14px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;">✉️</div>
+                <div>
+                  <div style="font-size:14px;font-weight:800;">Enviar mensaje</div>
+                  <div style="font-size:11px;color:var(--text-muted);">Los mensajes llegan al instante</div>
+                </div>
               </div>
-              <textarea id="msg-op-texto" rows="2" maxlength="300" placeholder="Escribí tu mensaje..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);box-sizing:border-box;"></textarea>
-              <button onclick="msgOpEnviar()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;">📤 Enviar</button>
+              <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+                <div>
+                  <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px;">Para</label>
+                  <select id="msg-op-destinatario" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;">
+                    <option value="admin">👤 Administrador</option>
+                  </select>
+                </div>
+                <textarea id="msg-op-texto" rows="3" maxlength="300" placeholder="Escribí tu mensaje..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);box-sizing:border-box;"></textarea>
+                <button onclick="msgOpEnviar()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;width:100%;">📤 Enviar</button>
+              </div>
             </div>
+            <div id="msg-op-recibidos"></div>
           </div>
-          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Mensajes recibidos</div>
-          <div id="msg-op-recibidos" style="display:flex;flex-direction:column;gap:8px;max-width:520px;"></div>
         </div>
       </div>
 
       <!-- OVERLAY MENSAJE URGENTE -->
-      <div id="msg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-        <div style="background:var(--surface);border:2px solid var(--accent);border-radius:16px;width:100%;max-width:440px;padding:24px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <div style="font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">💬 Mensaje urgente</div>
-            <button onclick="msgMinimizar()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text-muted);cursor:pointer;">— Minimizar</button>
-          </div>
-          <div id="msg-overlay-desde" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"></div>
-          <div id="msg-overlay-texto" style="font-size:16px;font-weight:600;color:var(--text);background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px;line-height:1.5;"></div>
-          <div style="display:flex;gap:8px;">
-            <textarea id="msg-overlay-respuesta" rows="2" maxlength="300" placeholder="Escribí tu respuesta..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);"></textarea>
-            <div style="display:flex;flex-direction:column;gap:6px;">
-              <button onclick="msgResponder()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:800;cursor:pointer;">➤</button>
-              <button onclick="msgCerrar()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text-muted);cursor:pointer;">✕</button>
+      <div id="msg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:420px;margin:16px;box-shadow:0 32px 80px rgba(0,0,0,.7);overflow:hidden;">
+          <!-- Header -->
+          <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:40px;height:40px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">💬</div>
+              <div>
+                <div style="font-size:11px;color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Mensaje urgente</div>
+                <div id="msg-overlay-desde" style="font-size:13px;color:rgba(255,255,255,.7);margin-top:2px;"></div>
+              </div>
             </div>
+            <button onclick="msgMinimizar()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.6);cursor:pointer;">— Min</button>
+          </div>
+          <!-- Mensaje -->
+          <div style="padding:20px;">
+            <div id="msg-overlay-texto" style="font-size:17px;font-weight:500;color:var(--text);line-height:1.6;margin-bottom:20px;padding:16px;background:var(--surface2);border-radius:12px;border-left:3px solid var(--accent);"></div>
+            <!-- Respuesta -->
+            <div style="display:flex;gap:10px;align-items:flex-end;">
+              <textarea id="msg-overlay-respuesta" rows="2" maxlength="300" placeholder="Escribí tu respuesta..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);"></textarea>
+              <button onclick="msgResponder()" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:12px 16px;font-size:18px;font-weight:900;cursor:pointer;flex-shrink:0;">➤</button>
+            </div>
+            <button onclick="msgCerrar()" style="width:100%;margin-top:10px;background:none;border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;color:var(--text-muted);cursor:pointer;">Cerrar sin responder</button>
           </div>
         </div>
       </div>
@@ -2569,6 +2583,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       });
       if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.message || `Error ${r.status}`); }
       _sesionId = pdvId;
+      // Reiniciar polling de mensajes ahora que _sesionId está disponible
+      try { msgIniciarPolling(); } catch(e) {}
       // Ping cada 60s para mantener sesión activa
       if (_sesionPingInterval) clearInterval(_sesionPingInterval);
       _sesionPingInterval = setInterval(async () => {
@@ -12240,27 +12256,9 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   }
 
   async function msgCargarOpRecibidos() {
+    // Operador no ve historial — los mensajes llegan como overlay
     const cont = document.getElementById('msg-op-recibidos');
-    if (!cont) return;
-    try {
-      const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || [];
-      const r2 = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.todos&order=created_at.desc&select=*`) || [];
-      const todos = [...r, ...r2].filter(m => m.desde !== currentUser.username).sort((a,b) => new Date(b.created_at)-new Date(a.created_at));
-      const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
-      if (!todos.length) { cont.innerHTML='<div style="font-size:13px;color:var(--text-muted);">Sin mensajes recibidos.</div>'; return; }
-      cont.innerHTML = todos.map(m => {
-        const hora = new Date(normTS(m.created_at)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-            <span style="font-size:12px;font-weight:700;color:var(--accent);">${m.desde_nombre||m.desde}</span>
-            <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${hora}</span>
-          </div>
-          <div style="font-size:14px;color:var(--text);line-height:1.4;">${m.mensaje||''}</div>
-        </div>`;
-      }).join('');
-      // Marcar como leídos
-      todos.filter(m=>!m.leido).forEach(m => sbApi(`mensajes?id=eq.${m.id}`,{method:'PATCH',body:JSON.stringify({leido:true})}).catch(()=>{}));
-    } catch(e) {}
+    if (cont) cont.innerHTML = '';
   }
 
   function msgNuevoClick() {
