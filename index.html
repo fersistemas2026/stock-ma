@@ -19778,9 +19778,9 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
 
     try {
       const [cancels, arqueos, ventas, pdvs, usuarios] = await Promise.all([
-        sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.asc&select=*`) || [],
-        sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.asc&select=*`) || [],
-        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at&order=created_at.asc`) || [],
+        sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
+        sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at&order=created_at.desc`) || [],
         getPdv(),
         sbApi(`usuarios?select=username,display_name`) || []
       ]);
@@ -19855,7 +19855,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
         byFecha[fecha].arqueos.push(a);
       });
 
-      Object.entries(byFecha).forEach(([fecha, grupo]) => {
+      Object.entries(byFecha).sort((a,b) => b[0].localeCompare(a[0])).forEach(([fecha, grupo]) => {
         html += `<div style="margin-bottom:24px;">
           <div style="font-size:12px;font-weight:800;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:6px 0;border-bottom:2px solid var(--accent);margin-bottom:10px;">📅 ${fecha}</div>`;
 
