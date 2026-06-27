@@ -2263,7 +2263,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (method === 'GET') {
       headers['Prefer'] = 'count=none';
       headers['Range-Unit'] = 'items';
-      headers['Range'] = '0-9999';
+      headers['Range'] = '0-499999';
     }
     if (method === 'POST' || method === 'PATCH') {
       headers['Prefer'] = 'return=representation';
