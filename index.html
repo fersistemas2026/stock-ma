@@ -316,6 +316,7 @@
       <button class="tab" onclick="switchTab(&#39;productos&#39;)" id="tab-btn-productos" style="display:none">Productos</button>
       <button class="tab" onclick="switchTab(&#39;empresa&#39;)" id="tab-btn-empresa" style="display:none">Empresa</button>
       <button class="tab" onclick="switchTab(&#39;usuarios&#39;)" id="tab-btn-usuarios" style="display:none">Usuarios</button>
+      <button class="tab" onclick="switchTab('auditoria');setTimeout(()=>{try{initAuditoriaFechas();}catch(e){}},100);" id="tab-btn-auditoria" style="display:none">🔐 Auditoría</button>
     </div>
 
     <!-- AGREGAR -->
@@ -619,6 +620,15 @@
 
       <!-- VENTAS -->
       <div id="neg-ventas" class="neg-panel" style="display:none;font-size:16px;">
+        <!-- Overlay bloqueo turno cerrado -->
+        <div id="ventas-turno-bloqueado" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.85);z-index:500;display:none;align-items:center;justify-content:center;border-radius:12px;flex-direction:column;gap:16px;">
+          <div style="text-align:center;padding:32px;">
+            <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+            <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:8px;">Turno cerrado</div>
+            <div style="font-size:14px;color:rgba(255,255,255,.7);margin-bottom:24px;">Realizá el inicio de turno para continuar vendiendo</div>
+            <button onclick="abrirInicioTurno()" style="background:var(--accent);color:#000;border:none;border-radius:10px;padding:14px 32px;font-size:16px;font-weight:900;cursor:pointer;">▶️ Iniciar Turno</button>
+          </div>
+        </div>
 
         <!-- Header compacto -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
@@ -630,7 +640,7 @@
               <option value="3">Lista 3</option>
               <option value="4">Lista 4</option>
             </select>
-            <select id="ventas-pdv-sel-top" onchange="document.getElementById('ventas-pdv-sel').value=this.value;document.getElementById('ventas-pdv-sel-top').value=this.value;" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;">
+            <select id="ventas-pdv-sel-top" onchange="document.getElementById('ventas-pdv-sel').value=this.value;document.getElementById('ventas-pdv-sel-top').value=this.value;setTimeout(()=>{try{turnoVerificarEstado();}catch(e){}},300);" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);outline:none;">
               <option value="">— PDV —</option>
             </select>
             <input type="date" id="ventas-fecha" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 7px;font-size:11px;color:var(--text);outline:none;width:120px;">
@@ -729,6 +739,7 @@
           </div>
           <button onclick="ventasAgregarItem()" class="btn-primary" style="padding:12px 24px;font-size:17px;font-weight:900;white-space:nowrap;height:52px;">+ Agregar</button>
           <button onclick="guardarVenta()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:12px 24px;font-size:17px;font-weight:900;cursor:pointer;white-space:nowrap;height:52px;">💾 Guardar</button>
+          <button onclick="abrirCierreTurno()" id="btn-cierre-turno" style="background:#f97316;color:#000;border:none;border-radius:8px;padding:12px 18px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;height:52px;">🔒 Cerrar Turno</button>
 
         </div>
 
@@ -1438,6 +1449,22 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     </div><!-- /tab-negocios -->
 
     <!-- USUARIOS (solo admin) -->
+    <div id="tab-auditoria" class="panel" style="display:none;">
+      <div style="padding:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <h2 style="margin:0;font-size:18px;font-weight:900;">🔐 Panel de Seguridad / Auditoría</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="date" id="audit-desde" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);">
+            <input type="date" id="audit-hasta" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--text);">
+            <button onclick="cargarAuditoria()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🔍 Buscar</button>
+          </div>
+        </div>
+        <div id="audit-body">
+          <div class="empty-state">🔐<p>Seleccioná un período y hacé clic en Buscar</p></div>
+        </div>
+      </div>
+    </div>
+
     <div id="tab-usuarios" class="panel">
       <div style="margin-bottom:24px;">
         <div class="form-title">Gestión de usuarios</div>
@@ -2432,8 +2459,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       try { poOpIniciarConSesion(); } catch(e) {}
     };
   }
-  // Arrancar polling de cancelaciones para admin
-  if (currentUser?.role === 'admin') { try { cancelAdminStartPolling(); } catch(e) {} }
+  // Arrancar polling de cancelaciones y auditoría para admin
+  if (currentUser?.role === 'admin') {
+    try { cancelAdminStartPolling(); } catch(e) {}
+    try { variosAdminStartPolling(); } catch(e) {}
+    setTimeout(() => { try { initAuditoriaFechas(); } catch(e) {} }, 500);
+  }
 
   let _sesionId = null;
   let _sesionPingInterval = null;
@@ -2731,6 +2762,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     cerrarSesionActiva().catch(()=>{});
     if (_sesionesAdminPollInterval) { clearInterval(_sesionesAdminPollInterval); _sesionesAdminPollInterval = null; }
     if (_cancelInterval) { clearInterval(_cancelInterval); _cancelInterval = null; _cancelIdsConocidos = null; }
+    if (_variosInterval) { clearInterval(_variosInterval); _variosInterval = null; _variosIdsConocidos = null; }
     currentUser = null;
     document.getElementById('app-screen').style.display='none';
     document.getElementById('login-screen').style.display='flex';
@@ -2860,6 +2892,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         hide(document.getElementById('tab-btn-productos'));
         hide(document.getElementById('tab-btn-empresa'));
         show(document.getElementById('btn-export'));
+        show(document.getElementById('tab-btn-auditoria'));
         // Show empresa selector
         initEmpresaSelector();
         const btnSes = document.getElementById('btn-sesiones-admin');
@@ -7058,7 +7091,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='recuento')        initRecuento();
     if (sub==='lista-prod')      initListaProd();
     if (sub==='avisos')          initAvisos();
-    if (sub==='ventas')          initVentas();
+    if (sub==='ventas')          { initVentas(); setTimeout(() => { try { turnoVerificarEstado(); } catch(e){} }, 800); }
     if (sub==='monitor')         initMonitor();
     if (sub==='lista-precios-op') initListaPreciosOp();
     if (sub==='clientes-op')     cargarClientesOp();
@@ -19299,6 +19332,409 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
   // Arrancar polling después del login
   const _origInitApp = window.initApp;
   // ══════════════════════════════════════ / CANCELACIONES ADMIN ══
+
+  // ══════════════════════════════════════ TURNOS / ARQUEO ══
+
+  // Verificar si el turno está cerrado al iniciar ventas
+  async function turnoVerificarEstado() {
+    try {
+      const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+      if (!pdvId || currentUser?.role === 'admin') return;
+      const fecha = fechaHoyAR();
+      // Buscar último evento de turno de hoy para este PDV/usuario
+      const turnos = await sbApi(`turnos_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&username=eq.${currentUser?.username||''}&fecha=eq.${fecha}&order=created_at.desc&limit=1&select=tipo`) || [];
+      const ultimo = turnos[0]?.tipo;
+      // Si el último evento es 'cierre' → bloquear
+      const bloq = document.getElementById('ventas-turno-bloqueado');
+      if (bloq) {
+        bloq.style.display = (ultimo === 'cierre') ? 'flex' : 'none';
+      }
+    } catch(e) { console.warn('[Turno]', e); }
+  }
+
+  async function abrirCierreTurno() {
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+    if (!pdvId) { toast('Seleccioná un PDV primero', 'error'); return; }
+    const fecha = fechaHoyAR();
+
+    // Calcular efectivo vendido en el turno actual
+    let efectivoSistema = 0;
+    let buzonTurno = 0;
+    try {
+      // Buscar inicio de turno más reciente
+      const turnos = await sbApi(`turnos_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&username=eq.${currentUser?.username||''}&fecha=eq.${fecha}&order=created_at.desc&select=id,tipo,created_at`) || [];
+      const ultimoInicio = turnos.find(t => t.tipo === 'inicio');
+      const desdeTs = ultimoInicio?.created_at || `${fecha}T00:00:00Z`;
+
+      // Ventas en efectivo desde el inicio del turno
+      const ventas = await sbApi(`ventas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=eq.${fecha}&metodo_pago=eq.efectivo&select=precio,cantidad`) || [];
+      efectivoSistema = ventas.reduce((s, v) => s + (v.precio || 0) * (v.cantidad || 1), 0);
+
+      // Buzón del turno
+      const buzon = await sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=eq.${fecha}&select=monto`) || [];
+      buzonTurno = buzon.reduce((s, b) => s + parseFloat(b.monto || 0), 0);
+    } catch(e) {}
+
+    const esperado = efectivoSistema - buzonTurno;
+    const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
+
+    const denominaciones = [
+      { val: 20000, label: '$20.000' },
+      { val: 10000, label: '$10.000' },
+      { val: 5000,  label: '$5.000'  },
+      { val: 2000,  label: '$2.000'  },
+      { val: 1000,  label: '$1.000'  },
+      { val: 200,   label: '$200'    },
+      { val: 100,   label: '$100'    },
+    ];
+
+    const ov = document.createElement('div');
+    ov.id = 'modal-cierre-turno';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
+    ov.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;">
+        <div style="padding:18px 20px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:16px 16px 0 0;">
+          <div style="font-size:16px;font-weight:900;">🔒 Cierre de Turno</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Contá los billetes en caja y completá el arqueo</div>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Billetes en caja</div>
+          ${denominaciones.map(d => `
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:14px;font-weight:700;min-width:80px;color:var(--text);">${d.label}</span>
+              <input type="number" id="billete-${d.val}" min="0" value="0" step="1"
+                style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:18px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;"
+                oninput="calcularArqueo(${esperado})" />
+              <span id="billete-subtotal-${d.val}" style="font-size:13px;color:var(--text-muted);min-width:90px;text-align:right;">$0</span>
+            </div>`).join('')}
+          <div style="background:var(--surface2);border-radius:10px;padding:14px 16px;margin-top:4px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:13px;color:var(--text-muted);">Total declarado</span>
+              <span id="arqueo-total" style="font-size:20px;font-weight:900;font-family:var(--mono);color:var(--text);">$0</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:13px;color:var(--text-muted);">Diferencia</span>
+              <span id="arqueo-diferencia" style="font-size:20px;font-weight:900;font-family:var(--mono);color:#fbbf24;">$0</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button onclick="document.getElementById('modal-cierre-turno').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;">Cancelar</button>
+            <button onclick="confirmarCierreTurno(${efectivoSistema},${buzonTurno},${esperado})" style="flex:2;background:#f97316;color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;">🔒 Confirmar Cierre</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    setTimeout(() => document.getElementById('billete-20000')?.focus(), 100);
+  }
+
+  window.calcularArqueo = function(esperado) {
+    const denoms = [20000, 10000, 5000, 2000, 1000, 200, 100];
+    let total = 0;
+    denoms.forEach(d => {
+      const cant = parseInt(document.getElementById(`billete-${d}`)?.value || 0);
+      const sub = cant * d;
+      total += sub;
+      const subEl = document.getElementById(`billete-subtotal-${d}`);
+      if (subEl) subEl.textContent = '$' + sub.toLocaleString('es-AR');
+    });
+    const totalEl = document.getElementById('arqueo-total');
+    const difEl = document.getElementById('arqueo-diferencia');
+    if (totalEl) totalEl.textContent = '$' + Math.round(total).toLocaleString('es-AR');
+    if (difEl) {
+      const dif = total - esperado;
+      difEl.textContent = (dif >= 0 ? '+' : '') + '$' + Math.round(dif).toLocaleString('es-AR');
+      difEl.style.color = dif === 0 ? '#4ade80' : dif > 0 ? '#fbbf24' : '#ff5a5a';
+    }
+  };
+
+  async function confirmarCierreTurno(efectivoSistema, buzonTurno, esperado) {
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+    const fecha = fechaHoyAR();
+    const denoms = [20000, 10000, 5000, 2000, 1000, 200, 100];
+    let totalDeclarado = 0;
+    const billetes = {};
+    denoms.forEach(d => {
+      const cant = parseInt(document.getElementById(`billete-${d}`)?.value || 0);
+      billetes[`b${d}`] = cant;
+      totalDeclarado += cant * d;
+    });
+    const diferencia = totalDeclarado - esperado;
+
+    try {
+      // Registrar cierre de turno
+      const turno = await sbApi('turnos_caja', { method: 'POST', body: JSON.stringify({
+        empresa_id: empresaActual, pdv_id: pdvId,
+        username: currentUser?.username || '', tipo: 'cierre', fecha
+      })});
+      const turnoId = Array.isArray(turno) ? turno[0]?.id : turno?.id;
+
+      // Guardar arqueo
+      await sbApi('arqueos_turno', { method: 'POST', body: JSON.stringify({
+        empresa_id: empresaActual, pdv_id: pdvId,
+        username: currentUser?.username || '', turno_id: turnoId,
+        ...billetes,
+        total_declarado: totalDeclarado,
+        total_sistema: efectivoSistema,
+        total_buzon: buzonTurno,
+        diferencia, fecha
+      })});
+
+      document.getElementById('modal-cierre-turno')?.remove();
+      // Bloquear panel de ventas
+      const bloq = document.getElementById('ventas-turno-bloqueado');
+      if (bloq) bloq.style.display = 'flex';
+
+      const difTxt = diferencia === 0 ? 'Sin diferencia ✅' : (diferencia > 0 ? `Sobrante $${Math.round(Math.abs(diferencia)).toLocaleString('es-AR')} ⚠️` : `Faltante $${Math.round(Math.abs(diferencia)).toLocaleString('es-AR')} 🚨`);
+      toast(`🔒 Turno cerrado · ${difTxt}`, diferencia === 0 ? 'success' : 'error');
+
+      // Alertar admin si hay diferencia
+      if (diferencia !== 0 && Math.abs(diferencia) > 100) {
+        window._notificarArqueoAdmin && window._notificarArqueoAdmin({ pdvId, username: currentUser?.username, diferencia, totalDeclarado, esperado });
+      }
+    } catch(e) {
+      toast('Error al cerrar turno: ' + e.message, 'error');
+    }
+  }
+
+  async function abrirInicioTurno() {
+    const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+    if (!pdvId) return;
+    const fecha = fechaHoyAR();
+    try {
+      await sbApi('turnos_caja', { method: 'POST', body: JSON.stringify({
+        empresa_id: empresaActual, pdv_id: pdvId,
+        username: currentUser?.username || '', tipo: 'inicio', fecha
+      })});
+      const bloq = document.getElementById('ventas-turno-bloqueado');
+      if (bloq) bloq.style.display = 'none';
+      toast('▶️ Turno iniciado. ¡Buenas ventas!', 'success');
+    } catch(e) {
+      toast('Error al iniciar turno: ' + e.message, 'error');
+    }
+  }
+
+  // ══════════════════════════════════════ / TURNOS / ARQUEO ══
+
+  // ══════════════════════════════════════ AUDITORÍA ══
+
+  async function cargarAuditoria() {
+    const body = document.getElementById('audit-body');
+    if (!body) return;
+    const hoy = fechaHoyAR();
+    const desde = document.getElementById('audit-desde')?.value || hoy;
+    const hasta = document.getElementById('audit-hasta')?.value || hoy;
+    body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando auditoría...</p></div>';
+
+    try {
+      const [cancels, arqueos, ventas, pdvs, usuarios] = await Promise.all([
+        sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
+        sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at`) || [],
+        getPdv(),
+        sbApi(`usuarios?select=username,display_name`) || []
+      ]);
+
+      const pdvMap = {};
+      pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre || p.name);
+      const userMap = {};
+      (usuarios||[]).forEach(u => userMap[u.username] = u.display_name || u.username);
+      const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
+
+      // ── 1. Cancelaciones sospechosas ──
+      const cancelSosp = (cancels||[]).filter(c => !c.repasada);
+
+      // ── 2. Arqueos con diferencia ──
+      const arqueosDif = (arqueos||[]).filter(a => Math.abs(a.diferencia||0) > 100);
+
+      // ── 3. Tickets sospechosos (producto "Varios") ──
+      const ticketsSosp = [];
+      const ticketMap = {};
+      (ventas||[]).forEach(v => {
+        const nombre = (v.prod_nombre||'').toLowerCase().trim();
+        if (nombre === 'varios') {
+          const key = v.ticket_id || (v.created_at + v.pdv_id);
+          if (!ticketMap[key]) {
+            ticketMap[key] = { ticket_id: key, pdv_id: v.pdv_id, username: v.username, created_at: v.created_at, total: 0, items: [] };
+            ticketsSosp.push(ticketMap[key]);
+          }
+          ticketMap[key].total += (v.precio||0) * (v.cantidad||1);
+          ticketMap[key].items.push(v.prod_nombre);
+        }
+      });
+
+      // ── 4. Ratio cancelaciones/ventas por operador ──
+      const ratioMap = {};
+      (ventas||[]).forEach(v => {
+        const op = v.username || '?';
+        const pdv = String(v.pdv_id||'');
+        const key = op + '|' + pdv;
+        if (!ratioMap[key]) ratioMap[key] = { op, pdv, ventas: new Set(), cancels: 0 };
+        if (v.ticket_id) ratioMap[key].ventas.add(v.ticket_id);
+      });
+      (cancels||[]).forEach(c => {
+        const key = (c.username||'?') + '|' + String(c.pdv_id||'');
+        if (!ratioMap[key]) ratioMap[key] = { op: c.username||'?', pdv: String(c.pdv_id||''), ventas: new Set(), cancels: 0 };
+        ratioMap[key].cancels++;
+      });
+      const ratioSosp = Object.values(ratioMap).filter(r => r.cancels > 0 && (r.cancels / (r.ventas.size || 1)) >= 0.3);
+
+      const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+      const fmtHora = s => s ? new Date(normTS(s)).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+
+      let html = '';
+
+      // Resumen general
+      const totalAlertas = cancelSosp.length + arqueosDif.length + ticketsSosp.length + ratioSosp.length;
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">';
+      const cards = [
+        { n: cancelSosp.length,  label: '🚨 Cancelaciones sospechosas', color: '#ff5a5a' },
+        { n: arqueosDif.length,  label: '💰 Arqueos con diferencia',    color: '#f97316' },
+        { n: ticketsSosp.length, label: '⚠️ Tickets "Varios"',          color: '#fbbf24' },
+        { n: ratioSosp.length,   label: '📊 Ratio alto cancel/ventas',  color: '#a78bfa' },
+      ];
+      cards.forEach(c => {
+        html += `<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;border:1px solid ${c.color}33;">
+          <div style="font-size:28px;font-weight:900;color:${c.color};">${c.n}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${c.label}</div>
+        </div>`;
+      });
+      html += '</div>';
+
+      if (totalAlertas === 0) {
+        html += '<div class="empty-state">✅<p>Sin alertas en el período seleccionado.</p></div>';
+        body.innerHTML = html;
+        return;
+      }
+
+      const seccion = (titulo, color, filas) => {
+        if (!filas.length) return '';
+        return `<div style="background:var(--surface);border:1px solid ${color}44;border-radius:12px;margin-bottom:16px;overflow:hidden;">
+          <div style="padding:12px 16px;background:${color}11;border-bottom:1px solid ${color}33;font-weight:800;font-size:14px;color:${color};">${titulo} (${filas.length})</div>
+          <table style="width:100%;border-collapse:collapse;">${filas.join('')}</table>
+        </div>`;
+      };
+
+      const thRow = cols => '<tr style="background:var(--surface2);">' + cols.map(c => `<th style="padding:7px 10px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">${c}</th>`).join('') + '</tr>';
+      const td = (v, style='') => `<td style="padding:7px 10px;font-size:13px;${style}">${v}</td>`;
+
+      // Sección cancelaciones
+      const filasCancels = [thRow(['Hora','PDV','Operador','Total','Pagó cliente','Productos'])];
+      cancelSosp.forEach(c => {
+        const items = Array.isArray(c.items) ? c.items.slice(0,3).map(i=>(i.prod_nombre||'?')+' x'+(i.cantidad||1)).join(', ') : '';
+        filasCancels.push('<tr style="border-top:1px solid var(--border);">'
+          + td(fmtHora(c.created_at), 'color:var(--text-muted);')
+          + td(pdvMap[String(c.pdv_id)]||c.pdv_id||'?', 'font-weight:600;')
+          + td(userMap[c.username]||c.username||'?')
+          + td(fmtARS(c.total||0), 'font-weight:700;color:#ff5a5a;font-family:var(--mono);')
+          + td(c.monto_cliente > 0 ? fmtARS(c.monto_cliente) : '—', 'color:var(--text-muted);')
+          + td(items||'—', 'color:var(--text-muted);font-size:11px;')
+          + '</tr>');
+      });
+      html += seccion('🚨 Cancelaciones sospechosas (sin venta posterior)', '#ff5a5a', filasCancels);
+
+      // Sección arqueos
+      const filasArqueos = [thRow(['Fecha','PDV','Operador','Declarado','Sistema','Diferencia'])];
+      arqueosDif.forEach(a => {
+        const dif = a.diferencia || 0;
+        const color = dif > 0 ? '#fbbf24' : '#ff5a5a';
+        filasArqueos.push('<tr style="border-top:1px solid var(--border);">'
+          + td(a.fecha||'', 'color:var(--text-muted);')
+          + td(pdvMap[String(a.pdv_id)]||a.pdv_id||'?', 'font-weight:600;')
+          + td(userMap[a.username]||a.username||'?')
+          + td(fmtARS(a.total_declarado||0), 'font-family:var(--mono);')
+          + td(fmtARS(a.total_sistema||0), 'font-family:var(--mono);color:var(--text-muted);')
+          + td((dif>=0?'+':'')+fmtARS(dif), `font-weight:800;font-family:var(--mono);color:${color};`)
+          + '</tr>');
+      });
+      html += seccion('💰 Arqueos con diferencia', '#f97316', filasArqueos);
+
+      // Sección tickets Varios
+      const filasVarios = [thRow(['Hora','PDV','Operador','Total'])];
+      ticketsSosp.forEach(t => {
+        filasVarios.push('<tr style="border-top:1px solid var(--border);">'
+          + td(fmtHora(t.created_at), 'color:var(--text-muted);')
+          + td(pdvMap[String(t.pdv_id)]||t.pdv_id||'?', 'font-weight:600;')
+          + td(userMap[t.username]||t.username||'?')
+          + td(fmtARS(t.total), 'font-weight:700;color:#fbbf24;font-family:var(--mono);')
+          + '</tr>');
+      });
+      html += seccion('⚠️ Tickets con producto "Varios"', '#fbbf24', filasVarios);
+
+      // Sección ratio
+      const filasRatio = [thRow(['PDV','Operador','Ventas','Cancelaciones','Ratio'])];
+      ratioSosp.sort((a,b)=>(b.cancels/(b.ventas.size||1))-(a.cancels/(a.ventas.size||1))).forEach(r => {
+        const ratio = Math.round(r.cancels/(r.ventas.size||1)*100);
+        filasRatio.push('<tr style="border-top:1px solid var(--border);">'
+          + td(pdvMap[r.pdv]||r.pdv||'?', 'font-weight:600;')
+          + td(userMap[r.op]||r.op||'?')
+          + td(r.ventas.size, 'text-align:center;')
+          + td(r.cancels, 'text-align:center;color:#ff5a5a;font-weight:700;')
+          + td(ratio+'%', `font-weight:800;color:${ratio>=50?'#ff5a5a':'#fbbf24'};`)
+          + '</tr>');
+      });
+      html += seccion('📊 Ratio alto cancelaciones/ventas (≥30%)', '#a78bfa', filasRatio);
+
+      body.innerHTML = html;
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  }
+
+  // Alerta al admin cuando hay arqueo con diferencia
+  window._notificarArqueoAdmin = function(data) {
+    if (currentUser?.role !== 'admin') return;
+    const sign = data.diferencia > 0 ? 'Sobrante' : 'Faltante';
+    const color = data.diferencia > 0 ? '⚠️' : '🚨';
+    toast(`${color} Arqueo: ${sign} $${Math.round(Math.abs(data.diferencia)).toLocaleString('es-AR')} · ${data.username}`, 'error');
+  };
+
+  // Alerta en tiempo real: ticket con "Varios"
+  // Se hookea en guardarVenta para detectar "Varios" en los items
+  const _origGuardarVenta = window.guardarVenta;
+  // Interceptar después del guardado exitoso — se maneja en el toast de "Venta guardada"
+
+  // Polling de alertas "Varios" para el admin
+  let _variosInterval = null;
+  let _variosIdsConocidos = null;
+
+  async function variosAdminStartPolling() {
+    if (currentUser?.role !== 'admin') return;
+    if (_variosInterval) return;
+    try {
+      const hoy = fechaHoyAR();
+      const existentes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=eq.${hoy}&prod_nombre=eq.Varios&select=ticket_id`) || [];
+      _variosIdsConocidos = new Set((existentes||[]).map(v=>v.ticket_id).filter(Boolean));
+    } catch(e) { _variosIdsConocidos = new Set(); }
+
+    _variosInterval = setInterval(async () => {
+      if (currentUser?.role !== 'admin') return;
+      try {
+        const hoy = fechaHoyAR();
+        const recientes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=eq.${hoy}&prod_nombre=eq.Varios&select=ticket_id,pdv_id,username,precio,cantidad`) || [];
+        const nuevos = (recientes||[]).filter(v => v.ticket_id && !_variosIdsConocidos.has(v.ticket_id));
+        if (nuevos.length > 0) {
+          nuevos.forEach(v => {
+            _variosIdsConocidos.add(v.ticket_id);
+            const pdvs = window._pdvCacheAudit || {};
+            toast(`⚠️ Venta "Varios": $${Math.round((v.precio||0)*(v.cantidad||1)).toLocaleString('es-AR')} · ${v.username||'?'}`, 'error');
+          });
+        }
+      } catch(e) {}
+    }, 30000);
+  }
+
+  // Inicializar fecha en panel auditoría
+  function initAuditoriaFechas() {
+    const hoy = fechaHoyAR();
+    const desdeEl = document.getElementById('audit-desde');
+    const hastaEl = document.getElementById('audit-hasta');
+    if (desdeEl && !desdeEl.value) desdeEl.value = hoy;
+    if (hastaEl && !hastaEl.value) hastaEl.value = hoy;
+  }
+
+  // ══════════════════════════════════════ / AUDITORÍA ══
+
 
 </script>
 
