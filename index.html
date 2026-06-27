@@ -15659,6 +15659,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`usuarios?select=username,display_name`) || []
       ]);
 
+      console.log('[Auditoria] cancels:', cancels?.length, 'arqueos:', arqueos?.length, 'ventas:', ventas?.length);
       const pdvMap = {};
       pdvs.forEach(p => pdvMap[String(p.id)] = p.nombre || p.name);
       const userMap = {};
@@ -19613,6 +19614,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando auditoría...</p></div>';
 
     try {
+      console.log('[Auditoria] cargando desde', desde, 'hasta', hasta);
       const [cancels, arqueos, ventas, pdvs, usuarios] = await Promise.all([
         sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
         sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
@@ -19817,6 +19819,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     const hastaEl = document.getElementById('audit-hasta');
     if (desdeEl && !desdeEl.value) desdeEl.value = hoy;
     if (hastaEl && !hastaEl.value) hastaEl.value = hoy;
+    cargarAuditoria();
   }
 
   // ══════════════════════════════════════ / AUDITORÍA ══
