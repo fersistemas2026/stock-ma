@@ -138,8 +138,8 @@
     }
     .msg-pulse { animation: msgPulse 1.2s ease-in-out 4; }
     @keyframes mcFabPulse {
-      0%,100% { box-shadow: 0 4px 20px rgba(0,0,0,.4), 0 0 0 0 rgba(255,90,90,.6); transform:scale(1); }
-      50% { box-shadow: 0 4px 20px rgba(0,0,0,.4), 0 0 0 12px rgba(255,90,90,0); transform:scale(1.08); }
+      0%,100% { box-shadow: 0 4px 20px rgba(0,0,0,.4), 0 0 0 0 rgba(255,90,90,.7); transform:scale(1); }
+      50% { box-shadow: 0 4px 20px rgba(0,0,0,.4), 0 0 0 14px rgba(255,90,90,0); transform:scale(1.1); }
     }
     .mc-fab-alerta { animation: mcFabPulse 1s ease-in-out infinite !important; background:#ff5a5a !important; }
     .neg-panel { display:none; animation:fadeIn .2s ease; width:100%; }
@@ -1001,24 +1001,30 @@
       <!-- ══ MAPCHAT ══════════════════════════════════════════════════ -->
       <!-- Botón flotante -->
       <div id="mc-fab" onclick="mcToggle()" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9990;cursor:pointer;">
-        <div id="mc-fab-btn" style="width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:background .3s;">💬</div>
+        <div id="mc-fab-btn" style="width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:background .3s,transform .15s;">💬</div>
         <div id="mc-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff5a5a;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:11px;font-weight:900;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--bg);">0</div>
       </div>
 
       <!-- Panel MapChat -->
-      <div id="mc-panel" style="display:none;position:fixed;bottom:88px;right:20px;z-index:9991;width:340px;max-height:520px;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden;">
+      <div id="mc-panel" style="display:none;position:fixed;bottom:88px;right:20px;z-index:9991;width:420px;max-height:640px;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden;">
         <!-- Header -->
         <div id="mc-header" style="padding:14px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
           <div id="mc-header-titulo" style="font-size:15px;font-weight:900;display:flex;align-items:center;gap:8px;">
             <span style="font-size:18px;">💬</span> MapChat
           </div>
-          <button onclick="mcToggle()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;padding:0;">✕</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button onclick="mcLimpiarMensajes()" title="Limpiar conversaciones" style="background:none;border:none;color:var(--text-muted);font-size:14px;cursor:pointer;padding:4px 8px;border-radius:6px;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='none'">🗑️</button>
+            <div style="display:flex;gap:6px;align-items:center;">
+            <button onclick="mcLimpiarMensajes()" title="Limpiar todo" style="background:none;border:none;color:var(--text-muted);font-size:15px;cursor:pointer;padding:4px 8px;border-radius:6px;">🗑️</button>
+            <button onclick="mcToggle()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;padding:0;">✕</button>
+          </div>
+          </div>
         </div>
         <!-- Lista de conversaciones -->
         <div id="mc-lista" style="flex:1;overflow-y:auto;"></div>
         <!-- Chat abierto -->
         <div id="mc-chat" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-          <div id="mc-chat-mensajes" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:200px;max-height:320px;"></div>
+          <div id="mc-chat-mensajes" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:280px;max-height:420px;"></div>
           <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:var(--surface2);flex-shrink:0;">
             <textarea id="mc-input" rows="1" maxlength="300" placeholder="Mensaje..." style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);max-height:80px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();mcEnviar();}"></textarea>
             <button onclick="mcEnviar()" style="width:36px;height:36px;background:var(--accent);color:#000;border:none;border-radius:50%;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">➤</button>
@@ -12111,7 +12117,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         const leido = u ? (u.leido ? '✓✓' : '✓') : '';
         const leidoColor = u?.leido ? '#53bdeb' : 'var(--text-muted)';
         return `<div onclick="mcAbrirChat('${h.interlocutor}','${nombre.replace(/'/g,"\'")}');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-          <div style="width:44px;height:44px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${h.interlocutor==='todos'?'📢':h.interlocutor==='admin'?'👤':'🏪'}</div>
+          <div style="width:44px;height:44px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#000;flex-shrink:0;text-align:center;overflow:hidden;line-height:1.2;padding:2px;">${h.interlocutor==='todos'?'📢 Todos':h.interlocutor==='admin'?'Admin':mcNombre(h.interlocutor).substring(0,8)}</div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
               <span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${nombre}</span>
@@ -12186,38 +12192,32 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     } catch(e) { toast('Error enviando','error'); }
   }
 
-  let _mcIdsNotificados = new Set();
-
   async function mcCheckNuevos() {
     if (!currentUser) return;
     try {
       const username = currentUser.username;
       const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${username}&leido=eq.false&order=created_at.desc&select=*`) || [];
-      const pendientes = (r||[]).filter(m => m.desde !== username);
-      const realmente_nuevos = pendientes.filter(m => !_mcIdsNotificados.has(m.id));
-
-      if (realmente_nuevos.length > 0) {
-        realmente_nuevos.forEach(m => _mcIdsNotificados.add(m.id));
+      const nuevos = (r||[]).filter(m => m.desde !== username);
+      if (nuevos.length > 0) {
+        // Actualizar pdvMap con remitentes nuevos
         await mcCargarPdvMap();
-        // Sonido
-        try {
-          const ctx=new(window.AudioContext||window.webkitAudioContext)();
-          [523,659,784].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0.3,ctx.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*.12+.2);o.start(ctx.currentTime+i*.12);o.stop(ctx.currentTime+i*.12+.22);});
-        } catch(e) {}
-        // Parpadeo + color rojo en el botón
-        mcActivarAlerta(pendientes.length);
-        iniciarParpadeoMensajes();
-      }
-
-      if (pendientes.length > 0) {
-        // Si el chat está abierto con el remitente, recargar y marcar leído
-        if (_mcPanelAbierto && _mcChatActual) {
-          const delActual = pendientes.filter(m => m.desde === _mcChatActual.interlocutor);
-          if (delActual.length > 0) {
-            await mcCargarMensajes();
-            await sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${_mcChatActual.interlocutor}&para=eq.${username}&leido=eq.false`, {method:'PATCH',body:JSON.stringify({leido:true})});
-            delActual.forEach(m => _mcIdsNotificados.add(m.id));
-          }
+        // Solo notificar mensajes realmente nuevos
+        const realmente_nuevos = nuevos.filter(m => !_mcIdsNotificados.has(m.id));
+        if (realmente_nuevos.length > 0) {
+          realmente_nuevos.forEach(m => _mcIdsNotificados.add(m.id));
+          // Sonido
+          try {
+            const ctx=new(window.AudioContext||window.webkitAudioContext)();
+            [523,659,784].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0.3,ctx.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*.12+.2);o.start(ctx.currentTime+i*.12);o.stop(ctx.currentTime+i*.12+.22);});
+          } catch(e) {}
+          iniciarParpadeoMensajes();
+          mcActivarAlerta(nuevos.length);
+        }
+        // Si el chat del remitente está abierto, recargar
+        if (_mcPanelAbierto && _mcChatActual?.interlocutor === nuevos[0].desde) {
+          await mcCargarMensajes();
+          await sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${nuevos[0].desde}&para=eq.${username}&leido=eq.false`, {method:'PATCH',body:JSON.stringify({leido:true})});
+          nuevos.filter(m=>m.desde===nuevos[0].desde).forEach(m=>_mcIdsNotificados.add(m.id));
         }
         if (_mcPanelAbierto && !_mcChatActual) mcCargarLista();
       } else {
@@ -12226,6 +12226,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       }
     } catch(e) {}
   }
+
+  let _mcIdsNotificados = new Set();
 
   function mcActivarAlerta(n) {
     const btn = document.getElementById('mc-fab-btn');
@@ -12242,12 +12244,23 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   function mcActualizarBadge(n) {
     const badge = document.getElementById('mc-badge');
     if (!badge) return;
-    if (n && n > 0) {
-      badge.textContent = n;
-      badge.style.display = 'flex';
-    } else {
-      badge.style.display = 'none';
-    }
+    if (n && n > 0) { badge.textContent = n; badge.style.display = 'flex'; }
+    else { badge.style.display = 'none'; }
+  }
+
+  async function mcLimpiarMensajes() {
+    if (!confirm('¿Borrar todas las conversaciones?')) return;
+    try {
+      await Promise.all([
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}`, {method:'DELETE'}),
+        sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}`, {method:'DELETE'})
+      ]);
+      _mcIdsNotificados = new Set();
+      mcDesactivarAlerta();
+      mcMostrarLista();
+      mcCargarLista();
+      toast('✓ Conversaciones eliminadas','success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
   function initChat() {
