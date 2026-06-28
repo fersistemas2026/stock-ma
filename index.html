@@ -12076,38 +12076,19 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         if (m.para===currentUser.username && !m.leido) hilos[otro].noLeidos++;
       });
 
-      // Traer sesiones activas para saber quién está online
+      // Traer sesiones activas para estado online
       let sesionesActivas = [];
       try { sesionesActivas = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&select=username,pdv_nombre`) || []; } catch(e) {}
       const activosSet = new Set(sesionesActivas.map(s => s.username));
       sesionesActivas.forEach(s => { _mcPdvMap[s.username] = s.pdv_nombre||s.username; });
 
-      // Agregar todos los PDVs (activos e inactivos)
-      const [todosPdvs, todosUsuarios] = await Promise.all([
-        getPdv(),
-        sbApi(`usuarios?role=eq.operador&select=username,display_name`) || []
-      ]);
-
-      if (currentUser.role === 'admin') {
-        // Admin ve todos los operadores + todos los PDVs
-        todosUsuarios.forEach(u => {
-          if (u.username !== currentUser.username && !hilos[u.username]) {
-            hilos[u.username] = { interlocutor:u.username, ultimo:null, noLeidos:0 };
-          }
-        });
-        if (!hilos['todos']) hilos['todos'] = { interlocutor:'todos', ultimo:null, noLeidos:0 };
-      } else {
-        // Operador ve Admin + todos los otros PDVs/operadores
+      // Solo mostrar hilos con conversación existente
+      // Admin siempre ve "Admin" como contacto si es operador
+      if (currentUser.role !== 'admin') {
         if (!hilos['admin']) hilos['admin'] = { interlocutor:'admin', ultimo:null, noLeidos:0 };
-        todosUsuarios.forEach(u => {
-          if (u.username !== currentUser.username && !hilos[u.username]) {
-            hilos[u.username] = { interlocutor:u.username, ultimo:null, noLeidos:0 };
-            if (!_mcPdvMap[u.username]) _mcPdvMap[u.username] = u.display_name || u.username;
-          }
-        });
       }
 
-      // Marcar activos/inactivos en hilos
+      // Marcar activos/inactivos
       Object.keys(hilos).forEach(k => {
         hilos[k].activo = k === 'admin' ? true : activosSet.has(k);
       });
