@@ -2508,8 +2508,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     try { variosAdminStartPolling(); } catch(e) {}
     setTimeout(() => { try { initAuditoriaFechas(); } catch(e) {} }, 500);
   }
-  // Polling mensajes urgentes para todos
-  try { msgIniciarPolling(); } catch(e) {}
+  // Polling mensajes urgentes para todos — delay para esperar inicializacion
+  setTimeout(() => { try { msgIniciarPolling(); } catch(e) {} }, 3000);
 
   let _sesionId = null;
   let _sesionPingInterval = null;
