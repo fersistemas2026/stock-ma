@@ -142,6 +142,7 @@
       50% { box-shadow: 0 4px 20px rgba(0,0,0,.4), 0 0 0 14px rgba(255,90,90,0); transform:scale(1.1); }
     }
     .mc-fab-alerta { animation: mcFabPulse 1s ease-in-out infinite !important; background:#ff5a5a !important; }
+    @keyframes mcToastIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
     .neg-panel { display:none; animation:fadeIn .2s ease; width:100%; }
     #neg-layout > div:last-child { flex:1; min-width:0; }
     #neg-content-wrap { flex:1; min-width:0; }
@@ -1001,8 +1002,8 @@
       <!-- ══ MAPCHAT ══════════════════════════════════════════════════ -->
       <!-- Botón flotante -->
       <div id="mc-fab" onclick="mcToggle()" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9990;cursor:pointer;">
-        <div id="mc-fab-btn" style="width:56px;height:56px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:background .3s,transform .15s;">💬</div>
-        <div id="mc-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff5a5a;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:11px;font-weight:900;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--bg);">0</div>
+        <div id="mc-fab-btn" style="height:46px;background:var(--accent);border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;font-size:15px;font-weight:900;color:#000;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:background .3s,transform .15s;white-space:nowrap;">💬 MapChat</div>
+        <div id="mc-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff5a5a;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:11px;font-weight:900;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--bg);">0</div>
       </div>
 
       <!-- Panel MapChat -->
@@ -1013,11 +1014,9 @@
             <span style="font-size:18px;">💬</span> MapChat
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
+            <button onclick="mcEnviarTodos()" title="Mensaje a todos" style="background:none;border:none;color:var(--text-muted);font-size:14px;cursor:pointer;padding:4px 8px;border-radius:6px;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='none'">📢</button>
             <button onclick="mcLimpiarMensajes()" title="Limpiar conversaciones" style="background:none;border:none;color:var(--text-muted);font-size:14px;cursor:pointer;padding:4px 8px;border-radius:6px;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='none'">🗑️</button>
-            <div style="display:flex;gap:6px;align-items:center;">
-            <button onclick="mcLimpiarMensajes()" title="Limpiar todo" style="background:none;border:none;color:var(--text-muted);font-size:15px;cursor:pointer;padding:4px 8px;border-radius:6px;">🗑️</button>
             <button onclick="mcToggle()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;padding:0;">✕</button>
-          </div>
           </div>
         </div>
         <!-- Lista de conversaciones -->
@@ -1025,8 +1024,9 @@
         <!-- Chat abierto -->
         <div id="mc-chat" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
           <div id="mc-chat-mensajes" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:280px;max-height:420px;"></div>
+          <div id="mc-typing-indicator" style="display:none;padding:4px 14px 2px;font-size:11px;color:var(--text-muted);font-style:italic;"></div>
           <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;background:var(--surface2);flex-shrink:0;">
-            <textarea id="mc-input" rows="1" maxlength="300" placeholder="Mensaje..." style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);max-height:80px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();mcEnviar();}"></textarea>
+            <textarea id="mc-input" rows="1" maxlength="300" placeholder="Mensaje..." style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:14px;color:var(--text);outline:none;resize:none;font-family:var(--font);max-height:80px;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();mcEnviar();}" oninput="mcNotificarEscribiendo()"></textarea>
             <button onclick="mcEnviar()" style="width:36px;height:36px;background:var(--accent);color:#000;border:none;border-radius:50%;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">➤</button>
           </div>
         </div>
@@ -11985,6 +11985,10 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     try { mcCheckNuevos(); } catch(e) {}
   }
 
+  let _mcSonidoRepetTimer = null;
+  let _mcTypingTimer = null;
+  let _mcTypingEnviadoAt = 0;
+
   function mcIniciar() {
     mcCargarPdvMap().then(() => {
       mcMostrarFab();
@@ -11993,6 +11997,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (_mcPollTimer) clearInterval(_mcPollTimer);
     _mcPollTimer = setInterval(mcCheckNuevos, 6000);
     setTimeout(mcCheckNuevos, 2000);
+    // Limpiar mensajes viejos (> 7 dias) al iniciar
+    mcArchivarViejos();
   }
 
   function msgIniciarPolling() { mcIniciar(); }
@@ -12192,24 +12198,45 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (!currentUser) return;
     try {
       const username = currentUser.username;
+      // Chequear indicador "escribiendo" de otros
+      try {
+        const tNow = Date.now();
+        const typing = await sbApi(`mc_typing?empresa_id=eq.${empresaActual}&para=eq.${username}&select=desde,updated_at`) || [];
+        const ind = document.getElementById('mc-typing-indicator');
+        if (ind && _mcChatActual) {
+          const activo = typing.find(t => t.desde === _mcChatActual.interlocutor);
+          if (activo) {
+            const ts = new Date(activo.updated_at.replace(' ','T').replace(/\.\d+$/,'')+'Z').getTime();
+            if (tNow - ts < 5000) {
+              ind.style.display = '';
+              ind.textContent = `${mcNombre(activo.desde)} está escribiendo...`;
+            } else { ind.style.display = 'none'; ind.textContent = ''; }
+          } else { ind.style.display = 'none'; ind.textContent = ''; }
+        }
+      } catch(e) {}
+
       const r = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${username}&leido=eq.false&order=created_at.desc&select=*`) || [];
       const nuevos = (r||[]).filter(m => m.desde !== username);
       if (nuevos.length > 0) {
-        // Actualizar pdvMap con remitentes nuevos
         await mcCargarPdvMap();
-        // Solo notificar mensajes realmente nuevos
         const realmente_nuevos = nuevos.filter(m => !_mcIdsNotificados.has(m.id));
         if (realmente_nuevos.length > 0) {
           realmente_nuevos.forEach(m => _mcIdsNotificados.add(m.id));
-          // Sonido
-          try {
-            const ctx=new(window.AudioContext||window.webkitAudioContext)();
-            [523,659,784].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0.3,ctx.currentTime+i*.12);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*.12+.2);o.start(ctx.currentTime+i*.12);o.stop(ctx.currentTime+i*.12+.22);});
-          } catch(e) {}
+          // Sonido fuerte
+          mcSonar();
+          // Toast/popup con preview
+          const primero = realmente_nuevos[0];
+          const remitente = mcNombre(primero.desde) || primero.desde;
+          mcMostrarToast(remitente, primero.mensaje);
           iniciarParpadeoMensajes();
           mcActivarAlerta(nuevos.length);
+          // Repetir sonido cada 30s si el panel no se abre
+          if (_mcSonidoRepetTimer) clearInterval(_mcSonidoRepetTimer);
+          _mcSonidoRepetTimer = setInterval(() => {
+            if (!_mcPanelAbierto) { mcSonar(); mcActivarAlerta(nuevos.length); }
+            else { clearInterval(_mcSonidoRepetTimer); _mcSonidoRepetTimer = null; }
+          }, 30000);
         }
-        // Si el chat del remitente está abierto, recargar
         if (_mcPanelAbierto && _mcChatActual?.interlocutor === nuevos[0].desde) {
           await mcCargarMensajes();
           await sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${nuevos[0].desde}&para=eq.${username}&leido=eq.false`, {method:'PATCH',body:JSON.stringify({leido:true})});
@@ -12217,10 +12244,90 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         }
         if (_mcPanelAbierto && !_mcChatActual) mcCargarLista();
       } else {
+        if (_mcSonidoRepetTimer) { clearInterval(_mcSonidoRepetTimer); _mcSonidoRepetTimer = null; }
         mcDesactivarAlerta();
         detenerParpadeoMensajes();
       }
     } catch(e) {}
+  }
+
+  function mcSonar() {
+    try {
+      const ctx = new(window.AudioContext||window.webkitAudioContext)();
+      // Melodía más fuerte y más larga
+      [[587,0],[740,0.15],[880,0.30],[740,0.45],[880,0.58]].forEach(([f,t])=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value=f; o.type='sine';
+        g.gain.setValueAtTime(0.7, ctx.currentTime+t);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+t+0.25);
+        o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.27);
+      });
+    } catch(e) {}
+  }
+
+  function mcMostrarToast(remitente, mensaje) {
+    // Eliminar toast anterior si existe
+    const prev = document.getElementById('mc-toast-popup');
+    if (prev) prev.remove();
+    const div = document.createElement('div');
+    div.id = 'mc-toast-popup';
+    div.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:99999;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:12px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5);cursor:pointer;max-width:300px;animation:mcToastIn .25s ease;';
+    div.innerHTML = `<div style="font-size:12px;font-weight:900;color:var(--accent);margin-bottom:3px;">💬 ${remitente}</div><div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(mensaje||'').substring(0,60)}</div>`;
+    div.onclick = () => { div.remove(); if (!_mcPanelAbierto) mcToggle(); };
+    document.body.appendChild(div);
+    setTimeout(() => { if (div.parentNode) div.remove(); }, 6000);
+  }
+
+  async function mcNotificarEscribiendo() {
+    if (!_mcChatActual || !currentUser) return;
+    const now = Date.now();
+    if (now - _mcTypingEnviadoAt < 3000) return; // throttle
+    _mcTypingEnviadoAt = now;
+    try {
+      // Upsert en mc_typing (DELETE + INSERT)
+      await sbApi(`mc_typing?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&para=eq.${_mcChatActual.interlocutor}`, {method:'DELETE'});
+      await sbApi('mc_typing', {method:'POST', body:JSON.stringify({
+        empresa_id: String(empresaActual),
+        desde: currentUser.username,
+        para: _mcChatActual.interlocutor,
+        updated_at: new Date().toISOString()
+      })});
+    } catch(e) {}
+    if (_mcTypingTimer) clearTimeout(_mcTypingTimer);
+    _mcTypingTimer = setTimeout(async () => {
+      try { await sbApi(`mc_typing?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}`, {method:'DELETE'}); } catch(e) {}
+    }, 5000);
+  }
+
+  async function mcArchivarViejos() {
+    try {
+      const hace7dias = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+      await sbApi(`mensajes?empresa_id=eq.${empresaActual}&created_at=lt.${hace7dias}`, {method:'DELETE'});
+    } catch(e) {}
+  }
+
+  async function mcEnviarTodos() {
+    const texto = prompt('Mensaje para todos los PDVs:');
+    if (!texto || !texto.trim()) return;
+    try {
+      const pdvs = await getPdv();
+      const sesiones = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&select=username`) || [];
+      const activos = sesiones.map(s => s.username).filter(u => u !== currentUser.username);
+      if (!activos.length) { toast('No hay operadores activos ahora','error'); return; }
+      const desde_nombre = _mcMiPdvNombre || currentUser?.displayName || currentUser?.username;
+      await Promise.all(activos.map(para =>
+        sbApi('mensajes', {method:'POST', body:JSON.stringify({
+          empresa_id: String(empresaActual),
+          desde: currentUser.username,
+          desde_nombre,
+          para,
+          mensaje: texto.trim(),
+          leido: false
+        })})
+      ));
+      toast(`✓ Mensaje enviado a ${activos.length} operador${activos.length!==1?'es':''}`, 'success');
+    } catch(e) { toast('Error: '+e.message,'error'); }
   }
 
   let _mcIdsNotificados = new Set();
