@@ -3307,15 +3307,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
   async function getAllStockConfig() {
     try {
-      // Paginar de a 1000 para superar el límite default de Supabase
-      let all = [], from = 0, pageSize = 1000;
-      while (true) {
-        const page = await sbApi(`stock_config?empresa_id=eq.${empresaActual}&select=pdv_id,prod_id,gusto_id,dia,minimo,maximo,referencia&limit=${pageSize}&offset=${from}`) || [];
-        all = all.concat(page);
-        if (page.length < pageSize) break;
-        from += pageSize;
-      }
-      return all;
+      return await sbApi(`stock_config?empresa_id=eq.${empresaActual}&select=pdv_id,prod_id,gusto_id,dia,minimo,maximo,referencia`) || [];
     } catch(e) { return []; }
   }
 
