@@ -12076,23 +12076,41 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         if (m.para===currentUser.username && !m.leido) hilos[otro].noLeidos++;
       });
 
-      // Agregar PDVs/operadores sin conversación previa (solo para admin)
+      // Traer sesiones activas para saber quién está online
+      let sesionesActivas = [];
+      try { sesionesActivas = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&select=username,pdv_nombre`) || []; } catch(e) {}
+      const activosSet = new Set(sesionesActivas.map(s => s.username));
+      sesionesActivas.forEach(s => { _mcPdvMap[s.username] = s.pdv_nombre||s.username; });
+
+      // Agregar todos los PDVs (activos e inactivos)
+      const [todosPdvs, todosUsuarios] = await Promise.all([
+        getPdv(),
+        sbApi(`usuarios?role=eq.operador&select=username,display_name`) || []
+      ]);
+
       if (currentUser.role === 'admin') {
-        try {
-          const sesiones = await sbApi(`sesiones_activas?empresa_id=eq.${empresaActual}&select=username,pdv_nombre`) || [];
-          sesiones.forEach(s => {
-            if (s.username !== currentUser.username && !hilos[s.username]) {
-              hilos[s.username] = { interlocutor:s.username, ultimo:null, noLeidos:0 };
-              _mcPdvMap[s.username] = s.pdv_nombre||s.username;
-            }
-          });
-        } catch(e) {}
-        // Siempre mostrar "Todos"
+        // Admin ve todos los operadores + todos los PDVs
+        todosUsuarios.forEach(u => {
+          if (u.username !== currentUser.username && !hilos[u.username]) {
+            hilos[u.username] = { interlocutor:u.username, ultimo:null, noLeidos:0 };
+          }
+        });
         if (!hilos['todos']) hilos['todos'] = { interlocutor:'todos', ultimo:null, noLeidos:0 };
       } else {
-        // Operador siempre ve Admin
+        // Operador ve Admin + todos los otros PDVs/operadores
         if (!hilos['admin']) hilos['admin'] = { interlocutor:'admin', ultimo:null, noLeidos:0 };
+        todosUsuarios.forEach(u => {
+          if (u.username !== currentUser.username && !hilos[u.username]) {
+            hilos[u.username] = { interlocutor:u.username, ultimo:null, noLeidos:0 };
+            if (!_mcPdvMap[u.username]) _mcPdvMap[u.username] = u.display_name || u.username;
+          }
+        });
       }
+
+      // Marcar activos/inactivos en hilos
+      Object.keys(hilos).forEach(k => {
+        hilos[k].activo = k === 'admin' ? true : activosSet.has(k);
+      });
 
       const lista = Object.values(hilos).sort((a,b) => {
         const ta = a.ultimo ? new Date(normTS(a.ultimo.created_at)) : new Date(0);
@@ -12116,8 +12134,13 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         const badge = h.noLeidos>0 ? `<span style="background:#25d366;color:#fff;border-radius:999px;min-width:20px;height:20px;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;padding:0 5px;">${h.noLeidos}</span>` : '';
         const leido = u ? (u.leido ? '✓✓' : '✓') : '';
         const leidoColor = u?.leido ? '#53bdeb' : 'var(--text-muted)';
+        const dotColor = h.interlocutor==='todos' ? '#888' : (h.activo ? '#25d366' : '#ff5a5a');
+        const dotTitle = h.activo ? 'Activo' : 'Inactivo';
         return `<div onclick="mcAbrirChat('${h.interlocutor}','${nombre.replace(/'/g,"\'")}');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-          <div style="width:44px;height:44px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#000;flex-shrink:0;text-align:center;overflow:hidden;line-height:1.2;padding:2px;">${h.interlocutor==='todos'?'📢 Todos':h.interlocutor==='admin'?'Admin':mcNombre(h.interlocutor).substring(0,8)}</div>
+          <div style="position:relative;flex-shrink:0;">
+            <div style="width:44px;height:44px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#000;text-align:center;overflow:hidden;line-height:1.2;padding:2px;">${h.interlocutor==='todos'?'📢':h.interlocutor==='admin'?'ADM':mcNombre(h.interlocutor).substring(0,6).toUpperCase()}</div>
+            <div title="${dotTitle}" style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;background:${dotColor};border-radius:50%;border:2px solid var(--surface);"></div>
+          </div>
           <div style="flex:1;min-width:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
               <span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${nombre}</span>
