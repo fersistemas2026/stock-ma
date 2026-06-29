@@ -678,6 +678,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button id="ventas-btn-efectivo" onclick="ventasSetPago(&#39;efectivo&#39;)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💵 Efectivo</button>
               <button id="ventas-btn-tarjeta" onclick="ventasSetPago(&#39;tarjeta&#39;)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💳 Tarjeta</button>
+              <button id="ventas-btn-mixto" onclick="ventasSetPago(&#39;mixto&#39;)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💵+💳 Mixto</button>
               <button id="ventas-btn-venta-doc" onclick="selDocTipo('venta')" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🛒 Venta</button>
               <button id="ventas-btn-presupuesto" onclick="selDocTipo('presupuesto')" style="background:none;border:1px solid #ffb432;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#ffb432;cursor:pointer;">📋 Presupuesto</button>
               <button id="ventas-btn-recibo" onclick="selDocTipo('recibo')" style="background:none;border:1px solid #6ee7b7;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#6ee7b7;cursor:pointer;">🧾 Recibo</button>
@@ -8593,13 +8594,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     _ventasPago = tipo;
     const btnEf = document.getElementById('ventas-btn-efectivo');
     const btnTj = document.getElementById('ventas-btn-tarjeta');
-    if (tipo === 'efectivo') {
-      btnEf.style.background = 'var(--accent)'; btnEf.style.color = '#000'; btnEf.dataset.activo = '1';
-      btnTj.style.background = 'var(--surface2)'; btnTj.style.color = 'var(--text)'; btnTj.dataset.activo = '0';
-    } else {
-      btnTj.style.background = 'var(--accent)'; btnTj.style.color = '#000'; btnTj.dataset.activo = '1';
-      btnEf.style.background = 'var(--surface2)'; btnEf.style.color = 'var(--text)'; btnEf.dataset.activo = '0';
-    }
+    const btnMx = document.getElementById('ventas-btn-mixto');
+    const inact = btn => { if(!btn)return; btn.style.background='var(--surface2)'; btn.style.color='var(--text)'; btn.dataset.activo='0'; btn.style.border='1px solid var(--border)'; };
+    inact(btnEf); inact(btnTj); inact(btnMx);
+    if (tipo === 'efectivo') { btnEf.style.background='var(--accent)'; btnEf.style.color='#000'; btnEf.dataset.activo='1'; btnEf.style.border='none'; }
+    else if (tipo === 'tarjeta') { btnTj.style.background='#8b5cf6'; btnTj.style.color='#fff'; btnTj.dataset.activo='1'; btnTj.style.border='none'; }
+    else if (tipo === 'mixto' && btnMx) { btnMx.style.background='#0ea5e9'; btnMx.style.color='#fff'; btnMx.dataset.activo='1'; btnMx.style.border='none'; }
   }
 
   function verificarBloqueoEfectivo() {
@@ -8795,37 +8795,92 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function abrirModalTarjeta(onConfirm) {
     const overlay = document.createElement('div');
     overlay.id = 'modal-tarjeta';
-    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+    overlay.onclick = e => { if(e.target===overlay) { window._tarjetaRegistrarCancel(); overlay.remove(); } };
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
-    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:360px;overflow:hidden;">
+    const totalTj = (_ventasItems||[]).reduce((s,i)=>s+parsePrecioAR(i.precio)*i.cant,0);
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:340px;overflow:hidden;">
       <div style="padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
         <div style="font-size:14px;font-weight:800;">💳 Pago con tarjeta</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Seleccioná el tipo de pago</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Total: <span style="color:#8b5cf6;font-family:var(--mono);font-weight:700;">$${Math.round(totalTj).toLocaleString('es-AR')}</span></div>
       </div>
-      <div style="padding:20px;display:flex;flex-direction:column;gap:10px;">
-        <button onclick="selTarjetaTipo('debito',this)" id="tarj-debito"
-          style="text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">
-          <span style="font-size:20px;">💳</span><div><div>Débito</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;">Tarjeta de débito</div></div>
-        </button>
-        <button onclick="selTarjetaTipo('credito',this)" id="tarj-credito"
-          style="text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">
-          <span style="font-size:20px;">💳</span><div><div>Crédito</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;">Tarjeta de crédito</div></div>
-        </button>
-        <button onclick="selTarjetaTipo('transferencia',this)" id="tarj-transferencia"
-          style="text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;">
-          <span style="font-size:20px;">📲</span><div><div>Transferencia</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;">Transferencia bancaria / QR</div></div>
-        </button>
-        <div style="display:flex;gap:8px;margin-top:4px;">
+      <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
+        <div style="background:var(--surface2);border-radius:10px;padding:20px;text-align:center;">
+          <div style="font-size:40px;margin-bottom:8px;">💳</div>
+          <div style="font-size:14px;font-weight:700;color:#8b5cf6;">Procesá el pago y confirmá</div>
+        </div>
+        <div style="display:flex;gap:8px;">
           <button onclick="window._tarjetaRegistrarCancel(); document.getElementById('modal-tarjeta').remove();" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
-          <button id="tarj-confirmar" onclick="confirmarTarjeta()" disabled
-            style="flex:2;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;font-weight:800;color:var(--text-muted);cursor:not-allowed;opacity:.5;">💾 Confirmar y guardar</button>
+          <button onclick="document.getElementById('modal-tarjeta').remove(); window._tarjetaOnConfirm && window._tarjetaOnConfirm();"
+            style="flex:2;background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
         </div>
       </div>
     </div>`;
-    window._tarjetaTipo = null;
+    window._tarjetaTipo = 'tarjeta';
     window._tarjetaOnConfirm = onConfirm;
     document.body.appendChild(overlay);
   }
+
+  function abrirModalMixto(total, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-mixto';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
+    overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:360px;overflow:hidden;">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <div style="font-size:14px;font-weight:800;">💵+💳 Pago mixto</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Total: <span style="color:#0ea5e9;font-family:var(--mono);font-weight:700;">${fmtARS(total)}</span></div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px;">💵 ¿Cuánto paga en efectivo?</label>
+          <input type="number" id="mixto-efectivo-input" min="0" step="any" placeholder="Monto en efectivo"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:20px;font-family:var(--mono);color:var(--text);outline:none;text-align:right;"
+            oninput="window.calcularMixto(${total})" />
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:var(--text-muted);">💳 Tarjeta</span>
+            <span id="mixto-tarjeta-monto" style="font-size:16px;font-weight:900;font-family:var(--mono);color:#8b5cf6;">${fmtARS(total)}</span>
+          </div>
+          <div id="mixto-vuelto-row" style="display:none;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:8px;">
+            <span style="font-size:13px;color:var(--text-muted);">Vuelto efectivo</span>
+            <span id="mixto-vuelto-monto" style="font-size:16px;font-weight:900;font-family:var(--mono);color:#6ee7b7;">$0</span>
+          </div>
+        </div>
+        <div id="mixto-error" style="font-size:12px;color:#ff5a5a;display:none;">⚠️ Ingresá un monto válido en efectivo</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('modal-mixto').remove();window._ventaPaso=0;" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="window.confirmarMixto(${total})" style="flex:2;background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
+        </div>
+      </div>
+    </div>`;
+    window._mixtoOnConfirm = onConfirm;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('mixto-efectivo-input')?.focus(), 100);
+  }
+
+  window.calcularMixto = function(total) {
+    const ef = parseFloat(document.getElementById('mixto-efectivo-input')?.value || 0) || 0;
+    const tarjeta = Math.max(0, total - ef);
+    const vuelto = ef > total ? ef - total : 0;
+    const tarjetaEl = document.getElementById('mixto-tarjeta-monto');
+    const vueltoRow = document.getElementById('mixto-vuelto-row');
+    const vueltoEl = document.getElementById('mixto-vuelto-monto');
+    if (tarjetaEl) tarjetaEl.textContent = '$' + Math.round(tarjeta).toLocaleString('es-AR');
+    if (vueltoRow) vueltoRow.style.display = vuelto > 0 ? 'flex' : 'none';
+    if (vueltoEl) vueltoEl.textContent = '$' + Math.round(vuelto).toLocaleString('es-AR');
+  };
+
+  window.confirmarMixto = function(total) {
+    const ef = parseFloat(document.getElementById('mixto-efectivo-input')?.value || 0) || 0;
+    const errEl = document.getElementById('mixto-error');
+    if (ef <= 0) { if(errEl) errEl.style.display=''; setTimeout(()=>{ if(errEl) errEl.style.display='none'; },2000); return; }
+    window._mixtoEfectivo = ef;
+    window._mixtoTarjeta = Math.max(0, total - ef);
+    window._mixtoVuelto = ef > total ? ef - total : 0;
+    document.getElementById('modal-mixto')?.remove();
+    window._mixtoOnConfirm && window._mixtoOnConfirm();
+  };
 
   window._tarjetaRegistrarCancel = async function() {
     try {
@@ -8907,6 +8962,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // Modal según método de pago
     const esEfectivo = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1';
     const esTarjeta = document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1';
+    const esMixto = document.getElementById('ventas-btn-mixto')?.dataset?.activo === '1';
 
     // Paso 1: confirmar método
     if (!window._ventaPaso) window._ventaPaso = 0;
@@ -8914,8 +8970,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (window._ventaPaso === 0) {
       const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
       const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
-      const metodoLabel = esEfectivo ? '💵 Efectivo' : esTarjeta ? '💳 Tarjeta' : '💵 Efectivo';
-      const metodoColor = esEfectivo ? '#4ade80' : '#8b5cf6';
+      const metodoLabel = esEfectivo ? '💵 Efectivo' : esTarjeta ? '💳 Tarjeta' : esMixto ? '💵+💳 Mixto' : '💵 Efectivo';
+      const metodoColor = esEfectivo ? '#4ade80' : esTarjeta ? '#8b5cf6' : esMixto ? '#0ea5e9' : '#4ade80';
       const ov = document.createElement('div');
       ov.id = 'modal-confirmar-metodo';
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
@@ -8933,7 +8989,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       return;
     }
 
-    // Paso 2: vuelto o tarjeta
+    // Paso 2: vuelto, tarjeta o mixto
     if (window._ventaPaso === 1) {
       if (esEfectivo) {
         const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
@@ -8944,6 +9000,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         abrirModalTarjeta(() => { window._ventaPaso = 2; guardarVenta(); });
         return;
       }
+      if (esMixto) {
+        const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
+        abrirModalMixto(total, () => { window._ventaPaso = 2; guardarVenta(); });
+        return;
+      }
       window._ventaPaso = 2;
     }
 
@@ -8951,6 +9012,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._ventaPaso = 0;
     window._ventasClienteTelGuardar = '';
     window._ventasClienteNombreGuardar = '';
+    window._mixtoEfectivo = 0; window._mixtoTarjeta = 0; window._mixtoVuelto = 0;
     // Guardar snapshot de items para comparar con cancelaciones posteriores
     window._lastVentaItems = (_ventasItems || []).map(i => ({
       prod_id: i.prodId || '',
@@ -8960,7 +9022,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     const pdvs = await getPdv();
     const metodoPago = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1' ? 'efectivo' :
-                       document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1' ? 'tarjeta' : 'efectivo';
+                       document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1' ? 'tarjeta' :
+                       document.getElementById('ventas-btn-mixto')?.dataset?.activo === '1' ? 'mixto' : 'efectivo';
     const clienteTelVenta = window._ventasClienteTelGuardar || (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
     const clienteNombreVenta = window._ventasClienteNombreGuardar || document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
     const ticketId = `${fecha}_${pdvId}_${Date.now()}`;
@@ -8983,7 +9046,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         return window._ventasDescuento > 0 ? base * (1 - window._ventasDescuento/100) : base;
       })(),
       lista: lista === '4' ? 'Lista 4' : 'Lista '+lista,
-      metodo_pago: metodoPago === 'tarjeta' && window._tarjetaTipo ? 'tarjeta_' + window._tarjetaTipo : metodoPago,
+      metodo_pago: metodoPago,
+      monto_efectivo: metodoPago === 'mixto' ? (window._mixtoEfectivo || 0) : null,
+      monto_tarjeta: metodoPago === 'mixto' ? (window._mixtoTarjeta || 0) : null,
       username: currentUser?.username || '',
       cliente_tel: clienteTelVenta || null,
       cliente_nombre: clienteNombreVenta || null
