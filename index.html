@@ -1442,6 +1442,26 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div id="audit-body">
             <div class="empty-state">🔐<p>Seleccioná un período y hacé clic en Buscar.</p></div>
           </div>
+          <!-- ══ AUDITORIA MAPCHAT ══ -->
+          <div style="margin-top:36px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+              <div class="form-title" style="margin:0;font-size:16px;">💬 MapChat — Historial completo</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <select id="audit-mc-pdv" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+                  <option value="">Todos los PDVs</option>
+                </select>
+                <select id="audit-mc-estado" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+                  <option value="">Todos</option>
+                  <option value="vigente">⏱ Solo vigentes</option>
+                  <option value="expirado">💀 Solo expirados</option>
+                </select>
+                <button onclick="cargarAuditoriaMapChat()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;">🔄 Actualizar</button>
+              </div>
+            </div>
+            <div id="audit-mc-body">
+              <div class="empty-state" style="padding:24px;">💬<p style="margin-top:8px;font-size:13px;">Cargando historial de MapChat...</p></div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="neg-cashflow" class="neg-panel" style="display:none">
@@ -12061,7 +12081,13 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || []
       ]);
       const normTS = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\.\d+$/,'')+'Z'; return t; };
-      const todos = [...(env||[]),...(rec||[])];
+      const ahoraMC = new Date();
+      const noExpirado = m => {
+        if (currentUser.role === 'admin') return true;
+        if (!m.expira_at) return true;
+        return new Date(normTS(m.expira_at)) > ahoraMC;
+      };
+      const todos = [...(env||[]),...(rec||[])].filter(noExpirado);
 
       // Agrupar por interlocutor
       const hilos = {};
@@ -12084,10 +12110,15 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       const activosSet = new Set(sesionesActivas.map(s => s.username));
       sesionesActivas.forEach(s => { _mcPdvMap[s.username] = s.pdv_nombre||s.username; });
 
-      // Solo mostrar hilos con conversación existente
-      // Admin siempre ve "Admin" como contacto si es operador
+      // Admin siempre visible para operadores; otros PDVs activos también visibles
       if (currentUser.role !== 'admin') {
         if (!hilos['admin']) hilos['admin'] = { interlocutor:'admin', ultimo:null, noLeidos:0 };
+        // Agregar PDVs activos (sin el propio usuario y sin admin)
+        sesionesActivas.forEach(s => {
+          if (s.username !== currentUser.username && s.username !== 'admin') {
+            if (!hilos[s.username]) hilos[s.username] = { interlocutor:s.username, ultimo:null, noLeidos:0 };
+          }
+        });
       }
 
       // Marcar activos/inactivos
@@ -12164,7 +12195,15 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&para=eq.${interlocutor}&order=created_at.asc&select=*`) || [],
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${interlocutor}&para=eq.${currentUser.username}&order=created_at.asc&select=*`) || []
       ]);
-      const todos = [...(env||[]),...(rec||[])].sort((a,b)=>new Date(normTS(a.created_at))-new Date(normTS(b.created_at)));
+      const ahora = new Date();
+      const normExp = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\\.\\d+$/,'')+'Z'; return t; };
+      // Operadores no ven mensajes expirados; admin ve todo
+      const filtrarPorExpiracion = (m) => {
+        if (currentUser.role === 'admin') return true;
+        if (!m.expira_at) return true; // sin expiración = permanente (mensajes viejos)
+        return new Date(normExp(m.expira_at)) > ahora;
+      };
+      const todos = [...(env||[]),...(rec||[])].sort((a,b)=>new Date(normTS(a.created_at))-new Date(normTS(b.created_at))).filter(filtrarPorExpiracion);
       cont.innerHTML = todos.slice(-50).map(m => {
         const esMio = m.desde===currentUser.username;
         const hora = new Date(normTS(m.created_at)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
@@ -12190,10 +12229,13 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     input.style.height = 'auto';
     try {
       const desde_nombre = _mcMiPdvNombre || currentUser?.displayName || currentUser?.username;
-      await sbApi('mensajes', {method:'POST', body:JSON.stringify({
-        empresa_id: String(empresaActual), desde: currentUser.username,
-        desde_nombre, para: _mcChatActual.interlocutor, mensaje: texto, leido: false
-      })});
+      // Mensajes entre operadores expiran en 10 min; con admin no expiran
+      const esInterOp = currentUser.role !== 'admin' && _mcChatActual.interlocutor !== 'admin';
+      const expira_at = esInterOp ? new Date(Date.now() + 10*60*1000).toISOString() : null;
+      const _mcPayload = { empresa_id: String(empresaActual), desde: currentUser.username,
+        desde_nombre, para: _mcChatActual.interlocutor, mensaje: texto, leido: false };
+      if (expira_at) _mcPayload.expira_at = expira_at;
+      await sbApi('mensajes', {method:'POST', body:JSON.stringify(_mcPayload)});
       await mcCargarMensajes();
     } catch(e) { toast('Error enviando','error'); }
   }
@@ -20223,6 +20265,82 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     if (desdeEl && !desdeEl.value) desdeEl.value = hoy;
     if (hastaEl && !hastaEl.value) hastaEl.value = hoy;
     cargarAuditoria();
+    cargarAuditoriaMapChat();
+  }
+
+  async function cargarAuditoriaMapChat() {
+    const cont = document.getElementById('audit-mc-body');
+    if (!cont) return;
+    cont.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Cargando...</div>';
+    try {
+      const normTS = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\\.\\d+$/,'')+'Z'; return t; };
+      // Traer todos los mensajes inter-operador (con expira_at) ordenados desc
+      const todos = await sbApi(`mensajes?empresa_id=eq.${empresaActual}&expira_at=not.is.null&order=created_at.desc&select=*`) || [];
+      if (!todos.length) {
+        cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">Sin mensajes inter-PDV registrados.</div>';
+        return;
+      }
+      // Poblar selector de PDVs
+      const pdvSel = document.getElementById('audit-mc-pdv');
+      if (pdvSel) {
+        const pdvs = new Set();
+        todos.forEach(m => { pdvs.add(m.desde); pdvs.add(m.para); });
+        const prevVal = pdvSel.value;
+        pdvSel.innerHTML = '<option value="">Todos los PDVs</option>' +
+          [...pdvs].filter(Boolean).map(p => `<option value="${p}" ${p===prevVal?'selected':''}>${mcNombre(p)||p}</option>`).join('');
+      }
+      const filtroPdv = document.getElementById('audit-mc-pdv')?.value || '';
+      const filtroEstado = document.getElementById('audit-mc-estado')?.value || '';
+      const ahora = new Date();
+      const filtrados = todos.filter(m => {
+        if (filtroPdv && m.desde !== filtroPdv && m.para !== filtroPdv) return false;
+        if (filtroEstado === 'vigente') return new Date(normTS(m.expira_at)) > ahora;
+        if (filtroEstado === 'expirado') return new Date(normTS(m.expira_at)) <= ahora;
+        return true;
+      });
+      if (!filtrados.length) {
+        cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">Sin resultados para el filtro aplicado.</div>';
+        return;
+      }
+      const fmtFecha = s => {
+        if (!s) return '-';
+        const d = new Date(normTS(s));
+        return d.toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',year:'2-digit'})
+          + ' ' + d.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'});
+      };
+      cont.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:var(--surface2);color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">
+                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);">Hora</th>
+                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);">De</th>
+                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);">Para</th>
+                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);">Mensaje</th>
+                <th style="padding:10px 12px;text-align:center;border-bottom:1px solid var(--border);">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtrados.map((m,i) => {
+                const expirado = new Date(normTS(m.expira_at)) <= ahora;
+                const estadoBadge = expirado
+                  ? '<span style="background:rgba(255,90,90,.12);color:#ff8a8a;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">💀 expirado</span>'
+                  : '<span style="background:rgba(200,240,74,.12);color:var(--accent);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">⏱ visible</span>';
+                return `<tr style="border-bottom:1px solid var(--border);${i%2===0?'background:var(--surface)':'background:var(--surface2)'};">
+                  <td style="padding:10px 12px;color:var(--text-muted);white-space:nowrap;">${fmtFecha(m.created_at)}</td>
+                  <td style="padding:10px 12px;font-weight:700;color:var(--accent);">${mcNombre(m.desde)||m.desde}</td>
+                  <td style="padding:10px 12px;font-weight:700;">${mcNombre(m.para)||m.para}</td>
+                  <td style="padding:10px 12px;max-width:320px;">${(m.mensaje||'').replace(/</g,'&lt;')}</td>
+                  <td style="padding:10px 12px;text-align:center;">${estadoBadge}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <div style="padding:10px 12px;font-size:12px;color:var(--text-muted);">${filtrados.length} mensaje${filtrados.length!==1?'s':''} encontrado${filtrados.length!==1?'s':''}</div>
+        </div>`;
+    } catch(e) {
+      if (cont) cont.innerHTML = '<div style="padding:16px;color:var(--text-muted);">Error cargando historial MapChat: '+e.message+'</div>';
+    }
   }
 
   // ══════════════════════════════════════ / AUDITORÍA ══
