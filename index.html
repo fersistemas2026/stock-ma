@@ -1439,6 +1439,20 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               <button onclick="cargarAuditoria()" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🔍 Buscar</button>
             </div>
           </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+            <select id="audit-filtro-pdv" onchange="cargarAuditoria()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+              <option value="">Todos los PDVs</option>
+            </select>
+            <select id="audit-filtro-tipo" onchange="cargarAuditoria()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
+              <option value="">Todos los eventos</option>
+              <option value="venta">🛒 Ventas</option>
+              <option value="cancelacion">❌ Cancelaciones</option>
+              <option value="buzon">📬 Buzón</option>
+              <option value="gasto">💸 Egresos</option>
+              <option value="apertura">🟢 Apertura caja</option>
+              <option value="cierre">🔴 Cierre caja</option>
+            </select>
+          </div>
           <div id="audit-body">
             <div class="empty-state">🔐<p>Seleccioná un período y hacé clic en Buscar.</p></div>
           </div>
@@ -19990,15 +20004,20 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     const hoy = fechaHoyAR();
     const desde = document.getElementById('audit-desde')?.value || hoy;
     const hasta = document.getElementById('audit-hasta')?.value || hoy;
+    const filtroPdv = document.getElementById('audit-filtro-pdv')?.value || '';
+    const filtroTipo = document.getElementById('audit-filtro-tipo')?.value || '';
     body.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando auditoría...</p></div>';
 
     try {
-      const [cancels, arqueos, ventas, pdvs, usuarios] = await Promise.all([
+      const [cancels, arqueos, ventas, pdvs, usuarios, buzonRows, gastosRows, turnosRows] = await Promise.all([
         sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
         sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at&order=created_at.desc`) || [],
         getPdv(),
-        sbApi(`usuarios?select=username,display_name`) || []
+        sbApi(`usuarios?select=username,display_name`) || [],
+        sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
+        sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
+        sbApi(`turnos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || []
       ]);
 
       const pdvMap = {};
@@ -20009,10 +20028,22 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       const normTS = s => { if(!s) return null; let t=s.replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
       const fmtHora = s => s ? new Date(normTS(s)).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}) : '';
       const fmtFecha = s => s ? new Date(normTS(s)).toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit'}) : '';
+      const getTS = s => s ? new Date(normTS(s)).getTime() : 0;
 
-      // Indexar cancelaciones NO repasadas por fecha+pdv+username
+      // Poblar selector de PDVs
+      const pdvSel = document.getElementById('audit-filtro-pdv');
+      if (pdvSel && pdvSel.options.length <= 1) {
+        pdvs.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = String(p.id);
+          opt.textContent = p.nombre || p.name;
+          pdvSel.appendChild(opt);
+        });
+      }
+
+      // Cancelaciones: indexar no-repasadas
       const cancelSet = new Set();
-      const cancelMap = {}; // key -> [cancelaciones]
+      const cancelMap = {};
       (cancels||[]).filter(c => !c.repasada).forEach(c => {
         const k = `${(c.fecha||'').slice(0,10)}_${c.pdv_id}_${c.username}`;
         cancelSet.add(k);
@@ -20020,40 +20051,22 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
         cancelMap[k].push(c);
       });
 
-      // Función que evalúa motivos de sospecha para un ticket dado sus cancelaciones previas
       const motivosSospecha = (cancelaciones, ticketTotal) => {
         const motivos = [];
         if (!cancelaciones || !cancelaciones.length) return motivos;
-        // 1. Cliente ya entregó dinero
         const conDinero = cancelaciones.filter(c => (c.monto_cliente||0) > 0);
         if (conDinero.length) {
           const montos = conDinero.map(c => fmtARS(c.monto_cliente)).join(', ');
           motivos.push({ label: `🔴 Cliente entregó ${montos}`, color: '#ff5a5a' });
         }
-        // 2. Cancelaciones repetidas (más de 1)
-        if (cancelaciones.length > 1) {
-          motivos.push({ label: `🟡 ${cancelaciones.length} cancelaciones sin repasar`, color: '#fbbf24' });
-        }
-        // 3. Venta posterior menor a lo cancelado
+        if (cancelaciones.length > 1) motivos.push({ label: `🟡 ${cancelaciones.length} cancelaciones sin repasar`, color: '#fbbf24' });
         if (ticketTotal > 0) {
           const cancelMayor = cancelaciones.find(c => (c.total||0) > ticketTotal * 1.1);
-          if (cancelMayor) {
-            motivos.push({ label: `🟡 Canceló ${fmtARS(cancelMayor.total)} vendió ${fmtARS(ticketTotal)}`, color: '#fbbf24' });
-          }
+          if (cancelMayor) motivos.push({ label: `🟡 Canceló ${fmtARS(cancelMayor.total)} vendió ${fmtARS(ticketTotal)}`, color: '#fbbf24' });
         }
-        // Si no hay motivo específico pero hay cancelación previa
-        if (!motivos.length) {
-          motivos.push({ label: '🚨 Cancelación previa sin repasar', color: '#ff5a5a' });
-        }
+        if (!motivos.length) motivos.push({ label: '🚨 Cancelación previa sin repasar', color: '#ff5a5a' });
         return motivos;
       };
-
-      // Indexar arqueos con diferencia por pdv+fecha
-      const arqueoMap = {};
-      (arqueos||[]).filter(a => Math.abs(a.diferencia||0) > 100).forEach(a => {
-        const k = `${a.fecha}_${a.pdv_id}`;
-        arqueoMap[k] = a;
-      });
 
       // Agrupar ventas en tickets
       const ticketMap = {};
@@ -20061,151 +20074,227 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       (ventas||[]).forEach(v => {
         const key = v.ticket_id || `${v.created_at}_${v.pdv_id}_${v.username}`;
         if (!ticketMap[key]) {
-          ticketMap[key] = { key, pdv_id: v.pdv_id, username: v.username, created_at: v.created_at, metodo: v.metodo_pago, items: [], total: 0 };
+          ticketMap[key] = { key, pdv_id: v.pdv_id, username: v.username, created_at: v.created_at, metodo: v.metodo_pago, items: [], total: 0, tipo: 'venta' };
           ticketOrder.push(key);
         }
         ticketMap[key].items.push(v.prod_nombre || '?');
         ticketMap[key].total += (v.precio||0) * (v.cantidad||1);
       });
 
-      if (!ticketOrder.length && !cancels.length && !Object.keys(arqueoMap).length) {
+      // Construir lista unificada de eventos
+      let eventos = [];
+
+      // Ventas (tickets)
+      ticketOrder.forEach(key => {
+        const tk = ticketMap[key];
+        eventos.push({ tipo: 'venta', ts: getTS(tk.created_at), pdv_id: String(tk.pdv_id), data: tk });
+      });
+
+      // Cancelaciones
+      (cancels||[]).forEach(c => {
+        eventos.push({ tipo: 'cancelacion', ts: getTS(c.created_at), pdv_id: String(c.pdv_id), data: c });
+      });
+
+      // Buzón
+      (buzonRows||[]).forEach(b => {
+        eventos.push({ tipo: 'buzon', ts: getTS(b.created_at), pdv_id: String(b.pdv_id), data: b });
+      });
+
+      // Gastos
+      (gastosRows||[]).forEach(g => {
+        eventos.push({ tipo: 'gasto', ts: getTS(g.created_at), pdv_id: String(g.pdv_id), data: g });
+      });
+
+      // Turnos (apertura/cierre)
+      (turnosRows||[]).forEach(t => {
+        eventos.push({ tipo: t.tipo === 'cierre' ? 'cierre' : 'apertura', ts: getTS(t.created_at), pdv_id: String(t.pdv_id), data: t });
+      });
+
+      // Arqueos con diferencia — asociar a cierre
+      (arqueos||[]).filter(a => Math.abs(a.diferencia||0) > 100).forEach(a => {
+        // Marcar el turno cierre correspondiente si existe
+        const existing = eventos.find(e => e.tipo === 'cierre' && e.pdv_id === String(a.pdv_id) && e.data.username === a.username && (e.data.fecha||'').slice(0,10) === (a.fecha||'').slice(0,10));
+        if (existing) existing.arqueo = a;
+        else eventos.push({ tipo: 'cierre', ts: getTS(a.created_at)||0, pdv_id: String(a.pdv_id), data: { pdv_id: a.pdv_id, username: a.username, created_at: a.created_at, fecha: a.fecha }, arqueo: a });
+      });
+
+      // Aplicar filtros
+      if (filtroPdv) eventos = eventos.filter(e => e.pdv_id === filtroPdv);
+      if (filtroTipo) eventos = eventos.filter(e => e.tipo === filtroTipo);
+
+      // Ordenar desc por timestamp
+      eventos.sort((a, b) => b.ts - a.ts);
+
+      if (!eventos.length) {
         body.innerHTML = '<div class="empty-state">📋<p>Sin movimientos en el período seleccionado.</p></div>';
         return;
       }
 
-      // Resumen contadores
+      // Agrupar por fecha
+      const byFecha = {};
+      eventos.forEach(ev => {
+        const fecha = ev.ts ? fmtFecha(new Date(ev.ts).toISOString()) : '??';
+        if (!byFecha[fecha]) byFecha[fecha] = [];
+        byFecha[fecha].push(ev);
+      });
+
       let totalAlertas = 0;
       let html = '';
 
-      // Agrupar por fecha
-      const byFecha = {};
-      ticketOrder.forEach(key => {
-        const tk = ticketMap[key];
-        const fecha = fmtFecha(tk.created_at);
-        if (!byFecha[fecha]) byFecha[fecha] = { tickets: [], cancels: [], arqueos: [] };
-        byFecha[fecha].tickets.push(key);
-      });
-      // Agregar cancelaciones sin ticket correspondiente
-      (cancels||[]).forEach(c => {
-        const fecha = (c.fecha||'').slice(5).split('-').reverse().join('/'); // DD/MM
-        if (!byFecha[fecha]) byFecha[fecha] = { tickets: [], cancels: [], arqueos: [] };
-        byFecha[fecha].cancels.push(c);
-      });
-      // Agregar arqueos
-      Object.values(arqueoMap).forEach(a => {
-        const d = new Date(a.fecha+'T12:00:00');
-        const fecha = d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});
-        if (!byFecha[fecha]) byFecha[fecha] = { tickets: [], cancels: [], arqueos: [] };
-        byFecha[fecha].arqueos.push(a);
-      });
-
-      Object.entries(byFecha).sort((a,b) => b[0].localeCompare(a[0])).forEach(([fecha, grupo]) => {
+      Object.entries(byFecha).sort((a, b) => {
+        // Ordenar fechas desc (DD/MM → comparar como strings invertidas)
+        const pa = a[0].split('/').reverse().join('');
+        const pb = b[0].split('/').reverse().join('');
+        return pb.localeCompare(pa);
+      }).forEach(([fecha, evs]) => {
         html += `<div style="margin-bottom:24px;">
           <div style="font-size:12px;font-weight:800;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:6px 0;border-bottom:2px solid var(--accent);margin-bottom:10px;">📅 ${fecha}</div>`;
 
-        // Tickets de ventas
-        grupo.tickets.forEach(key => {
-          const tk = ticketMap[key];
-          const pdvNombre = pdvMap[String(tk.pdv_id)] || tk.pdv_id || '?';
-          const opNombre = userMap[tk.username] || tk.username || '?';
-          const hora = fmtHora(tk.created_at);
-          const total = fmtARS(tk.total);
-          const metodo = (tk.metodo||'').includes('tarjeta') ? '💳' : '💵';
-          const tieneVarios = tk.items.some(i => (i||'').toLowerCase() === 'varios');
-          const cancelKey = `${(tk.created_at||'').slice(0,10)}_${tk.pdv_id}_${tk.username}`;
-          const tieneCancelPrev = cancelSet.has(cancelKey);
-          const eventos = [];
-          if (tieneVarios) eventos.push({ label: '⚠️ Producto "Varios"', color: '#fbbf24' });
-          if (tieneCancelPrev) {
-            const motivos = motivosSospecha(cancelMap[cancelKey], tk.total);
-            motivos.forEach(m => eventos.push(m));
-          }
-          if (eventos.length) totalAlertas++;
+        evs.forEach(ev => {
+          const { tipo, data } = ev;
+          const pdvNombre = pdvMap[String(data.pdv_id)] || data.pdv_id || '?';
+          const opNombre = userMap[data.username] || data.username || '?';
+          const hora = ev.ts ? fmtHora(new Date(ev.ts).toISOString()) : '--:--';
 
-          if (eventos.length) {
-            // Ticket con alerta — card destacada
-            const badges = eventos.map(e => `<span style="background:${e.color}22;color:${e.color};border:1px solid ${e.color}44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${e.label}</span>`).join(' ');
+          if (tipo === 'venta') {
+            const tk = data;
+            const total = fmtARS(tk.total);
+            const metodo = (tk.metodo||'').includes('tarjeta') ? '💳' : '💵';
+            const tieneVarios = tk.items.some(i => (i||'').toLowerCase() === 'varios');
+            const cancelKey = `${(tk.created_at||'').slice(0,10)}_${tk.pdv_id}_${tk.username}`;
+            const tieneCancelPrev = cancelSet.has(cancelKey);
+            const alertas = [];
+            if (tieneVarios) alertas.push({ label: '⚠️ Producto "Varios"', color: '#fbbf24' });
+            if (tieneCancelPrev) motivosSospecha(cancelMap[cancelKey], tk.total).forEach(m => alertas.push(m));
+            if (alertas.length) totalAlertas++;
+
+            if (alertas.length) {
+              const badges = alertas.map(e => `<span style="background:${e.color}22;color:${e.color};border:1px solid ${e.color}44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${e.label}</span>`).join(' ');
+              html += `<div style="background:var(--surface);border:1px solid #ff5a5a44;border-left:3px solid #ff5a5a;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                  <div style="display:flex;gap:10px;align-items:center;">
+                    <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
+                    <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                    <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+                    <span style="font-size:14px;">${metodo}</span>
+                  </div>
+                  <div style="display:flex;gap:8px;align-items:center;">${badges}
+                    <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);">${total}</span>
+                  </div>
+                </div>
+                <div style="margin-top:6px;font-size:12px;color:var(--text-muted);">${tk.items.join(', ')}</div>
+              </div>`;
+            } else {
+              html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;border-radius:5px;gap:8px;opacity:.75;">
+                <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text-muted);">
+                  <span style="font-family:var(--mono);">${hora}</span>
+                  <span>🛒</span>
+                  <span>${pdvNombre}</span>
+                  <span>${opNombre}</span>
+                  <span>${metodo}</span>
+                  <span style="opacity:.6;">${tk.items.slice(0,3).join(', ')}${tk.items.length>3?' +'+(tk.items.length-3):''}</span>
+                </div>
+                <span style="font-family:var(--mono);font-size:12px;color:var(--text-muted);white-space:nowrap;">${total}</span>
+              </div>`;
+            }
+
+          } else if (tipo === 'cancelacion') {
+            const c = data;
+            const items = Array.isArray(c.items) ? c.items.slice(0,3).map(i=>(i.prod_nombre||'?')).join(', ') : '';
+            totalAlertas++;
             html += `<div style="background:var(--surface);border:1px solid #ff5a5a44;border-left:3px solid #ff5a5a;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
                 <div style="display:flex;gap:10px;align-items:center;">
                   <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
                   <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
                   <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
-                  <span style="font-size:14px;">${metodo}</span>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;">
-                  ${badges}
-                  <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);">${total}</span>
+                  <span style="background:#ff5a5a22;color:#ff5a5a;border:1px solid #ff5a5a44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">❌ Cancelación</span>
+                  <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:#ff5a5a;">${fmtARS(c.total||0)}</span>
                 </div>
               </div>
-              <div style="margin-top:6px;font-size:12px;color:var(--text-muted);">${tk.items.join(', ')}</div>
+              ${items ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted);">${items}${c.monto_cliente>0?' · cliente entregó '+fmtARS(c.monto_cliente):''}</div>` : ''}
             </div>`;
-          } else {
-            // Ticket normal — fila compacta
-            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;border-radius:5px;gap:8px;opacity:.75;">
-              <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text-muted);">
-                <span style="font-family:var(--mono);">${hora}</span>
-                <span>${pdvNombre}</span>
-                <span>${opNombre}</span>
-                <span>${metodo}</span>
-                <span style="opacity:.6;">${tk.items.slice(0,3).join(', ')}${tk.items.length>3?' +'+( tk.items.length-3):''}</span>
+
+          } else if (tipo === 'buzon') {
+            html += `<div style="background:var(--surface);border:1px solid #53bdeb44;border-left:3px solid #53bdeb;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
+                  <span style="font-size:14px;">📬</span>
+                  <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                  <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+                </div>
+                <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:#53bdeb;">${fmtARS(data.monto||0)}</span>
               </div>
-              <span style="font-family:var(--mono);font-size:12px;color:var(--text-muted);white-space:nowrap;">${total}</span>
+            </div>`;
+
+          } else if (tipo === 'gasto') {
+            html += `<div style="background:var(--surface);border:1px solid #fbbf2444;border-left:3px solid #fbbf24;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
+                  <span style="font-size:14px;">💸</span>
+                  <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                  <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+                  <span style="font-size:12px;color:var(--text-muted);">${data.descripcion||''}</span>
+                </div>
+                <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:#fbbf24;">${fmtARS(data.monto||0)}</span>
+              </div>
+            </div>`;
+
+          } else if (tipo === 'apertura') {
+            html += `<div style="background:var(--surface);border:1px solid #6ee7b744;border-left:3px solid #6ee7b7;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
+                  <span style="font-size:14px;">🟢</span>
+                  <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                  <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+                  <span style="font-size:12px;color:var(--text-muted);">Apertura de caja</span>
+                </div>
+              </div>
+            </div>`;
+
+          } else if (tipo === 'cierre') {
+            const arq = ev.arqueo;
+            const difTxt = arq ? (arq.diferencia > 0 ? `⚠️ Sobrante ${fmtARS(Math.abs(arq.diferencia))}` : `🚨 Faltante ${fmtARS(Math.abs(arq.diferencia))}`) : '';
+            const difColor = arq ? (arq.diferencia > 0 ? '#fbbf24' : '#ff5a5a') : '';
+            if (arq) totalAlertas++;
+            html += `<div style="background:var(--surface);border:1px solid #ff5a5a44;border-left:3px solid #ff5a5a;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
+                  <span style="font-size:14px;">🔴</span>
+                  <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
+                  <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
+                  <span style="font-size:12px;color:var(--text-muted);">Cierre de caja</span>
+                </div>
+                ${arq ? `<span style="background:${difColor}22;color:${difColor};border:1px solid ${difColor}44;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">${difTxt}</span>` : ''}
+              </div>
+              ${arq ? `<div style="margin-top:4px;font-size:11px;color:var(--text-muted);">Declarado: ${fmtARS(arq.total_declarado||0)} · Sistema: ${fmtARS(arq.total_sistema||0)}</div>` : ''}
             </div>`;
           }
-        });
-
-        // Cancelaciones sin venta
-        grupo.cancels.forEach(c => {
-          const pdvNombre = pdvMap[String(c.pdv_id)] || c.pdv_id || '?';
-          const opNombre = userMap[c.username] || c.username || '?';
-          const hora = fmtHora(c.created_at);
-          const items = Array.isArray(c.items) ? c.items.slice(0,3).map(i=>(i.prod_nombre||'?')).join(', ') : '';
-          totalAlertas++;
-          html += `<div style="background:var(--surface);border:1px solid #ff5a5a44;border-left:3px solid #ff5a5a;border-radius:8px;padding:10px 14px;margin-bottom:6px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-              <div style="display:flex;gap:10px;align-items:center;">
-                <span style="font-family:var(--mono);font-size:13px;color:var(--text-muted);">${hora}</span>
-                <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
-                <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <span style="background:#ff5a5a22;color:#ff5a5a;border:1px solid #ff5a5a44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">🚨 Cancelación</span>
-                <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:#ff5a5a;">${fmtARS(c.total||0)}</span>
-              </div>
-            </div>
-            ${items ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted);">${items}${c.monto_cliente>0?' · cliente entregó '+fmtARS(c.monto_cliente):''}</div>` : ''}
-          </div>`;
-        });
-
-        // Arqueos con diferencia
-        grupo.arqueos.forEach(a => {
-          const pdvNombre = pdvMap[String(a.pdv_id)] || a.pdv_id || '?';
-          const opNombre = userMap[a.username] || a.username || '?';
-          const dif = a.diferencia || 0;
-          const color = dif > 0 ? '#fbbf24' : '#ff5a5a';
-          const label = dif > 0 ? '⚠️ Sobrante' : '🚨 Faltante';
-          totalAlertas++;
-          html += `<div style="background:var(--surface);border:1px solid ${color}44;border-left:3px solid ${color};border-radius:8px;padding:10px 14px;margin-bottom:6px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-              <div style="display:flex;gap:10px;align-items:center;">
-                <span style="font-size:13px;font-weight:700;">${pdvNombre}</span>
-                <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
-                <span style="font-size:12px;color:var(--text-muted);">Arqueo cierre</span>
-              </div>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <span style="background:${color}22;color:${color};border:1px solid ${color}44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${label} ${fmtARS(Math.abs(dif))}</span>
-              </div>
-            </div>
-          </div>`;
         });
 
         html += '</div>';
       });
 
-      // Header con total alertas
+      const conteo = { venta: 0, cancelacion: 0, buzon: 0, gasto: 0, apertura: 0, cierre: 0 };
+      eventos.forEach(e => { if (conteo[e.tipo] !== undefined) conteo[e.tipo]++; });
+      const resumen = [
+        conteo.venta ? `🛒 ${conteo.venta} ventas` : '',
+        conteo.cancelacion ? `❌ ${conteo.cancelacion} cancelaciones` : '',
+        conteo.buzon ? `📬 ${conteo.buzon} buzones` : '',
+        conteo.gasto ? `💸 ${conteo.gasto} gastos` : '',
+        conteo.apertura ? `🟢 ${conteo.apertura} aperturas` : '',
+        conteo.cierre ? `🔴 ${conteo.cierre} cierres` : ''
+      ].filter(Boolean).join(' · ');
+
       const headerHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-        <div style="font-size:13px;color:var(--text-muted);">${ticketOrder.length} tickets · ${totalAlertas > 0 ? `<span style="color:#ff5a5a;font-weight:700;">${totalAlertas} alertas</span>` : '<span style="color:#6ee7b7;">sin alertas</span>'}</div>
+        <div style="font-size:12px;color:var(--text-muted);">${resumen}</div>
+        ${totalAlertas > 0 ? `<span style="color:#ff5a5a;font-weight:700;font-size:13px;">⚠️ ${totalAlertas} alertas</span>` : '<span style="color:#6ee7b7;font-size:13px;">✅ Sin alertas</span>'}
       </div>`;
 
       body.innerHTML = headerHtml + (html || '<div class="empty-state">📋<p>Sin movimientos.</p></div>');
@@ -20214,7 +20303,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
     }
   }
 
-    // Alerta al admin cuando hay arqueo con diferencia
+        // Alerta al admin cuando hay arqueo con diferencia
   window._notificarArqueoAdmin = function(data) {
     if (currentUser?.role !== 'admin') return;
     const sign = data.diferencia > 0 ? 'Sobrante' : 'Faltante';
