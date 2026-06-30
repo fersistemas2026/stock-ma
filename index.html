@@ -1447,6 +1447,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <select id="audit-filtro-tipo" onchange="cargarAuditoria()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;">
               <option value="">Todos los eventos</option>
               <option value="venta">🛒 Ventas</option>
+              <option value="venta_desc">🏷️ Ventas con descuento</option>
               <option value="cancelacion">❌ Cancelaciones</option>
               <option value="buzon">📬 Buzón</option>
               <option value="gasto">💸 Egresos</option>
@@ -8943,6 +8944,22 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._tarjetaOnConfirm && window._tarjetaOnConfirm();
   }
 
+  // Calcula el total de la venta aplicando el descuento por cliente/voucher/promo vigente.
+  // Usa el mismo total ya calculado por ventasRenderTabla() (window._ventasTotalFinalDesc),
+  // que contempla descuento %, monto fijo y promos automáticas (2da unidad, lleva N paga M, etc).
+  function calcularTotalConDescuento() {
+    if (typeof window._ventasTotalFinalDesc === 'number') return window._ventasTotalFinalDesc;
+    // Fallback por si la tabla no llegó a renderizarse con descuento
+    const totalBase = _ventasItems.reduce((s,it) => s + parsePrecioAR(it.precio||0) * it.cant, 0);
+    if (window._ventasMontoFijo > 0 && totalBase > 0) {
+      return Math.max(0, totalBase - window._ventasMontoFijo);
+    }
+    if (window._ventasDescuento > 0) {
+      return totalBase * (1 - window._ventasDescuento / 100);
+    }
+    return totalBase;
+  }
+
   async function guardarVenta() {
     if (!_ventasItems.length) { toast('No hay ítems para guardar','error'); return; }
     const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
@@ -8968,7 +8985,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!window._ventaPaso) window._ventaPaso = 0;
 
     if (window._ventaPaso === 0) {
-      const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
+      const total = calcularTotalConDescuento();
       const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
       const metodoLabel = esEfectivo ? '💵 Efectivo' : esTarjeta ? '💳 Tarjeta' : esMixto ? '💵+💳 Mixto' : '💵 Efectivo';
       const metodoColor = esEfectivo ? '#4ade80' : esTarjeta ? '#8b5cf6' : esMixto ? '#0ea5e9' : '#4ade80';
@@ -8992,7 +9009,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // Paso 2: vuelto, tarjeta o mixto
     if (window._ventaPaso === 1) {
       if (esEfectivo) {
-        const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
+        const total = calcularTotalConDescuento();
         abrirModalVuelto(total, () => { window._ventaPaso = 2; guardarVenta(); });
         return;
       }
@@ -9001,7 +9018,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         return;
       }
       if (esMixto) {
-        const total = _ventasItems.reduce((s,i) => s + parsePrecioAR(i.precio) * i.cant, 0);
+        const total = calcularTotalConDescuento();
         abrirModalMixto(total, () => { window._ventaPaso = 2; guardarVenta(); });
         return;
       }
@@ -9027,32 +9044,51 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const clienteTelVenta = window._ventasClienteTelGuardar || (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
     const clienteNombreVenta = window._ventasClienteNombreGuardar || document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
     const ticketId = `${fecha}_${pdvId}_${Date.now()}`;
-    const rows = _ventasItems.map(item => ({
-      empresa_id: String(empresaActual),
-      pdv_id: String(pdvId),
-      fecha,
-      ticket_id: ticketId,
-      prod_id: item.prodId,
-      prod_nombre: item.prod,
-      gusto_id: item.gustoId,
-      gusto_nombre: item.gusto,
-      cantidad: item.cant,
-      precio: (() => {
-        const base = parsePrecioAR(item.precio||0);
-        const totalBase = _ventasItems.reduce((s,it)=>s+parsePrecioAR(it.precio||0)*it.cant,0);
-        if (window._ventasMontoFijo > 0 && totalBase > 0) {
-          return base * (1 - window._ventasMontoFijo/totalBase);
-        }
-        return window._ventasDescuento > 0 ? base * (1 - window._ventasDescuento/100) : base;
-      })(),
-      lista: lista === '4' ? 'Lista 4' : 'Lista '+lista,
-      metodo_pago: metodoPago,
-      monto_efectivo: metodoPago === 'mixto' ? (window._mixtoEfectivo || 0) : null,
-      monto_tarjeta: metodoPago === 'mixto' ? (window._mixtoTarjeta || 0) : null,
-      username: currentUser?.username || '',
-      cliente_tel: clienteTelVenta || null,
-      cliente_nombre: clienteNombreVenta || null
-    }));
+
+    // Motivo del descuento aplicado (si lo hay), para identificarlo luego en monitor/auditoría/informes
+    const descMotivo = window._ventasVoucherCodigo ? `Voucher ${window._ventasVoucherCodigo}`
+      : window._ventasDescuentoAutoNombre ? window._ventasDescuentoAutoNombre
+      : (window._ventasDescuento > 0 || window._ventasMontoFijo > 0) ? 'Descuento cliente'
+      : null;
+
+    const rows = _ventasItems.map((item, idx) => {
+      const precioLista = parsePrecioAR(item.precio||0);
+      const totalBase = _ventasItems.reduce((s,it)=>s+parsePrecioAR(it.precio||0)*it.cant,0);
+      let precioFinal = precioLista;
+      const promoItem = (window._ventasDescuentoAutoActivo && window._ventasPromosCalc && window._ventasPromosCalc[idx])
+        ? window._ventasPromosCalc[idx] : null;
+      if (promoItem && item.cant > 0) {
+        precioFinal = promoItem.subtotal / item.cant;
+      } else if (window._ventasMontoFijo > 0 && totalBase > 0) {
+        precioFinal = precioLista * (1 - window._ventasMontoFijo/totalBase);
+      } else if (window._ventasDescuento > 0) {
+        precioFinal = precioLista * (1 - window._ventasDescuento/100);
+      }
+      const descMontoItem = (precioLista - precioFinal) * item.cant;
+      return {
+        empresa_id: String(empresaActual),
+        pdv_id: String(pdvId),
+        fecha,
+        ticket_id: ticketId,
+        prod_id: item.prodId,
+        prod_nombre: item.prod,
+        gusto_id: item.gustoId,
+        gusto_nombre: item.gusto,
+        cantidad: item.cant,
+        precio: precioFinal,
+        precio_lista: precioLista,
+        descuento_pct: descMontoItem > 0 && precioLista > 0 ? +(100 * descMontoItem / (precioLista*item.cant)).toFixed(2) : 0,
+        descuento_monto: +descMontoItem.toFixed(2),
+        descuento_motivo: descMontoItem > 0 ? descMotivo : null,
+        lista: lista === '4' ? 'Lista 4' : 'Lista '+lista,
+        metodo_pago: metodoPago,
+        monto_efectivo: metodoPago === 'mixto' ? (window._mixtoEfectivo || 0) : null,
+        monto_tarjeta: metodoPago === 'mixto' ? (window._mixtoTarjeta || 0) : null,
+        username: currentUser?.username || '',
+        cliente_tel: clienteTelVenta || null,
+        cliente_nombre: clienteNombreVenta || null
+      };
+    });
 
     try {
       const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
@@ -9467,6 +9503,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     // ── Render filas ───────────────────────────────────────────────
     // Pre-calcular promos UNA SOLA VEZ para evitar recalcular con flags ya consumidos
     const _promosCalc = _ventasItems.map(function(item) { return calcItemPromo(item); });
+    window._ventasPromosCalc = _promosCalc; // expuesto para usar el detalle de descuento por ítem al guardar
 
     tbody.innerHTML = _ventasItems.map(function(item, i) {
       const precio = ventasParsePrecio(item.precio);
@@ -9523,6 +9560,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     const hayDesc = totalFinalDesc < grandTotal - 0.001;
     const ahorroTotal = grandTotal - totalFinalDesc;
+    window._ventasTotalFinalDesc = totalFinalDesc; // expuesto para usar el mismo total (con descuento) al cobrar/dar vuelto
 
     const listaLabel = document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex]&&document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex].text||'';
 
@@ -9572,6 +9610,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     selDocTipo('venta');
     _ventasItems = [];
     window._ventasDescuento = 0;
+    window._ventasTotalFinalDesc = undefined;
     window._ventasDescuentoAutoActivo = false;
     window._ventasDescuentoAutoNombre = '';
     window._ventasDescuentoAutoData = null;
@@ -10437,6 +10476,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const totalTj = ventas.filter(v=>(v.metodo_pago||'').includes('tarjeta')||v.metodo_pago==='transferencia').reduce((s,v)=>(s+(v.precio||0)*(v.cantidad||0)),0);
       const totalEf = grandTotal - totalTj;
 
+      // Ventas con descuento (por ticket, no por línea, para no duplicar)
+      const ticketsConDescMap = {};
+      ventas.forEach(v => {
+        if ((v.descuento_monto||0) > 0) {
+          const tk = v.ticket_id || `${v.username}_${v.created_at}`;
+          ticketsConDescMap[tk] = (ticketsConDescMap[tk]||0) + (v.descuento_monto||0);
+        }
+      });
+      const cantVentasConDesc = Object.keys(ticketsConDescMap).length;
+      const totalDescuentoMonto = Object.values(ticketsConDescMap).reduce((s,m)=>s+m,0);
+
       // Agrupar por ticket (minuto+operador) para contar transacciones
       const tickets = new Set(ventas.map(v=>{
         const ts = new Date(v.created_at);
@@ -10467,6 +10517,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Operadores</div>
             <div style="font-size:22px;font-weight:900;font-family:var(--mono);color:var(--text);">${pdvsConVentas.length}</div>
           </div>
+          ${cantVentasConDesc > 0 ? `<div style="flex:1;min-width:140px;background:var(--surface);border:1px solid #facc15;border-radius:10px;padding:14px 16px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">🏷️ Con descuento</div>
+            <div style="font-size:22px;font-weight:900;font-family:var(--mono);color:#facc15;">${cantVentasConDesc}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">-$${totalDescuentoMonto.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          </div>` : ''}
         </div>
 
         <!-- Ventas por PDV en columnas -->
@@ -10478,10 +10533,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         data.ventas.forEach(v => {
           const ts = new Date(v.created_at);
           const hora = ts.toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false});
-          const key = (v.username||'')+'_'+hora;
-          if (!ticketsMap[key]) ticketsMap[key] = { hora, ts: ts.getTime(), op: userMap[v.username]||v.username||'—', metodo: v.metodo_pago, total: 0, items: [] };
+          const key = v.ticket_id || ((v.username||'')+'_'+hora);
+          if (!ticketsMap[key]) ticketsMap[key] = { hora, ts: ts.getTime(), op: userMap[v.username]||v.username||'—', metodo: v.metodo_pago, total: 0, items: [], descMonto: 0, descMotivo: '' };
           ticketsMap[key].total += (v.precio||0)*(v.cantidad||1);
           ticketsMap[key].items.push(v.prod_nombre||'');
+          if ((v.descuento_monto||0) > 0) {
+            ticketsMap[key].descMonto += v.descuento_monto;
+            ticketsMap[key].descMotivo = v.descuento_motivo || ticketsMap[key].descMotivo;
+          }
         });
         const tickets = Object.values(ticketsMap).sort((a,b) => b.ts - a.ts);
 
@@ -10500,6 +10559,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             ${tickets.map(t => `<div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border);font-size:13px;">
               <span style="font-family:var(--mono);color:var(--text-muted);min-width:38px;font-size:12px;">${t.hora}</span>
               <span style="font-weight:600;color:var(--text);flex:1;">${t.op}</span>
+              ${t.descMonto > 0 ? `<span title="${t.descMotivo||'Descuento'} (-$${t.descMonto.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})})" style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(250,204,21,.15);color:#facc15;">🏷️</span>` : ''}
               <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${(t.metodo||'').includes('tarjeta')||t.metodo==='transferencia'?'rgba(147,197,253,.15)':'rgba(110,231,183,.15)'};color:${(t.metodo||'').includes('tarjeta')||t.metodo==='transferencia'?'#93c5fd':'#6ee7b7'};">${(t.metodo||'').includes('tarjeta')?'💳':(t.metodo==='transferencia'?'📲':'💵')}</span>
               <span style="font-family:var(--mono);font-weight:700;color:var(--accent);">$${t.total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             </div>`).join('')}
@@ -16074,7 +16134,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
     try {
       const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas] = await Promise.all([
-        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,cliente_tel,ticket_id,created_at&limit=200000`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,cliente_tel,ticket_id,created_at,descuento_monto,descuento_motivo&limit=200000`) || [],
         getPdv(),
         sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,pdv_id,telefono,created_at&order=created_at.asc&limit=50000`) || [],
         sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto,created_at`) || [],
@@ -16290,6 +16350,26 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const pctConvPed = visitasPed > 0 ? Math.round(convPed / visitasPed * 100) : 0;
           const pctConvMay = visitasMay > 0 ? Math.round(convMay / visitasMay * 100) : 0;
 
+          // ── Ventas con descuento (por ticket, agrupando líneas) ──
+          const ticketsDescMap = {};
+          vts.forEach(v => {
+            if ((v.descuento_monto||0) > 0) {
+              const tk = v.ticket_id || `${v.created_at}_${v.cliente_tel||''}`;
+              if (!ticketsDescMap[tk]) ticketsDescMap[tk] = { monto: 0, total: 0 };
+              ticketsDescMap[tk].monto += v.descuento_monto;
+              ticketsDescMap[tk].total += (v.precio||0)*(v.cantidad||1);
+            }
+          });
+          const cantVentasDesc = Object.keys(ticketsDescMap).length;
+          const totalDescuentoMonto = Object.values(ticketsDescMap).reduce((s,t)=>s+t.monto, 0);
+          const facturacionConDesc = Object.values(ticketsDescMap).reduce((s,t)=>s+t.total, 0);
+          const pctVentasConDesc = clientesUnicos > 0 ? Math.round(cantVentasDesc / clientesUnicos * 100) : 0;
+
+          // ── Promedio de venta por cliente identificado (con teléfono cargado) ──
+          const ticketsConCliente = new Set(vts.filter(v=>v.cliente_tel && v.ticket_id).map(v=>v.ticket_id));
+          const facturacionConCliente = vts.filter(v=>v.cliente_tel).reduce((s,v)=>s+(v.precio||0)*(v.cantidad||1),0);
+          const promVentaPorCliente = ticketsConCliente.size > 0 ? facturacionConCliente / ticketsConCliente.size : 0;
+
           return { facturacion, clientesUnicos, ticketProm, efectivo, noEfectivo, pctEf, pctNoEf, txEf, txNoEf, pctTxEf, pctTxNoEf, top5,
             cl_manana: tickets_manana.size, cl_tarde: tickets_tarde.size,
             fac_manana, fac_tarde, prom_manana, prom_tarde,
@@ -16297,7 +16377,9 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             pctEf_m, pctNoEf_m, pctEf_t, pctNoEf_t,
             buzon_manana, buzon_tarde,
             clsNuevos, clsConCompra, clsPromCompra, clsRecompra,
-            visitasTotal, visitasPed, visitasMay, convPed, convMay, pctConvPed, pctConvMay };
+            visitasTotal, visitasPed, visitasMay, convPed, convMay, pctConvPed, pctConvMay,
+            cantVentasDesc, totalDescuentoMonto, facturacionConDesc, pctVentasConDesc,
+            ticketsConClienteCant: ticketsConCliente.size, promVentaPorCliente };
         };
 
         const fmtARS = n => '$'+Math.round(n).toLocaleString('es-AR');
@@ -16408,6 +16490,32 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                   + '<div style="font-size:22px;font-weight:800;color:#38bdf8;">' + m.clsRecompra + '</div>'
                   + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">recompraron</div>'
                   + (m.clsConCompra > 0 ? '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">' + Math.round(m.clsRecompra/m.clsConCompra*100) + '% de quienes compraron</div>' : '')
+                + '</div>'
+                + '</div>'
+              + '</div>'
+              : '')
+            // ── Bloque: Ventas con descuento ──
+            + (m.cantVentasDesc > 0
+              ? '<div style="margin-top:16px;background:rgba(250,204,21,.07);border:1px solid rgba(250,204,21,.2);border-radius:10px;padding:14px;">'
+                + '<div style="font-size:13px;font-weight:700;color:#facc15;margin-bottom:12px;">🏷️ Ventas con descuento</div>'
+                + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:22px;font-weight:800;color:#facc15;">' + m.cantVentasDesc + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">ventas con descuento</div>'
+                  + '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">' + m.pctVentasConDesc + '% de las transacciones</div>'
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:18px;font-weight:800;color:#ff5a5a;">-' + fmtARS(m.totalDescuentoMonto) + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">total descontado</div>'
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:18px;font-weight:800;color:#4ade80;">' + fmtARS(m.facturacionConDesc) + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">facturado con descuento</div>'
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:18px;font-weight:800;color:#38bdf8;">' + (m.ticketsConClienteCant > 0 ? fmtARS(m.promVentaPorCliente) : '—') + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">prom. venta por cliente</div>'
+                  + '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">' + m.ticketsConClienteCant + ' ventas con tel. cargado</div>'
                 + '</div>'
                 + '</div>'
               + '</div>'
@@ -20077,7 +20185,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       const [cancels, arqueos, ventas, pdvs, usuarios, buzonRows, gastosRows, turnosRows] = await Promise.all([
         sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
         sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
-        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at&order=created_at.desc`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,ticket_id,prod_nombre,metodo_pago,precio,cantidad,created_at,descuento_monto,descuento_motivo&order=created_at.desc`) || [],
         getPdv(),
         sbApi(`usuarios?select=username,display_name`) || [],
         sbApi(`buzon_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&order=created_at.desc&select=*`) || [],
@@ -20139,11 +20247,15 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       (ventas||[]).forEach(v => {
         const key = v.ticket_id || `${v.created_at}_${v.pdv_id}_${v.username}`;
         if (!ticketMap[key]) {
-          ticketMap[key] = { key, pdv_id: v.pdv_id, username: v.username, created_at: v.created_at, metodo: v.metodo_pago, items: [], total: 0, tipo: 'venta' };
+          ticketMap[key] = { key, pdv_id: v.pdv_id, username: v.username, created_at: v.created_at, metodo: v.metodo_pago, items: [], total: 0, tipo: 'venta', descMonto: 0, descMotivo: '' };
           ticketOrder.push(key);
         }
         ticketMap[key].items.push(v.prod_nombre || '?');
         ticketMap[key].total += (v.precio||0) * (v.cantidad||1);
+        if ((v.descuento_monto||0) > 0) {
+          ticketMap[key].descMonto += v.descuento_monto;
+          ticketMap[key].descMotivo = v.descuento_motivo || ticketMap[key].descMotivo;
+        }
       });
 
       // Construir lista unificada de eventos
@@ -20185,7 +20297,11 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
 
       // Aplicar filtros
       if (filtroPdv) eventos = eventos.filter(e => e.pdv_id === filtroPdv);
-      if (filtroTipo) eventos = eventos.filter(e => e.tipo === filtroTipo);
+      if (filtroTipo === 'venta_desc') {
+        eventos = eventos.filter(e => e.tipo === 'venta' && (e.data.descMonto||0) > 0);
+      } else if (filtroTipo) {
+        eventos = eventos.filter(e => e.tipo === filtroTipo);
+      }
 
       // Ordenar desc por timestamp
       eventos.sort((a, b) => b.ts - a.ts);
@@ -20232,6 +20348,9 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
             if (tieneVarios) alertas.push({ label: '⚠️ Producto "Varios"', color: '#fbbf24' });
             if (tieneCancelPrev) motivosSospecha(cancelMap[cancelKey], tk.total).forEach(m => alertas.push(m));
             if (alertas.length) totalAlertas++;
+            const descBadge = tk.descMonto > 0
+              ? `<span title="${tk.descMotivo||'Descuento'}" style="background:#facc1522;color:#facc15;border:1px solid #facc1544;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">🏷️ -${fmtARS(tk.descMonto)}</span>`
+              : '';
 
             if (alertas.length) {
               const badges = alertas.map(e => `<span style="background:${e.color}22;color:${e.color};border:1px solid ${e.color}44;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${e.label}</span>`).join(' ');
@@ -20243,7 +20362,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
                     <span style="font-size:13px;color:var(--text-muted);">${opNombre}</span>
                     <span style="font-size:14px;">${metodo}</span>
                   </div>
-                  <div style="display:flex;gap:8px;align-items:center;">${badges}
+                  <div style="display:flex;gap:8px;align-items:center;">${badges}${descBadge}
                     <span style="font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);">${total}</span>
                   </div>
                 </div>
@@ -20257,6 +20376,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
                   <span>${pdvNombre}</span>
                   <span>${opNombre}</span>
                   <span>${metodo}</span>
+                  ${descBadge}
                   <span style="opacity:.6;">${tk.items.slice(0,3).join(', ')}${tk.items.length>3?' +'+(tk.items.length-3):''}</span>
                 </div>
                 <span style="font-family:var(--mono);font-size:12px;color:var(--text-muted);white-space:nowrap;">${total}</span>
