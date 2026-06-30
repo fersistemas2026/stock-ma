@@ -12219,7 +12219,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&order=created_at.desc&select=*`) || [],
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&para=eq.${currentUser.username}&order=created_at.desc&select=*`) || []
       ]);
-      const normTS = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+      const normTS = s => { if(!s)return null; let t=String(s).trim().replace(' ','T'); t=t.replace(/([+-]\d{2})$/,'$1:00'); if(t.endsWith('Z')||/[+-]\d{2}:\d{2}$/.test(t)) return t; return t+'Z'; };
       const ahoraMC = new Date();
       const noExpirado = m => {
         if (currentUser.role === 'admin') return true;
@@ -12328,19 +12328,18 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     const { interlocutor } = _mcChatActual;
     const cont = document.getElementById('mc-chat-mensajes');
     if (!cont) return;
-    const normTS = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+    const normTS = s => { if(!s)return null; let t=String(s).trim().replace(' ','T'); t=t.replace(/([+-]\d{2})$/,'$1:00'); if(t.endsWith('Z')||/[+-]\d{2}:\d{2}$/.test(t)) return t; return t+'Z'; };
     try {
       const [env, rec] = await Promise.all([
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${currentUser.username}&para=eq.${interlocutor}&order=created_at.asc&select=*`) || [],
         sbApi(`mensajes?empresa_id=eq.${empresaActual}&desde=eq.${interlocutor}&para=eq.${currentUser.username}&order=created_at.asc&select=*`) || []
       ]);
       const ahora = new Date();
-      const normExp = s => { if(!s)return null; let t=s.replace(' ','T'); if(!t.endsWith('Z'))t=t.replace(/\\.\\d+$/,'')+'Z'; return t; };
       // Operadores no ven mensajes expirados; admin ve todo
       const filtrarPorExpiracion = (m) => {
         if (currentUser.role === 'admin') return true;
         if (!m.expira_at) return true; // sin expiración = permanente (mensajes viejos)
-        return new Date(normExp(m.expira_at)) > ahora;
+        return new Date(normTS(m.expira_at)) > ahora;
       };
       const todos = [...(env||[]),...(rec||[])].sort((a,b)=>new Date(normTS(a.created_at))-new Date(normTS(b.created_at))).filter(filtrarPorExpiracion);
       cont.innerHTML = todos.slice(-50).map(m => {
@@ -12391,7 +12390,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         if (ind && _mcChatActual) {
           const activo = typing.find(t => t.desde === _mcChatActual.interlocutor);
           if (activo) {
-            const ts = new Date(activo.updated_at.replace(' ','T').replace(/\.\d+$/,'')+'Z').getTime();
+            const tsRaw = String(activo.updated_at).trim().replace(' ','T').replace(/([+-]\d{2})$/,'$1:00');
+            const ts = new Date(/Z$|[+-]\d{2}:\d{2}$/.test(tsRaw) ? tsRaw : tsRaw+'Z').getTime();
             if (Date.now() - ts < 5000) {
               ind.style.display = ''; ind.textContent = `${mcNombre(activo.desde)} está escribiendo...`;
             } else { ind.style.display = 'none'; }
