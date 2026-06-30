@@ -16323,12 +16323,24 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const pctEf_t  = fac_tarde  > 0 ? Math.round(ef_tarde/fac_tarde*100)   : 0;
           const pctNoEf_t = 100 - pctEf_t;
 
+          // ── Clientes únicos con número cargado en el período ──
+          const clientesConTel = {};
+          vts.forEach(v => {
+            const tel = (v.cliente_tel||'').replace(/[^0-9]/g,'');
+            if (!tel) return;
+            if (!clientesConTel[tel]) clientesConTel[tel] = new Set();
+            if (v.ticket_id) clientesConTel[tel].add(v.ticket_id);
+          });
+          const clsTelUnicos = Object.keys(clientesConTel).length;
+          const clsRecompra = Object.values(clientesConTel).filter(tks => tks.size > 1).length;
+          const clsRecompraPct = clsTelUnicos > 0 ? Math.round(clsRecompra / clsTelUnicos * 100) : 0;
+
           // ── Clientes nuevos incorporados en el período ──
           const clsFiltrados = pdvId === 'all'
             ? clientes
             : clientes.filter(c => String(c.pdv_id) === String(pdvId));
           const clsNuevos = clsFiltrados.length;
-          let clsConCompra = 0, clsGastado = 0, clsRecompra = 0;
+          let clsConCompra = 0, clsGastado = 0;
           clsFiltrados.forEach(c => {
             const tel = (c.telefono||'').replace(/[^0-9]/g,'');
             if (!tel) return;
@@ -16336,7 +16348,6 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             if (!vd) return;
             clsConCompra++;
             clsGastado += vd.total;
-            if (vd.fechas.size > 1) clsRecompra++;
           });
           const clsPromCompra = clsConCompra > 0 ? clsGastado / clsConCompra : 0;
 
@@ -16379,7 +16390,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             clsNuevos, clsConCompra, clsPromCompra, clsRecompra,
             visitasTotal, visitasPed, visitasMay, convPed, convMay, pctConvPed, pctConvMay,
             cantVentasDesc, totalDescuentoMonto, facturacionConDesc, pctVentasConDesc,
-            ticketsConClienteCant: ticketsConCliente.size, promVentaPorCliente };
+            ticketsConClienteCant: ticketsConCliente.size, promVentaPorCliente,
+            clsTelUnicos, clsRecompra, clsRecompraPct };
         };
 
         const fmtARS = n => '$'+Math.round(n).toLocaleString('es-AR');
@@ -16486,10 +16498,27 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                   + '<div style="font-size:18px;font-weight:800;color:#f97316;">' + (m.clsConCompra > 0 ? fmtARS(m.clsPromCompra) : '—') + '</div>'
                   + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">prom de compra</div>'
                 + '</div>'
+                + '</div>'
+              + '</div>'
+              : '')
+            // ── Bloque: Recompra ──
+            + (m.clsTelUnicos > 0
+              ? '<div style="margin-top:16px;background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.2);border-radius:10px;padding:14px;">'
+                + '<div style="font-size:13px;font-weight:700;color:#38bdf8;margin-bottom:12px;">🔄 Recompra en el período</div>'
+                + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;">'
                 + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
-                  + '<div style="font-size:22px;font-weight:800;color:#38bdf8;">' + m.clsRecompra + '</div>'
+                  + '<div style="font-size:22px;font-weight:800;color:#38bdf8;">' + m.clsTelUnicos + '</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">clientes identificados</div>'
+                  + '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">con número cargado</div>'
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:22px;font-weight:800;color:#4ade80;">' + m.clsRecompra + '</div>'
                   + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">recompraron</div>'
-                  + (m.clsConCompra > 0 ? '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">' + Math.round(m.clsRecompra/m.clsConCompra*100) + '% de quienes compraron</div>' : '')
+                  + '<div style="font-size:10px;color:var(--text-dim);margin-top:1px;">2+ visitas en el período</div>'
+                + '</div>'
+                + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                  + '<div style="font-size:22px;font-weight:800;color:#facc15;">' + m.clsRecompraPct + '%</div>'
+                  + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">tasa de recompra</div>'
                 + '</div>'
                 + '</div>'
               + '</div>'
@@ -20234,8 +20263,12 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
         }
         if (cancelaciones.length > 1) motivos.push({ label: `🟡 ${cancelaciones.length} cancelaciones sin repasar`, color: '#fbbf24' });
         if (ticketTotal > 0) {
-          const cancelMayor = cancelaciones.find(c => (c.total||0) > ticketTotal * 1.1);
-          if (cancelMayor) motivos.push({ label: `🟡 Canceló ${fmtARS(cancelMayor.total)} vendió ${fmtARS(ticketTotal)}`, color: '#fbbf24' });
+          // Sanitizar total: si es absurdamente mayor que el ticket (>100x) ignorar ese registro corrupto
+          const cancelMayor = cancelaciones.find(c => {
+            const ct = parseFloat(c.total||0);
+            return ct > ticketTotal * 1.1 && ct < ticketTotal * 100;
+          });
+          if (cancelMayor) motivos.push({ label: `🟡 Canceló ${fmtARS(parseFloat(cancelMayor.total))} vendió ${fmtARS(ticketTotal)}`, color: '#fbbf24' });
         }
         if (!motivos.length) motivos.push({ label: '🚨 Cancelación previa sin repasar', color: '#ff5a5a' });
         return motivos;
