@@ -335,6 +335,11 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
         <div id="receta-rows"></div>
         <button class="btn-outline btn-sm" onclick="agregarFilaReceta()" style="margin-top:8px">+ Agregar insumo</button>
         <div class="total-row"><span class="label">Costo total (receta)</span><span class="value" id="receta-total">$0,00</span></div>
+        <div id="copiar-receta-wrap" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+          <label>Copiar esta lista de insumos (sin cantidades) a otros sabores</label>
+          <div id="copiar-receta-checks" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"></div>
+          <button class="btn-outline btn-sm" onclick="copiarRecetaAOtrosSabores()">📋 Copiar insumos a los sabores marcados</button>
+        </div>
       </div>
     </div>
     <div class="form-actions" style="padding:0 24px 22px 0">
@@ -1219,6 +1224,18 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     _recetaRowsTmp = _recetas.filter(r => String(r.prod_id) === String(prodId) && String(r.gusto_id||'') === String(gustoId))
       .map(r => ({ id: uid(), insumo_id: String(r.insumo_id), cantidad: r.cantidad }));
     if (!_recetaRowsTmp.length) _recetaRowsTmp = [{ id: uid(), insumo_id: '', cantidad: '' }];
+
+    // Otros sabores del mismo producto, para poder copiarles la receta
+    const otrosSabores = (p.gustos||[]).filter(x => String(x.id) !== String(gustoId));
+    const copiarWrap = document.getElementById('copiar-receta-wrap');
+    if (otrosSabores.length) {
+      document.getElementById('copiar-receta-checks').innerHTML = otrosSabores.map(x => `
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;font-family:var(--font);text-transform:none;letter-spacing:0;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;">
+          <input type="checkbox" value="${x.id}" class="copiar-sabor-check"> ${x.nombre}
+        </label>`).join('');
+    } else {
+      copiarWrap.style.display = 'none';
+    }
     onCambioTipoCosto();
     renderFilasReceta();
     document.getElementById('modal-costo').classList.add('open');
@@ -1230,6 +1247,9 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     const tipo = document.getElementById('costo-tipo').value;
     document.getElementById('costo-manual-wrap').style.display = tipo === 'manual' ? '' : 'none';
     document.getElementById('costo-receta-wrap').style.display = tipo === 'receta' ? '' : 'none';
+    const copiarWrap = document.getElementById('copiar-receta-wrap');
+    const hayChecks = document.getElementById('copiar-receta-checks').children.length > 0;
+    copiarWrap.style.display = (tipo === 'receta' && hayChecks) ? '' : 'none';
   }
 
   function agregarFilaReceta() {
@@ -1274,6 +1294,30 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
   function actualizarTotalReceta() {
     const total = _recetaRowsTmp.reduce((s,r) => s + subtotalFilaReceta(r), 0);
     document.getElementById('receta-total').textContent = fmtMoney(total);
+  }
+
+  async function copiarRecetaAOtrosSabores() {
+    const prodId = document.getElementById('costo-prod-id').value;
+    const seleccionados = Array.from(document.querySelectorAll('.copiar-sabor-check:checked')).map(el => el.value);
+    if (!seleccionados.length) { toast('Marcá al menos un sabor para copiar', 'error'); return; }
+    const insumoIds = _recetaRowsTmp.filter(r => r.insumo_id).map(r => r.insumo_id);
+    if (!insumoIds.length) { toast('Agregá al menos un insumo antes de copiar', 'error'); return; }
+    try {
+      for (const gId of seleccionados) {
+        const existenteCfg = _costos.find(c => String(c.prod_id) === String(prodId) && String(c.gusto_id||'') === String(gId));
+        const payloadCfg = { empresa_id: String(empresaActual), prod_id: String(prodId), gusto_id: String(gId), tipo_costo: 'receta', costo_manual: existenteCfg?.costo_manual || 0, updated_at: new Date().toISOString() };
+        if (existenteCfg) await sbApi(`productos_costo?id=eq.${existenteCfg.id}`, {method:'PATCH', body:JSON.stringify(payloadCfg)});
+        else await sbApi('productos_costo', {method:'POST', body:JSON.stringify(payloadCfg)});
+
+        await sbApi(`productos_receta?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}&gusto_id=eq.${gId}`, {method:'DELETE'});
+        const filas = insumoIds.map(insId => ({ empresa_id: String(empresaActual), prod_id: String(prodId), gusto_id: String(gId), insumo_id: insId, cantidad: 0 }));
+        await sbApi('productos_receta', {method:'POST', body:JSON.stringify(filas)});
+      }
+      toast(`✓ Insumos copiados a ${seleccionados.length} sabor(es) — completá las cantidades en cada uno`);
+      document.querySelectorAll('.copiar-sabor-check:checked').forEach(el => el.checked = false);
+      await cargarCostos();
+      renderCostos();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
   }
 
   async function guardarCosto() {
