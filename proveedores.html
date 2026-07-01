@@ -334,7 +334,21 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
         </div>
         <div id="receta-rows"></div>
         <button class="btn-outline btn-sm" onclick="agregarFilaReceta()" style="margin-top:8px">+ Agregar insumo</button>
-        <div class="total-row"><span class="label">Costo total (receta)</span><span class="value" id="receta-total">$0,00</span></div>
+        <div style="display:flex;align-items:flex-end;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+          <div class="form-group" style="max-width:140px">
+            <label>Esta receta rinde</label>
+            <input type="number" id="receta-rinde-cantidad" step="0.01" placeholder="1" oninput="actualizarTotalReceta()">
+          </div>
+          <div class="form-group" style="max-width:140px">
+            <label>Unidad</label>
+            <select id="receta-rinde-unidad" onchange="actualizarTotalReceta()">
+              <option value="unidad">Unidades</option>
+              <option value="kg">Kg</option>
+            </select>
+          </div>
+        </div>
+        <div class="total-row"><span class="label">Costo total del lote</span><span class="value" id="receta-total">$0,00</span></div>
+        <div class="total-row" style="border-top:none;padding-top:0"><span class="label">Costo unitario</span><span class="value" id="receta-unitario" style="color:var(--text)">$0,00</span></div>
         <div id="copiar-receta-wrap" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
           <label>Copiar esta lista de insumos (sin cantidades) a otros sabores</label>
           <div id="copiar-receta-checks" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0"></div>
@@ -1136,10 +1150,12 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     if (!cfg) return 0;
     if (cfg.tipo_costo === 'receta') {
       const filas = _recetas.filter(r => String(r.prod_id) === String(prodId) && String(r.gusto_id||'') === String(gustoId||''));
-      return filas.reduce((sum, r) => {
+      const totalLote = filas.reduce((sum, r) => {
         const ins = _insumos.find(i => String(i.id) === String(r.insumo_id));
         return sum + (Number(r.cantidad)||0) * (Number(ins?.precio_ultimo)||0);
       }, 0);
+      const rinde = Number(cfg.rinde_cantidad) || 1;
+      return totalLote / rinde;
     }
     return Number(cfg.costo_manual) || 0;
   }
@@ -1221,6 +1237,8 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     const cfg = _costos.find(c => String(c.prod_id) === String(prodId) && String(c.gusto_id||'') === String(gustoId));
     document.getElementById('costo-tipo').value = cfg?.tipo_costo || 'manual';
     document.getElementById('costo-manual-valor').value = cfg?.costo_manual || '';
+    document.getElementById('receta-rinde-cantidad').value = cfg?.rinde_cantidad || 1;
+    document.getElementById('receta-rinde-unidad').value = cfg?.rinde_unidad || 'unidad';
     _recetaRowsTmp = _recetas.filter(r => String(r.prod_id) === String(prodId) && String(r.gusto_id||'') === String(gustoId))
       .map(r => ({ id: uid(), insumo_id: String(r.insumo_id), cantidad: r.cantidad }));
     if (!_recetaRowsTmp.length) _recetaRowsTmp = [{ id: uid(), insumo_id: '', cantidad: '' }];
@@ -1294,6 +1312,9 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
   function actualizarTotalReceta() {
     const total = _recetaRowsTmp.reduce((s,r) => s + subtotalFilaReceta(r), 0);
     document.getElementById('receta-total').textContent = fmtMoney(total);
+    const rinde = parseFloat(document.getElementById('receta-rinde-cantidad').value) || 1;
+    const unidad = document.getElementById('receta-rinde-unidad').value === 'kg' ? 'kg' : 'un.';
+    document.getElementById('receta-unitario').textContent = fmtMoney(total / rinde) + ' /' + unidad;
   }
 
   async function copiarRecetaAOtrosSabores() {
@@ -1325,9 +1346,11 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     const gustoId = document.getElementById('costo-gusto-id').value || '';
     const tipo = document.getElementById('costo-tipo').value;
     const costoManual = parseFloat(document.getElementById('costo-manual-valor').value) || 0;
+    const rindeCantidad = parseFloat(document.getElementById('receta-rinde-cantidad').value) || 1;
+    const rindeUnidad = document.getElementById('receta-rinde-unidad').value;
     try {
       const existente = _costos.find(c => String(c.prod_id) === String(prodId) && String(c.gusto_id||'') === String(gustoId));
-      const payload = { empresa_id: String(empresaActual), prod_id: String(prodId), gusto_id: gustoId, tipo_costo: tipo, costo_manual: costoManual, updated_at: new Date().toISOString() };
+      const payload = { empresa_id: String(empresaActual), prod_id: String(prodId), gusto_id: gustoId, tipo_costo: tipo, costo_manual: costoManual, rinde_cantidad: rindeCantidad, rinde_unidad: rindeUnidad, updated_at: new Date().toISOString() };
       if (existente) await sbApi(`productos_costo?id=eq.${existente.id}`, {method:'PATCH', body:JSON.stringify(payload)});
       else await sbApi('productos_costo', {method:'POST', body:JSON.stringify(payload)});
 
