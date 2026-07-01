@@ -316,6 +316,7 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     <div class="modal-head"><h3 id="costo-modal-title">Costo de producto</h3><button class="modal-close" onclick="cerrarModalCosto()">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="costo-prod-id">
+      <input type="hidden" id="costo-gusto-id">
       <div class="form-group" style="margin-bottom:16px">
         <label>¿Cómo se calcula el costo?</label>
         <select id="costo-tipo" onchange="onCambioTipoCosto()">
@@ -1102,17 +1103,32 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
         const pid = String(r.prod_id);
         if (pid === '__config__' || pid.startsWith('SCHED_')) return;
         const arr = Array.isArray(r.datos) ? r.datos : [];
-        const precios = arr.map(d => parsePrecioAR(d.precio)).filter(n => n > 0);
-        if (precios.length) _preciosProd[pid] = precios.reduce((a,b)=>a+b,0) / precios.length;
+        arr.forEach(d => {
+          const precio = parsePrecioAR(d.precio);
+          if (precio > 0) _preciosProd[pid + '::' + String(d.gid)] = precio;
+        });
       });
     } catch(e) { toast('Error cargando costos: '+e.message, 'error'); }
   }
 
-  function costoDeProducto(prodId) {
-    const cfg = _costos.find(c => String(c.prod_id) === String(prodId));
+  // Filas visibles: una por cada combinación producto+sabor (o una sola si el producto no tiene sabores)
+  function filasCostos() {
+    const filas = [];
+    _productos.forEach(p => {
+      if (p.gustos && p.gustos.length) {
+        p.gustos.forEach(g => filas.push({ prodId: String(p.id), gustoId: String(g.id), nombre: p.nombre + ' - ' + g.nombre }));
+      } else {
+        filas.push({ prodId: String(p.id), gustoId: '', nombre: p.nombre });
+      }
+    });
+    return filas;
+  }
+
+  function costoDeFila(prodId, gustoId) {
+    const cfg = _costos.find(c => String(c.prod_id) === String(prodId) && String(c.gusto_id||'') === String(gustoId||''));
     if (!cfg) return 0;
     if (cfg.tipo_costo === 'receta') {
-      const filas = _recetas.filter(r => String(r.prod_id) === String(prodId));
+      const filas = _recetas.filter(r => String(r.prod_id) === String(prodId) && String(r.gusto_id||'') === String(gustoId||''));
       return filas.reduce((sum, r) => {
         const ins = _insumos.find(i => String(i.id) === String(r.insumo_id));
         return sum + (Number(r.cantidad)||0) * (Number(ins?.precio_ultimo)||0);
@@ -1123,24 +1139,25 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
 
   function renderCostos() {
     const tbody = document.getElementById('tbl-costos');
-    if (!_productos.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay productos cargados todavía</td></tr>'; return; }
-    tbody.innerHTML = _productos.map(p => {
-      const cfg = _costos.find(c => String(c.prod_id) === String(p.id));
+    const filas = filasCostos();
+    if (!filas.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay productos cargados todavía</td></tr>'; return; }
+    tbody.innerHTML = filas.map(f => {
+      const cfg = _costos.find(c => String(c.prod_id) === String(f.prodId) && String(c.gusto_id||'') === String(f.gustoId||''));
       const tipo = cfg?.tipo_costo === 'receta' ? 'Receta' : (cfg ? 'Manual' : '—');
-      const costo = costoDeProducto(p.id);
-      const precioFinal = _preciosProd[String(p.id)] || 0;
+      const costo = costoDeFila(f.prodId, f.gustoId);
+      const precioFinal = _preciosProd[f.prodId + '::' + f.gustoId] || 0;
       const precioSinIva = precioFinal ? precioFinal / (1 + (_ivaPct/100)) : 0;
       const mgDinero = precioFinal ? (precioFinal - costo) : 0;
       const mgPct = precioFinal ? (mgDinero / precioFinal * 100) : 0;
       return `<tr>
-        <td><b>${p.nombre}</b></td>
+        <td><b>${f.nombre}</b></td>
         <td>${tipo}</td>
         <td style="text-align:right">${fmtMoney(costo)}</td>
         <td style="text-align:right">${precioFinal ? fmtMoney(precioSinIva) : '—'}</td>
         <td style="text-align:right">${precioFinal ? fmtMoney(precioFinal) : '<span style="color:var(--text-dim)">Sin precio</span>'}</td>
         <td style="text-align:right;color:${mgDinero>=0?'var(--accent)':'var(--danger)'}">${precioFinal ? fmtMoney(mgDinero) : '—'}</td>
         <td style="text-align:right;color:${mgPct>=0?'var(--accent)':'var(--danger)'}">${precioFinal ? mgPct.toFixed(1)+'%' : '—'}</td>
-        <td><button class="btn-danger-outline" onclick="abrirModalCosto('${p.id}')" title="Configurar costo">✏️</button></td>
+        <td><button class="btn-danger-outline" onclick="abrirModalCosto('${f.prodId}','${f.gustoId}')" title="Configurar costo">✏️</button></td>
       </tr>`;
     }).join('');
   }
@@ -1158,15 +1175,18 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
 
   let _recetaRowsTmp = [];
 
-  function abrirModalCosto(prodId) {
+  function abrirModalCosto(prodId, gustoId) {
+    gustoId = gustoId || '';
     const p = _productos.find(x => String(x.id) === String(prodId));
     if (!p) return;
+    const g = gustoId ? p.gustos.find(x => String(x.id) === String(gustoId)) : null;
     document.getElementById('costo-prod-id').value = prodId;
-    document.getElementById('costo-modal-title').textContent = '💰 Costo de "' + p.nombre + '"';
-    const cfg = _costos.find(c => String(c.prod_id) === String(prodId));
+    document.getElementById('costo-gusto-id').value = gustoId;
+    document.getElementById('costo-modal-title').textContent = '💰 Costo de "' + p.nombre + (g ? ' - ' + g.nombre : '') + '"';
+    const cfg = _costos.find(c => String(c.prod_id) === String(prodId) && String(c.gusto_id||'') === String(gustoId));
     document.getElementById('costo-tipo').value = cfg?.tipo_costo || 'manual';
     document.getElementById('costo-manual-valor').value = cfg?.costo_manual || '';
-    _recetaRowsTmp = _recetas.filter(r => String(r.prod_id) === String(prodId))
+    _recetaRowsTmp = _recetas.filter(r => String(r.prod_id) === String(prodId) && String(r.gusto_id||'') === String(gustoId))
       .map(r => ({ id: uid(), insumo_id: String(r.insumo_id), cantidad: r.cantidad }));
     if (!_recetaRowsTmp.length) _recetaRowsTmp = [{ id: uid(), insumo_id: '', cantidad: '' }];
     onCambioTipoCosto();
@@ -1228,18 +1248,19 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
 
   async function guardarCosto() {
     const prodId = document.getElementById('costo-prod-id').value;
+    const gustoId = document.getElementById('costo-gusto-id').value || '';
     const tipo = document.getElementById('costo-tipo').value;
     const costoManual = parseFloat(document.getElementById('costo-manual-valor').value) || 0;
     try {
-      const existente = _costos.find(c => String(c.prod_id) === String(prodId));
-      const payload = { empresa_id: String(empresaActual), prod_id: String(prodId), tipo_costo: tipo, costo_manual: costoManual, updated_at: new Date().toISOString() };
+      const existente = _costos.find(c => String(c.prod_id) === String(prodId) && String(c.gusto_id||'') === String(gustoId));
+      const payload = { empresa_id: String(empresaActual), prod_id: String(prodId), gusto_id: gustoId, tipo_costo: tipo, costo_manual: costoManual, updated_at: new Date().toISOString() };
       if (existente) await sbApi(`productos_costo?id=eq.${existente.id}`, {method:'PATCH', body:JSON.stringify(payload)});
       else await sbApi('productos_costo', {method:'POST', body:JSON.stringify(payload)});
 
-      await sbApi(`productos_receta?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}`, {method:'DELETE'});
+      await sbApi(`productos_receta?empresa_id=eq.${empresaActual}&prod_id=eq.${prodId}&gusto_id=eq.${gustoId}`, {method:'DELETE'});
       if (tipo === 'receta') {
         const filas = _recetaRowsTmp.filter(r => r.insumo_id && Number(r.cantidad) > 0)
-          .map(r => ({ empresa_id: String(empresaActual), prod_id: String(prodId), insumo_id: r.insumo_id, cantidad: Number(r.cantidad) }));
+          .map(r => ({ empresa_id: String(empresaActual), prod_id: String(prodId), gusto_id: gustoId, insumo_id: r.insumo_id, cantidad: Number(r.cantidad) }));
         if (filas.length) await sbApi('productos_receta', {method:'POST', body:JSON.stringify(filas)});
       }
       toast('✓ Costo guardado');
