@@ -1166,8 +1166,8 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     const costo = costoDeFila(prodId, gustoId);
     const precioFinal = _preciosProd[prodId + '::' + gustoId] || 0;
     const precioSinIva = precioFinal ? precioFinal / (1 + (_ivaPct/100)) : 0;
-    const mgDinero = precioFinal ? (precioFinal - costo) : 0;
-    const mgPct = precioFinal ? (mgDinero / precioFinal * 100) : 0;
+    const mgDinero = precioFinal ? (precioSinIva - costo) : 0;
+    const mgPct = precioSinIva ? (mgDinero / precioSinIva * 100) : 0;
     return `<tr>
       <td>${nombreMostrar}</td>
       <td>${tipo}</td>
