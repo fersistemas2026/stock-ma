@@ -389,6 +389,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;informes&#39;)" id="neg-btn-informes" style="display:none">📈 Informes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;caja&#39;)" id="neg-btn-caja" style="display:none">💰 Caja</button>
         <button class="neg-stab" onclick="switchNeg(&#39;config&#39;)" id="neg-btn-config" style="display:none">⚙️ Configuración</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;accesos&#39;)" id="neg-btn-accesos" style="display:none">🔗 Accesos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;avisos&#39;)" id="neg-btn-avisos" style="display:none">🔔 Avisos</button>
         <button class="neg-stab" onclick="switchNeg('pedidos-online')" id="neg-btn-pedidos-online" style="display:none">🛒 Pedidos Online</button>
         <button class="neg-stab" onclick="switchNeg(&#39;ingresos&#39;)" id="neg-btn-ingresos" style="display:none">💵 Ingresos</button>
@@ -1371,6 +1372,28 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div id="control-efectivo-pdvs" style="display:flex;flex-direction:column;gap:8px;">
             <div style="color:var(--text-dim);font-size:13px;">Cargando PDVs...</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ACCESOS -->
+      <div id="neg-accesos" class="neg-panel" style="display:none">
+        <div class="form-title" style="margin-bottom:4px">🔗 Accesos del sistema</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Guardá y copiá rápido todos los links de tus tiendas y módulos.</p>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:640px;margin-bottom:20px;">
+          <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-bottom:10px;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Nombre</label>
+              <input type="text" id="acceso-nombre" placeholder="Ej: Tienda Online" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">URL</label>
+              <input type="text" id="acceso-url" placeholder="https://..." style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;">
+            </div>
+          </div>
+          <button class="btn-primary" onclick="guardarAccesoLink()">+ Agregar link</button>
+        </div>
+        <div id="accesos-lista" style="display:flex;flex-direction:column;gap:10px;max-width:640px;">
+          <div class="empty-state"><span class="spin"></span></div>
         </div>
       </div>
 
@@ -7162,6 +7185,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='pedido-suc')  loadPedidoSuc();
     if (sub==='pedido-recibido') loadPedidoRecibido();
     if (sub==='config')          initConfig();
+    if (sub==='accesos')         initAccesos();
     if (sub==='cashflow')        initCashflow();
     if (sub==='ingresos')        initIngresos();
     if (sub==='egresos')         initEgresos();
@@ -12568,6 +12592,60 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (autoStatus && autoHora) autoStatus.textContent=`✅ Envío automático activo a las ${autoHora}`;
   }
 
+  // ── ACCESOS DEL SISTEMA ───────────────────────────────────────────────
+  let _accesosLinks = [];
+
+  async function initAccesos() {
+    await cargarAccesosLinks();
+    renderAccesosLinks();
+  }
+
+  async function cargarAccesosLinks() {
+    try { _accesosLinks = await sbApi(`accesos_links?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`) || []; }
+    catch(e) { _accesosLinks = []; }
+  }
+
+  function renderAccesosLinks() {
+    const cont = document.getElementById('accesos-lista');
+    if (!cont) return;
+    if (!_accesosLinks.length) { cont.innerHTML = '<div class="empty-state">No hay links guardados todavía. Agregá el primero arriba.</div>'; return; }
+    cont.innerHTML = _accesosLinks.map(l => `
+      <div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;">${l.nombre}</div>
+          <div style="font-size:12px;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.url}</div>
+        </div>
+        <a href="${l.url}" target="_blank" class="btn-outline" style="font-size:12px;text-decoration:none;white-space:nowrap;" title="Abrir">🔗 Abrir</a>
+        <button class="btn-outline" style="font-size:12px;white-space:nowrap;" onclick="navigator.clipboard.writeText('${l.url}').then(()=>toast('¡Link copiado!','success'))">📋 Copiar</button>
+        <button class="btn-outline" style="font-size:12px;color:#ff5a5a;border-color:#ff5a5a;" onclick="eliminarAccesoLink('${l.id}')" title="Eliminar">🗑️</button>
+      </div>`).join('');
+  }
+
+  async function guardarAccesoLink() {
+    const nombre = document.getElementById('acceso-nombre').value.trim();
+    let url = document.getElementById('acceso-url').value.trim();
+    if (!nombre || !url) { toast('Completá nombre y URL', 'error'); return; }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    try {
+      await sbApi('accesos_links', {method:'POST', body:JSON.stringify({empresa_id:String(empresaActual), nombre, url, orden:_accesosLinks.length})});
+      document.getElementById('acceso-nombre').value = '';
+      document.getElementById('acceso-url').value = '';
+      toast('✓ Link agregado');
+      await cargarAccesosLinks();
+      renderAccesosLinks();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  async function eliminarAccesoLink(id) {
+    if (!confirm('¿Eliminar este link?')) return;
+    try {
+      await sbApi(`accesos_links?id=eq.${id}`, {method:'DELETE'});
+      await cargarAccesosLinks();
+      renderAccesosLinks();
+      toast('Link eliminado');
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
   function guardarCfgResend() {
     const key = document.getElementById('cfg-resend-key')?.value.trim();
     if (!key||!key.startsWith('re_')) { toast('API Key inválida — debe empezar con re_','error'); return; }
@@ -12651,7 +12729,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       show('neg-btn-stock'); show('neg-btn-pedido'); show('neg-btn-pedido-suc');
       show('neg-btn-productos'); show('neg-btn-empresa');
       show('neg-btn-elaboracion'); show('neg-btn-informes'); show('neg-btn-caja');
-      show('neg-btn-config'); show('neg-btn-ingresos'); show('neg-btn-cashflow'); hide('neg-btn-egresos-op'); hide('neg-btn-pedido-recibido');
+      show('neg-btn-config'); show('neg-btn-accesos'); show('neg-btn-ingresos'); show('neg-btn-cashflow'); hide('neg-btn-egresos-op'); hide('neg-btn-pedido-recibido');
       if (perms.mensajes !== false) show('neg-btn-mensajes'); else hide('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); show('neg-btn-egresos-op'); hide('neg-btn-egresos'); hide('neg-btn-ventas-op');
       show('neg-btn-envio-pedido'); show('neg-btn-recibo-pedido');
       show('neg-btn-avisos');
