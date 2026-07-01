@@ -556,6 +556,10 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     document.getElementById('tab-btn-'+name).classList.add('active');
     document.getElementById('panel-'+name).classList.add('active');
+    if (name === 'costos') {
+      document.getElementById('tbl-costos').innerHTML = '<tr><td colspan="8" class="empty-state">Cargando...</td></tr>';
+      Promise.all([cargarProductos(), cargarCostos()]).then(renderCostos);
+    }
   }
 
   // ── DATA CACHES ──────────────────────────────────────────────────────
