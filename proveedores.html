@@ -1102,10 +1102,12 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
       lista.forEach(r => {
         const pid = String(r.prod_id);
         if (pid === '__config__' || pid.startsWith('SCHED_')) return;
-        const arr = Array.isArray(r.datos) ? r.datos : [];
-        arr.forEach(d => {
-          const precio = parsePrecioAR(d.precio);
-          if (precio > 0) _preciosProd[pid + '::' + String(d.gid)] = precio;
+        const d = r.datos;
+        const isNew = d && !Array.isArray(d) && d.gustos;
+        const arr = isNew ? d.gustos : (Array.isArray(d) ? d : []);
+        arr.forEach(g => {
+          const precio = parsePrecioAR(g.precio);
+          if (precio > 0) _preciosProd[pid + '::' + String(g.gid)] = precio;
         });
       });
     } catch(e) { toast('Error cargando costos: '+e.message, 'error'); }
