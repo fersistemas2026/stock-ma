@@ -575,13 +575,13 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
 
   async function cargarProductos() {
     try {
-      const prods = await sbApi(`productos?empresa_id=eq.${empresaActual}&select=id,nombre,name`) || [];
+      const prods = await sbApi(`productos?empresa_id=eq.${empresaActual}&select=*`) || [];
       const gustos = await sbApi(`gustos?select=id,producto_id,nombre&limit=1000`) || [];
       _productos = prods.map(p => ({
         id: p.id, nombre: p.nombre || p.name || '',
         gustos: gustos.filter(g => String(g.producto_id)===String(p.id)).map(g => ({id:g.id, nombre:g.nombre}))
       }));
-    } catch(e) { _productos = []; }
+    } catch(e) { _productos = []; toast('Error cargando productos: '+e.message, 'error'); }
   }
 
   async function cargarInsumos() {
