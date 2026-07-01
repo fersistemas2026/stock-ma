@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock MA - Proveedores</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #080c10; --surface: #111518; --surface2: #181d22;
+  --border: #232a32; --accent: #c8f04a; --accent-dim: #a8cc30;
+  --text: #eef2f6; --text-muted: #7a8899; --text-dim: #3d4d5c;
+  --danger: #ff5a5a; --warn: #f2b134; --radius: 12px;
+  --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; font-size: 15px; }
+
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 44px 40px; width: 100%; max-width: 400px; box-shadow: 0 24px 48px rgba(0,0,0,.5); }
+.login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 36px; }
+.login-dot { width: 12px; height: 12px; background: var(--accent); border-radius: 50%; animation: pulse 2s ease-in-out infinite; box-shadow: 0 0 12px rgba(200,240,74,.5); }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+.login-logo span { font-family: var(--mono); font-size: 16px; color: var(--text-muted); letter-spacing: .04em; }
+.login-logo span b { color: var(--accent); font-weight: 500; }
+.login-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; letter-spacing: -.02em; }
+.login-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 32px; }
+.login-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.login-group label { font-size: 11px; font-family: var(--mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: .1em; }
+.login-error { background: rgba(255,90,90,.1); border: 1px solid rgba(255,90,90,.3); color: #ff8a8a; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+
+header { border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: rgba(8,12,16,.95); backdrop-filter: blur(16px); z-index: 100; }
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; animation: pulse 2s ease-in-out infinite; box-shadow: 0 0 10px rgba(200,240,74,.4); }
+.logo-text { font-family: var(--mono); font-size: 14px; color: var(--text-muted); letter-spacing: .04em; }
+.logo-text span { color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.user-badge { font-family: var(--mono); font-size: 12px; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); padding: 5px 14px; border-radius: 99px; }
+.user-badge b { color: var(--accent); font-weight: 500; }
+
+main { max-width: 1280px; margin: 0 auto; padding: 24px 20px 60px; }
+
+.tabs { display: flex; gap: 2px; margin-bottom: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; width: fit-content; flex-wrap: wrap; }
+.tab { padding: 9px 20px; border: none; background: none; color: var(--text-muted); font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 9px; transition: all .15s; }
+.tab:hover { color: var(--text); }
+.tab.active { background: var(--accent); color: #080c10; font-weight: 700; }
+.panel { display: none; animation: fadeIn .2s ease; }
+.panel.active { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+.form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 760px; margin-bottom: 24px; }
+.form-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 11px; font-family: var(--mono); color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+input[type=text],input[type=email],input[type=tel],input[type=date],input[type=number],input[type=search],input[type=password],select,textarea {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 13px; font-size: 14px; font-family: var(--font); color: var(--text); outline: none; transition: border-color .15s;
+}
+select { appearance: none; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--text-dim); }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+.form-actions { margin-top: 18px; display: flex; justify-content: flex-end; gap: 10px; }
+
+.btn-primary { background: var(--accent); color: #080c10; border: none; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+.btn-outline { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger-outline { background: none; border: 1px solid transparent; color: var(--text-dim); padding: 5px 8px; border-radius: 7px; cursor: pointer; font-size: 13px; transition: all .15s; }
+.btn-danger-outline:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,90,90,.06); }
+.btn-logout { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 8px; font-size: 13px; font-family: var(--font); cursor: pointer; }
+.btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+
+.table-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.table-toolbar select, .table-toolbar input { width: auto; min-width: 140px; }
+.table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+thead { background: var(--surface2); }
+th { padding: 11px 14px; text-align: left; font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .07em; font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,.02); }
+.badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+.badge-pendiente { background: rgba(242,177,52,.12); color: var(--warn); }
+.badge-confirmada { background: rgba(56,142,235,.12); color: #6cb4ff; }
+.badge-parcial { background: rgba(242,177,52,.12); color: var(--warn); }
+.badge-pagada { background: rgba(168,224,74,.12); color: var(--accent); }
+.badge-anulada { background: rgba(255,90,90,.12); color: var(--danger); }
+.badge-inactivo { background: rgba(122,136,153,.12); color: var(--text-dim); }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); font-size: 13px; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); z-index: 500; align-items: flex-start; justify-content: center; padding: 30px 16px; overflow-y: auto; }
+.modal-overlay.open { display: flex; }
+.modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 820px; }
+.modal-head { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-head h3 { font-size: 17px; font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+.modal-body { padding: 22px 24px; }
+
+.item-row { display: grid; grid-template-columns: 90px 1.4fr 90px 80px 110px 110px 32px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.item-row .sub { font-size: 12px; color: var(--text-muted); text-align: right; }
+.items-head { display: grid; grid-template-columns: 90px 1.4fr 90px 80px 110px 110px 32px; gap: 8px; margin-bottom: 6px; }
+.items-head span { font-size: 10px; font-family: var(--mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; }
+.total-row { display: flex; justify-content: flex-end; gap: 10px; align-items: baseline; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.total-row .label { font-size: 12px; color: var(--text-muted); }
+.total-row .value { font-size: 22px; font-weight: 700; color: var(--accent); font-family: var(--mono); }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 18px; font-size: 13px; }
+.detail-grid .k { color: var(--text-muted); }
+.detail-grid .v { color: var(--text); font-weight: 500; }
+.pago-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.pago-row:last-child { border-bottom: none; }
+
+#toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 18px; border-radius: 9px; font-size: 13px; font-weight: 500; opacity: 0; transform: translateY(8px); transition: all .2s; pointer-events: none; z-index: 999; max-width: 320px; }
+#toast.show { opacity: 1; transform: none; }
+#toast.t-success { background: #1a2e0a; color: #a8e04a; border: 1px solid #3a5a1a; }
+#toast.t-error { background: #2e0a0a; color: #ff8a8a; border: 1px solid #5a1a1a; }
+
+.access-denied { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; flex-direction: column; gap: 12px; }
+</style>
+</head>
+<body>
+
+<div id="login-screen" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo"><div class="login-dot"></div><span>STOCK <b>MA</b></span></div>
+    <div class="login-title">🚚 Proveedores</div>
+    <div class="login-sub">Ingresá con tu usuario de Stock MA</div>
+    <div class="login-error" id="login-error">Usuario o contraseña incorrectos</div>
+    <div class="login-group">
+      <label>Usuario</label>
+      <input type="text" id="l-user" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()">
+    </div>
+    <div class="login-group">
+      <label>Contraseña</label>
+      <input type="password" id="l-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-primary" id="login-btn" style="width:100%;justify-content:center;margin-top:8px" onclick="doLogin()">Ingresar</button>
+  </div>
+</div>
+
+<div id="app-screen" style="display:none">
+  <header>
+    <div class="logo"><div class="logo-dot"></div><div class="logo-text">STOCK <span>MA</span> · Proveedores</div></div>
+    <div class="header-right">
+      <span class="user-badge" id="user-badge"></span>
+      <button class="btn-outline" onclick="window.location.href='index.html'">← Volver al sistema</button>
+      <button class="btn-logout" onclick="doLogout()">Salir</button>
+    </div>
+  </header>
+  <main>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('proveedores')" id="tab-btn-proveedores">Proveedores</button>
+      <button class="tab" onclick="switchTab('insumos')" id="tab-btn-insumos">Insumos</button>
+      <button class="tab" onclick="switchTab('facturas')" id="tab-btn-facturas">Facturas</button>
+    </div>
+
+    <!-- ═══════════ PANEL PROVEEDORES ═══════════ -->
+    <div class="panel active" id="panel-proveedores">
+      <div class="form-card">
+        <div class="form-title" id="prov-form-title">+ Nuevo proveedor</div>
+        <input type="hidden" id="prov-id">
+        <div class="form-grid">
+          <div class="form-group"><label>Nombre *</label><input type="text" id="prov-nombre" placeholder="Ej: Molino San Justo"></div>
+          <div class="form-group"><label>CUIT</label><input type="text" id="prov-cuit" placeholder="20-12345678-9"></div>
+          <div class="form-group"><label>Contacto</label><input type="text" id="prov-contacto" placeholder="Nombre de contacto"></div>
+          <div class="form-group"><label>Teléfono</label><input type="tel" id="prov-telefono" placeholder="11-1234-5678"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="prov-email" placeholder="contacto@proveedor.com"></div>
+          <div class="form-group"><label>Condición de pago</label>
+            <select id="prov-condicion">
+              <option value="cuenta_corriente">Cuenta corriente</option>
+              <option value="contado">Contado</option>
+            </select>
+          </div>
+          <div class="form-group full"><label>PDV que abastece</label>
+            <select id="prov-pdv"><option value="">Todos los PDV (general)</option></select>
+          </div>
+          <div class="form-group full"><label>Notas</label><textarea id="prov-notas" rows="2" placeholder="Notas internas (opcional)"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-outline" id="prov-cancel-btn" style="display:none" onclick="cancelarEdicionProveedor()">Cancelar edición</button>
+          <button class="btn-primary" onclick="guardarProveedor()">Guardar proveedor</button>
+        </div>
+      </div>
+      <div class="table-toolbar">
+        <div style="flex:1;font-size:13px;color:var(--text-muted)">Proveedores cargados</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>CUIT</th><th>Contacto</th><th>PDV</th><th>Condición</th><th>Saldo</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tbl-proveedores"><tr><td colspan="8" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════ PANEL INSUMOS ═══════════ -->
+    <div class="panel" id="panel-insumos">
+      <div class="form-card">
+        <div class="form-title" id="ins-form-title">+ Nuevo insumo</div>
+        <input type="hidden" id="ins-id">
+        <div class="form-grid">
+          <div class="form-group full"><label>Nombre *</label><input type="text" id="ins-nombre" placeholder="Ej: Harina 000"></div>
+          <div class="form-group"><label>Unidad de medida</label>
+            <select id="ins-unidad">
+              <option value="kg">Kilogramos (kg)</option>
+              <option value="litro">Litros (l)</option>
+              <option value="unidad">Unidades</option>
+              <option value="gramo">Gramos (g)</option>
+              <option value="docena">Docenas</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Categoría</label><input type="text" id="ins-categoria" placeholder="Ej: Harinas, Envases"></div>
+          <div class="form-group"><label>Stock mínimo</label><input type="number" id="ins-stock-minimo" placeholder="0" step="0.01"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-outline" id="ins-cancel-btn" style="display:none" onclick="cancelarEdicionInsumo()">Cancelar edición</button>
+          <button class="btn-primary" onclick="guardarInsumo()">Guardar insumo</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th></th></tr></thead>
+          <tbody id="tbl-insumos"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════ PANEL FACTURAS ═══════════ -->
+    <div class="panel" id="panel-facturas">
+      <div class="table-toolbar">
+        <button class="btn-primary" onclick="abrirModalFactura()">+ Nueva factura</button>
+        <select id="fil-estado" onchange="renderFacturas()">
+          <option value="todos">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="confirmada">Confirmada</option>
+          <option value="parcial">Pago parcial</option>
+          <option value="pagada">Pagada</option>
+          <option value="anulada">Anulada</option>
+        </select>
+        <select id="fil-proveedor" onchange="renderFacturas()"><option value="todos">Todos los proveedores</option></select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>N° Factura</th><th>Proveedor</th><th>PDV</th><th>Fecha</th><th>Total</th><th>Saldo</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="tbl-facturas"><tr><td colspan="8" class="empty-state">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════ MODAL NUEVA FACTURA ═══════════ -->
+<div class="modal-overlay" id="modal-factura">
+  <div class="modal-box">
+    <div class="modal-head"><h3>🧾 Nueva factura de proveedor</h3><button class="modal-close" onclick="cerrarModalFactura()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="form-group"><label>Proveedor *</label><select id="fac-proveedor" onchange="onCambioProveedorFactura()"><option value="">Seleccionar...</option></select></div>
+        <div class="form-group"><label>PDV que recibe *</label><select id="fac-pdv"></select></div>
+        <div class="form-group"><label>N° Factura / Remito</label><input type="text" id="fac-numero" placeholder="0001-00001234"></div>
+        <div class="form-group"><label>Tipo comprobante</label>
+          <select id="fac-tipo">
+            <option value="factura">Factura</option>
+            <option value="remito">Remito</option>
+            <option value="nota_credito">Nota de crédito</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Fecha</label><input type="date" id="fac-fecha"></div>
+        <div class="form-group"><label>Vencimiento de pago</label><input type="date" id="fac-vencimiento"></div>
+        <div class="form-group full"><label>Notas</label><input type="text" id="fac-notas" placeholder="Opcional"></div>
+      </div>
+
+      <div class="form-title" style="font-size:14px;margin-bottom:10px">Ítems de la factura</div>
+      <div class="items-head">
+        <span>Tipo</span><span>Ítem</span><span>Cant.</span><span>Unidad</span><span>Precio unit.</span><span>Subtotal</span><span></span>
+      </div>
+      <div id="items-container"></div>
+      <button class="btn-outline btn-sm" style="margin-top:6px" onclick="agregarFilaItem()">+ Agregar ítem</button>
+
+      <div class="total-row">
+        <div class="label">Total</div>
+        <div class="value" id="fac-total">$0</div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-outline" onclick="cerrarModalFactura()">Cancelar</button>
+        <button class="btn-outline" onclick="guardarFactura(false)">Guardar como pendiente</button>
+        <button class="btn-primary" onclick="guardarFactura(true)">Guardar y confirmar (impacta stock)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL DETALLE FACTURA ═══════════ -->
+<div class="modal-overlay" id="modal-detalle">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="det-titulo">Factura</h3><button class="modal-close" onclick="cerrarModalDetalle()">✕</button></div>
+    <div class="modal-body">
+      <div class="detail-grid" id="det-info"></div>
+      <div class="form-title" style="font-size:13px">Ítems</div>
+      <div class="table-wrap" style="margin-bottom:18px">
+        <table><thead><tr><th>Ítem</th><th>Tipo</th><th>Cant.</th><th>Precio unit.</th><th>Subtotal</th></tr></thead><tbody id="det-items"></tbody></table>
+      </div>
+      <div id="det-acciones" style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"></div>
+      <div id="det-pagos-wrap">
+        <div class="form-title" style="font-size:13px">Pagos registrados</div>
+        <div id="det-pagos" style="margin-bottom:14px"></div>
+        <div id="det-form-pago" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="width:120px"><label>Monto</label><input type="number" id="pago-monto" placeholder="0" step="0.01"></div>
+          <div class="form-group" style="width:140px"><label>Fecha</label><input type="date" id="pago-fecha"></div>
+          <div class="form-group" style="width:150px"><label>Medio de pago</label>
+            <select id="pago-medio"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="cheque">Cheque</option></select>
+          </div>
+          <button class="btn-primary btn-sm" onclick="registrarPago()">Registrar pago</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── CONFIG ────────────────────────────────────────────────────────────
+  const SUPABASE_URL = 'https://brcnctdfbdffxmdypnrh.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyY25jdGRmYmRmZnhtZHlwbnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3OTYzMzIsImV4cCI6MjA5NDM3MjMzMn0.t8Ot0v465qdHshX-Ridce42iPpytYjoMoHxR_mBytZQ';
+  const empresaActual = '1';
+
+  async function sbApi(path, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    const headers = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+    };
+    if (method === 'GET') {
+      headers['Prefer'] = 'count=none';
+      headers['Range-Unit'] = 'items';
+      const PAGE = 1000;
+      let offset = 0, all = [];
+      while (true) {
+        headers['Range'] = `${offset}-${offset + PAGE - 1}`;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers });
+        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `Error ${res.status}`); }
+        const t = await res.text();
+        const page = t ? JSON.parse(t) : [];
+        if (!Array.isArray(page)) return page;
+        all = all.concat(page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
+      }
+      return all;
+    }
+    if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers, body: options.body || undefined });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `Error ${res.status}`); }
+    const t = await res.text();
+    return t ? JSON.parse(t) : null;
+  }
+
+  function toast(msg, type='success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show ' + (type==='error' ? 't-error' : 't-success');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(()=> t.className='', type==='error' ? 6000 : 3000);
+  }
+
+  function hashPassword(pass) {
+    let h=5381; for(let i=0;i<pass.length;i++) h=((h<<5)+h)+pass.charCodeAt(i); return String(h>>>0);
+  }
+
+  function fmtMoney(n) { return '$' + (Number(n)||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function hoy() { return new Date().toISOString().slice(0,10); }
+  function uid() { return 'r' + Math.random().toString(36).slice(2,10); }
+
+  // ── AUTH ──────────────────────────────────────────────────────────────
+  let currentUser = null;
+
+  async function doLogin() {
+    const btn = document.getElementById('login-btn');
+    const errorEl = document.getElementById('login-error');
+    const u = document.getElementById('l-user').value.trim().toLowerCase();
+    const p = document.getElementById('l-pass').value;
+    if (!u || !p) { errorEl.textContent='Completá usuario y contraseña'; errorEl.style.display='block'; return; }
+    btn.textContent = 'Ingresando...'; btn.disabled = true;
+    try {
+      const users = await sbApi(`usuarios?username=eq.${u}&select=*`) || [];
+      const found = users[0];
+      if (!found || !(found.password_hash === p || found.password_hash === hashPassword(p))) {
+        errorEl.textContent = 'Usuario o contraseña incorrectos'; errorEl.style.display='block';
+        btn.textContent = 'Ingresar'; btn.disabled = false; return;
+      }
+      const perms = typeof found.perms === 'string' ? JSON.parse(found.perms||'{}') : (found.perms||{});
+      const isAdmin = found.role === 'admin';
+      if (!isAdmin && !perms.proveedores) {
+        errorEl.textContent = '⛔ Tu usuario no tiene acceso al módulo de Proveedores. Pedile al admin que te habilite el permiso.';
+        errorEl.style.display='block';
+        btn.textContent = 'Ingresar'; btn.disabled = false; return;
+      }
+      currentUser = { username: found.username, role: found.role, displayName: found.display_name || found.username, perms, pdvs: typeof found.pdvs === 'string' ? JSON.parse(found.pdvs||'[]') : (found.pdvs||[]) };
+      errorEl.style.display='none';
+      startApp();
+    } catch(e) {
+      console.error(e);
+      errorEl.textContent = 'Error de conexión. Probá de nuevo.'; errorEl.style.display='block';
+      btn.textContent = 'Ingresar'; btn.disabled = false;
+    }
+  }
+
+  function doLogout() {
+    currentUser = null;
+    document.getElementById('app-screen').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('l-user').value=''; document.getElementById('l-pass').value='';
+  }
+
+  async function startApp() {
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app-screen').style.display='block';
+    const isAdmin = currentUser.role === 'admin';
+    document.getElementById('user-badge').innerHTML = `<b>${currentUser.displayName}</b> · ${isAdmin?'admin':'operador'}`;
+    await Promise.all([cargarPdvsSelects(), cargarProveedores(), cargarInsumos(), cargarProductos(), cargarFacturas()]);
+    renderProveedores();
+    renderInsumos();
+    renderFacturas();
+    document.getElementById('fac-fecha').value = hoy();
+    document.getElementById('pago-fecha').value = hoy();
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('tab-btn-'+name).classList.add('active');
+    document.getElementById('panel-'+name).classList.add('active');
+  }
+
+  // ── DATA CACHES ──────────────────────────────────────────────────────
+  let _pdvs = [], _proveedores = [], _insumos = [], _productos = [], _facturas = [];
+
+  async function cargarPdvsSelects() {
+    _pdvs = await sbApi(`pdvs?empresa_id=eq.${empresaActual}&order=orden.asc&select=*`) || [];
+    const opts = _pdvs.map(p => `<option value="${p.id}">${p.nombre||p.name||p.id}</option>`).join('');
+    document.getElementById('prov-pdv').innerHTML = '<option value="">Todos los PDV (general)</option>' + opts;
+    document.getElementById('fac-pdv').innerHTML = opts;
+  }
+
+  async function cargarProductos() {
+    try {
+      const prods = await sbApi(`productos?empresa_id=eq.${empresaActual}&select=id,nombre,name`) || [];
+      const gustos = await sbApi(`gustos?select=id,producto_id,nombre&limit=1000`) || [];
+      _productos = prods.map(p => ({
+        id: p.id, nombre: p.nombre || p.name || '',
+        gustos: gustos.filter(g => String(g.producto_id)===String(p.id)).map(g => ({id:g.id, nombre:g.nombre}))
+      }));
+    } catch(e) { _productos = []; }
+  }
+
+  async function cargarInsumos() {
+    try { _insumos = await sbApi(`insumos?empresa_id=eq.${empresaActual}&order=nombre.asc&select=*`) || []; }
+    catch(e) { _insumos = []; toast('Error cargando insumos: '+e.message,'error'); }
+  }
+
+  async function cargarProveedores() {
+    try {
+      _proveedores = await sbApi(`proveedores?empresa_id=eq.${empresaActual}&order=nombre.asc&select=*`) || [];
+      const sel = document.getElementById('fil-proveedor');
+      sel.innerHTML = '<option value="todos">Todos los proveedores</option>' + _proveedores.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+    } catch(e) { _proveedores = []; toast('Error cargando proveedores: '+e.message,'error'); }
+  }
+
+  async function cargarFacturas() {
+    try { _facturas = await sbApi(`proveedores_facturas?empresa_id=eq.${empresaActual}&order=fecha.desc&select=*`) || []; }
+    catch(e) { _facturas = []; toast('Error cargando facturas: '+e.message,'error'); }
+  }
+
+  function nombrePdv(id) { const p = _pdvs.find(x=>String(x.id)===String(id)); return p ? (p.nombre||p.name||id) : (id ? id : 'Todos'); }
+  function nombreProveedor(id) { const p = _proveedores.find(x=>String(x.id)===String(id)); return p ? p.nombre : '—'; }
+
+  // ── PROVEEDORES CRUD ─────────────────────────────────────────────────
+  function limpiarFormProveedor() {
+    document.getElementById('prov-id').value = '';
+    document.getElementById('prov-nombre').value = '';
+    document.getElementById('prov-cuit').value = '';
+    document.getElementById('prov-contacto').value = '';
+    document.getElementById('prov-telefono').value = '';
+    document.getElementById('prov-email').value = '';
+    document.getElementById('prov-condicion').value = 'cuenta_corriente';
+    document.getElementById('prov-pdv').value = '';
+    document.getElementById('prov-notas').value = '';
+    document.getElementById('prov-form-title').textContent = '+ Nuevo proveedor';
+    document.getElementById('prov-cancel-btn').style.display = 'none';
+  }
+
+  async function guardarProveedor() {
+    const id = document.getElementById('prov-id').value;
+    const nombre = document.getElementById('prov-nombre').value.trim();
+    if (!nombre) { toast('El nombre es obligatorio', 'error'); return; }
+    const payload = {
+      empresa_id: String(empresaActual),
+      nombre,
+      cuit: document.getElementById('prov-cuit').value.trim() || null,
+      contacto: document.getElementById('prov-contacto').value.trim() || null,
+      telefono: document.getElementById('prov-telefono').value.trim() || null,
+      email: document.getElementById('prov-email').value.trim() || null,
+      condicion_pago: document.getElementById('prov-condicion').value,
+      pdv_id: document.getElementById('prov-pdv').value || null,
+      notas: document.getElementById('prov-notas').value.trim() || null,
+    };
+    try {
+      if (id) await sbApi(`proveedores?id=eq.${id}`, {method:'PATCH', body:JSON.stringify(payload)});
+      else { payload.activo = true; await sbApi('proveedores', {method:'POST', body:JSON.stringify(payload)}); }
+      toast(id ? '✓ Proveedor actualizado' : '✓ Proveedor creado');
+      limpiarFormProveedor();
+      await cargarProveedores();
+      renderProveedores();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  function editarProveedor(id) {
+    const p = _proveedores.find(x=>String(x.id)===String(id));
+    if (!p) return;
+    document.getElementById('prov-id').value = p.id;
+    document.getElementById('prov-nombre').value = p.nombre || '';
+    document.getElementById('prov-cuit').value = p.cuit || '';
+    document.getElementById('prov-contacto').value = p.contacto || '';
+    document.getElementById('prov-telefono').value = p.telefono || '';
+    document.getElementById('prov-email').value = p.email || '';
+    document.getElementById('prov-condicion').value = p.condicion_pago || 'cuenta_corriente';
+    document.getElementById('prov-pdv').value = p.pdv_id || '';
+    document.getElementById('prov-notas').value = p.notas || '';
+    document.getElementById('prov-form-title').textContent = '✏️ Editando proveedor';
+    document.getElementById('prov-cancel-btn').style.display = '';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function cancelarEdicionProveedor() { limpiarFormProveedor(); }
+
+  async function toggleActivoProveedor(id, activo) {
+    try {
+      await sbApi(`proveedores?id=eq.${id}`, {method:'PATCH', body:JSON.stringify({activo: !activo})});
+      await cargarProveedores();
+      renderProveedores();
+      toast(activo ? 'Proveedor desactivado' : 'Proveedor reactivado');
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  function renderProveedores() {
+    const tbody = document.getElementById('tbl-proveedores');
+    if (!_proveedores.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay proveedores cargados todavía</td></tr>'; return; }
+    tbody.innerHTML = _proveedores.map(p => {
+      const saldo = _facturas.filter(f=>String(f.proveedor_id)===String(p.id) && f.estado!=='anulada').reduce((s,f)=>s+(Number(f.saldo)||0),0);
+      return `<tr>
+        <td><b>${p.nombre}</b></td>
+        <td>${p.cuit||'—'}</td>
+        <td>${p.contacto||'—'}</td>
+        <td>${p.pdv_id ? nombrePdv(p.pdv_id) : '<span style="color:var(--text-dim)">Todos</span>'}</td>
+        <td>${p.condicion_pago==='contado'?'Contado':'Cta. corriente'}</td>
+        <td style="color:${saldo>0?'var(--warn)':'var(--text-dim)'}">${fmtMoney(saldo)}</td>
+        <td><span class="badge ${p.activo?'badge-confirmada':'badge-inactivo'}">${p.activo?'Activo':'Inactivo'}</span></td>
+        <td style="display:flex;gap:4px">
+          <button class="btn-danger-outline" onclick="editarProveedor('${p.id}')" title="Editar">✏️</button>
+          <button class="btn-danger-outline" onclick="toggleActivoProveedor('${p.id}', ${p.activo})" title="${p.activo?'Desactivar':'Activar'}">${p.activo?'🚫':'✓'}</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── INSUMOS CRUD ─────────────────────────────────────────────────────
+  function limpiarFormInsumo() {
+    document.getElementById('ins-id').value = '';
+    document.getElementById('ins-nombre').value = '';
+    document.getElementById('ins-unidad').value = 'kg';
+    document.getElementById('ins-categoria').value = '';
+    document.getElementById('ins-stock-minimo').value = '';
+    document.getElementById('ins-form-title').textContent = '+ Nuevo insumo';
+    document.getElementById('ins-cancel-btn').style.display = 'none';
+  }
+
+  async function guardarInsumo() {
+    const id = document.getElementById('ins-id').value;
+    const nombre = document.getElementById('ins-nombre').value.trim();
+    if (!nombre) { toast('El nombre es obligatorio', 'error'); return; }
+    const payload = {
+      empresa_id: String(empresaActual),
+      nombre,
+      unidad_medida: document.getElementById('ins-unidad').value,
+      categoria: document.getElementById('ins-categoria').value.trim() || null,
+      stock_minimo: parseFloat(document.getElementById('ins-stock-minimo').value) || 0,
+    };
+    try {
+      if (id) await sbApi(`insumos?id=eq.${id}`, {method:'PATCH', body:JSON.stringify(payload)});
+      else { payload.activo = true; payload.stock_actual = 0; await sbApi('insumos', {method:'POST', body:JSON.stringify(payload)}); }
+      toast(id ? '✓ Insumo actualizado' : '✓ Insumo creado');
+      limpiarFormInsumo();
+      await cargarInsumos();
+      renderInsumos();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  function editarInsumo(id) {
+    const i = _insumos.find(x=>String(x.id)===String(id));
+    if (!i) return;
+    document.getElementById('ins-id').value = i.id;
+    document.getElementById('ins-nombre').value = i.nombre || '';
+    document.getElementById('ins-unidad').value = i.unidad_medida || 'kg';
+    document.getElementById('ins-categoria').value = i.categoria || '';
+    document.getElementById('ins-stock-minimo').value = i.stock_minimo || '';
+    document.getElementById('ins-form-title').textContent = '✏️ Editando insumo';
+    document.getElementById('ins-cancel-btn').style.display = '';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function cancelarEdicionInsumo() { limpiarFormInsumo(); }
+
+  async function eliminarInsumo(id) {
+    if (!confirm('¿Eliminar este insumo? Esta acción no se puede deshacer.')) return;
+    try {
+      await sbApi(`insumos?id=eq.${id}`, {method:'DELETE'});
+      await cargarInsumos();
+      renderInsumos();
+      toast('Insumo eliminado');
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  function renderInsumos() {
+    const tbody = document.getElementById('tbl-insumos');
+    if (!_insumos.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay insumos cargados todavía</td></tr>'; return; }
+    tbody.innerHTML = _insumos.map(i => {
+      const bajo = Number(i.stock_actual) <= Number(i.stock_minimo||0) && Number(i.stock_minimo||0) > 0;
+      return `<tr>
+        <td><b>${i.nombre}</b></td>
+        <td>${i.categoria||'—'}</td>
+        <td>${i.unidad_medida}</td>
+        <td style="color:${bajo?'var(--danger)':'var(--text)'}">${Number(i.stock_actual||0).toLocaleString('es-AR')}${bajo?' ⚠️':''}</td>
+        <td>${Number(i.stock_minimo||0).toLocaleString('es-AR')}</td>
+        <td style="display:flex;gap:4px">
+          <button class="btn-danger-outline" onclick="editarInsumo('${i.id}')" title="Editar">✏️</button>
+          <button class="btn-danger-outline" onclick="eliminarInsumo('${i.id}')" title="Eliminar">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── FACTURAS: MODAL NUEVA ────────────────────────────────────────────
+  let _itemRows = [];
+
+  function abrirModalFactura() {
+    document.getElementById('fac-proveedor').innerHTML = '<option value="">Seleccionar...</option>' + _proveedores.filter(p=>p.activo).map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+    document.getElementById('fac-numero').value = '';
+    document.getElementById('fac-tipo').value = 'factura';
+    document.getElementById('fac-fecha').value = hoy();
+    document.getElementById('fac-vencimiento').value = '';
+    document.getElementById('fac-notas').value = '';
+    _itemRows = [];
+    agregarFilaItem();
+    document.getElementById('modal-factura').classList.add('open');
+  }
+  function cerrarModalFactura() { document.getElementById('modal-factura').classList.remove('open'); }
+
+  function onCambioProveedorFactura() {
+    const provId = document.getElementById('fac-proveedor').value;
+    const prov = _proveedores.find(p=>String(p.id)===String(provId));
+    if (prov && prov.pdv_id) document.getElementById('fac-pdv').value = prov.pdv_id;
+  }
+
+  function agregarFilaItem() {
+    const rid = uid();
+    _itemRows.push(rid);
+    const div = document.createElement('div');
+    div.className = 'item-row';
+    div.id = 'item-'+rid;
+    div.innerHTML = `
+      <select onchange="onCambioTipoItem('${rid}')" id="tipo-${rid}">
+        <option value="insumo">Insumo</option>
+        <option value="producto">Producto</option>
+      </select>
+      <select id="item-select-${rid}" onchange="recalcularFila('${rid}')"></select>
+      <input type="number" id="cant-${rid}" placeholder="0" step="0.01" oninput="recalcularFila('${rid}')">
+      <input type="text" id="unidad-${rid}" placeholder="kg" style="text-align:center">
+      <input type="number" id="precio-${rid}" placeholder="0" step="0.01" oninput="recalcularFila('${rid}')">
+      <div class="sub" id="subtotal-${rid}">$0</div>
+      <button class="btn-danger-outline" onclick="eliminarFilaItem('${rid}')">✕</button>
+    `;
+    document.getElementById('items-container').appendChild(div);
+    onCambioTipoItem(rid);
+  }
+
+  function onCambioTipoItem(rid) {
+    const tipo = document.getElementById('tipo-'+rid).value;
+    const sel = document.getElementById('item-select-'+rid);
+    if (tipo === 'insumo') {
+      sel.innerHTML = '<option value="">Seleccionar insumo...</option>' + _insumos.map(i=>`<option value="${i.id}" data-nombre="${i.nombre}" data-unidad="${i.unidad_medida}">${i.nombre}</option>`).join('');
+    } else {
+      let opts = '<option value="">Seleccionar producto...</option>';
+      _productos.forEach(p => {
+        if (p.gustos && p.gustos.length) {
+          p.gustos.forEach(g => { opts += `<option value="${p.id}|${g.id}" data-nombre="${p.nombre} - ${g.nombre}" data-unidad="unidad">${p.nombre} - ${g.nombre}</option>`; });
+        } else {
+          opts += `<option value="${p.id}|" data-nombre="${p.nombre}" data-unidad="unidad">${p.nombre}</option>`;
+        }
+      });
+      sel.innerHTML = opts;
+    }
+    sel.onchange = () => { autocompletarUnidad(rid); recalcularFila(rid); };
+  }
+
+  function autocompletarUnidad(rid) {
+    const sel = document.getElementById('item-select-'+rid);
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) document.getElementById('unidad-'+rid).value = opt.dataset.unidad || '';
+  }
+
+  function recalcularFila(rid) {
+    const cant = parseFloat(document.getElementById('cant-'+rid).value) || 0;
+    const precio = parseFloat(document.getElementById('precio-'+rid).value) || 0;
+    document.getElementById('subtotal-'+rid).textContent = fmtMoney(cant*precio);
+    recalcularTotalFactura();
+  }
+
+  function eliminarFilaItem(rid) {
+    document.getElementById('item-'+rid)?.remove();
+    _itemRows = _itemRows.filter(r=>r!==rid);
+    recalcularTotalFactura();
+  }
+
+  function recalcularTotalFactura() {
+    let total = 0;
+    _itemRows.forEach(rid => {
+      const cant = parseFloat(document.getElementById('cant-'+rid)?.value) || 0;
+      const precio = parseFloat(document.getElementById('precio-'+rid)?.value) || 0;
+      total += cant*precio;
+    });
+    document.getElementById('fac-total').textContent = fmtMoney(total);
+    return total;
+  }
+
+  function recolectarItems() {
+    const items = [];
+    for (const rid of _itemRows) {
+      const tipo = document.getElementById('tipo-'+rid).value;
+      const selEl = document.getElementById('item-select-'+rid);
+      const val = selEl.value;
+      if (!val) continue;
+      const opt = selEl.options[selEl.selectedIndex];
+      const cantidad = parseFloat(document.getElementById('cant-'+rid).value) || 0;
+      const precio = parseFloat(document.getElementById('precio-'+rid).value) || 0;
+      if (cantidad <= 0) continue;
+      let itemId = val, gustoId = null;
+      if (tipo === 'producto') { const parts = val.split('|'); itemId = parts[0]; gustoId = parts[1] || null; }
+      items.push({
+        tipo, item_id: itemId, gusto_id: gustoId,
+        item_nombre: opt.dataset.nombre || opt.textContent,
+        cantidad, unidad: document.getElementById('unidad-'+rid).value || null,
+        precio_unitario: precio, subtotal: cantidad*precio
+      });
+    }
+    return items;
+  }
+
+  async function guardarFactura(confirmarYa) {
+    const provId = document.getElementById('fac-proveedor').value;
+    const pdvId = document.getElementById('fac-pdv').value;
+    if (!provId) { toast('Elegí un proveedor', 'error'); return; }
+    if (!pdvId) { toast('Elegí el PDV que recibe la mercadería', 'error'); return; }
+    const items = recolectarItems();
+    if (!items.length) { toast('Agregá al menos un ítem con cantidad', 'error'); return; }
+    const total = recalcularTotalFactura();
+    const payload = {
+      empresa_id: String(empresaActual),
+      proveedor_id: provId,
+      pdv_id: pdvId,
+      numero_factura: document.getElementById('fac-numero').value.trim() || null,
+      tipo_comprobante: document.getElementById('fac-tipo').value,
+      fecha: document.getElementById('fac-fecha').value || hoy(),
+      vencimiento: document.getElementById('fac-vencimiento').value || null,
+      notas: document.getElementById('fac-notas').value.trim() || null,
+      total, saldo: total,
+      estado: 'pendiente',
+    };
+    try {
+      const [factura] = await sbApi('proveedores_facturas', {method:'POST', body:JSON.stringify(payload)});
+      const itemsPayload = items.map(it => ({
+        factura_id: factura.id, tipo: it.tipo, item_id: it.item_id,
+        item_nombre: it.item_nombre, cantidad: it.cantidad, unidad: it.unidad,
+        precio_unitario: it.precio_unitario, subtotal: it.subtotal
+      }));
+      await sbApi('proveedores_items', {method:'POST', body:JSON.stringify(itemsPayload)});
+      if (confirmarYa) await confirmarFacturaInterno(factura.id, pdvId, items);
+      toast(confirmarYa ? '✓ Factura guardada y confirmada — stock actualizado' : '✓ Factura guardada como pendiente');
+      cerrarModalFactura();
+      await cargarFacturas();
+      renderFacturas();
+      renderProveedores();
+    } catch(e) { toast('Error guardando factura: '+e.message, 'error'); }
+  }
+
+  // ── IMPACTO EN STOCK AL CONFIRMAR ────────────────────────────────────
+  async function confirmarFacturaInterno(facturaId, pdvId, items) {
+    for (const it of items) {
+      if (it.tipo === 'insumo') {
+        const actual = await sbApi(`insumos?id=eq.${it.item_id}&select=stock_actual`);
+        const stockActual = Number(actual?.[0]?.stock_actual) || 0;
+        await sbApi(`insumos?id=eq.${it.item_id}`, {method:'PATCH', body:JSON.stringify({stock_actual: stockActual + it.cantidad})});
+      } else {
+        const gustoId = it.gusto_id || '0';
+        const existente = await sbApi(`stock?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&prod_id=eq.${it.item_id}&gusto_id=eq.${gustoId}&select=cantidad`);
+        const cantActual = Number(existente?.[0]?.cantidad) || 0;
+        const nuevaCant = cantActual + it.cantidad;
+        await sbApi(`stock?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&prod_id=eq.${it.item_id}&gusto_id=eq.${gustoId}`, {method:'DELETE'});
+        await sbApi('stock', {method:'POST', body:JSON.stringify({empresa_id:String(empresaActual), pdv_id:String(pdvId), prod_id:String(it.item_id), gusto_id:String(gustoId), cantidad:nuevaCant, updated_at:new Date().toISOString()})});
+      }
+    }
+    await sbApi(`proveedores_facturas?id=eq.${facturaId}`, {method:'PATCH', body:JSON.stringify({estado:'confirmada', confirmada_by: currentUser.username})});
+  }
+
+  async function confirmarFacturaDesdeDetalle(facturaId) {
+    if (!confirm('¿Confirmar esta factura? Esto va a impactar en el stock automáticamente.')) return;
+    try {
+      const factura = _facturas.find(f=>String(f.id)===String(facturaId));
+      const items = await sbApi(`proveedores_items?factura_id=eq.${facturaId}&select=*`) || [];
+      const itemsNorm = items.map(it => ({ tipo: it.tipo, item_id: it.item_id, gusto_id: null, cantidad: Number(it.cantidad) }));
+      // Recuperar gusto_id si el item_id de producto viene combinado (guardado ya separado, gusto no persistido individualmente:
+      // para productos con gusto, el item_id ya es solo el id de producto; se asume gusto '0' si no se registró aparte)
+      await confirmarFacturaInterno(facturaId, factura.pdv_id, itemsNorm);
+      toast('✓ Factura confirmada — stock actualizado');
+      await cargarFacturas();
+      renderFacturas();
+      cerrarModalDetalle();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  async function anularFactura(facturaId) {
+    if (!confirm('¿Anular esta factura? No se revertirá el stock si ya fue confirmada.')) return;
+    try {
+      await sbApi(`proveedores_facturas?id=eq.${facturaId}`, {method:'PATCH', body:JSON.stringify({estado:'anulada'})});
+      toast('Factura anulada');
+      await cargarFacturas();
+      renderFacturas();
+      cerrarModalDetalle();
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  // ── FACTURAS: LISTADO Y DETALLE ──────────────────────────────────────
+  function renderFacturas() {
+    const filEstado = document.getElementById('fil-estado').value;
+    const filProv = document.getElementById('fil-proveedor').value;
+    let lista = _facturas;
+    if (filEstado !== 'todos') lista = lista.filter(f=>f.estado===filEstado);
+    if (filProv !== 'todos') lista = lista.filter(f=>String(f.proveedor_id)===String(filProv));
+    const tbody = document.getElementById('tbl-facturas');
+    if (!lista.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay facturas para mostrar</td></tr>'; return; }
+    tbody.innerHTML = lista.map(f => `<tr style="cursor:pointer" onclick="abrirModalDetalle('${f.id}')">
+      <td><b>${f.numero_factura||'—'}</b></td>
+      <td>${nombreProveedor(f.proveedor_id)}</td>
+      <td>${nombrePdv(f.pdv_id)}</td>
+      <td>${f.fecha}</td>
+      <td>${fmtMoney(f.total)}</td>
+      <td style="color:${Number(f.saldo)>0?'var(--warn)':'var(--text-dim)'}">${fmtMoney(f.saldo)}</td>
+      <td><span class="badge badge-${f.estado}">${f.estado}</span></td>
+      <td>→</td>
+    </tr>`).join('');
+  }
+
+  let _detalleFacturaId = null;
+
+  async function abrirModalDetalle(facturaId) {
+    _detalleFacturaId = facturaId;
+    const f = _facturas.find(x=>String(x.id)===String(facturaId));
+    if (!f) return;
+    document.getElementById('det-titulo').textContent = `🧾 ${f.numero_factura || 'Sin número'} — ${nombreProveedor(f.proveedor_id)}`;
+    document.getElementById('det-info').innerHTML = `
+      <div class="k">Proveedor</div><div class="v">${nombreProveedor(f.proveedor_id)}</div>
+      <div class="k">PDV</div><div class="v">${nombrePdv(f.pdv_id)}</div>
+      <div class="k">Fecha</div><div class="v">${f.fecha}</div>
+      <div class="k">Vencimiento</div><div class="v">${f.vencimiento||'—'}</div>
+      <div class="k">Total</div><div class="v">${fmtMoney(f.total)}</div>
+      <div class="k">Saldo pendiente</div><div class="v">${fmtMoney(f.saldo)}</div>
+      <div class="k">Estado</div><div class="v"><span class="badge badge-${f.estado}">${f.estado}</span></div>
+      <div class="k">Notas</div><div class="v">${f.notas||'—'}</div>
+    `;
+    const items = await sbApi(`proveedores_items?factura_id=eq.${facturaId}&select=*`) || [];
+    document.getElementById('det-items').innerHTML = items.map(it => `<tr>
+      <td>${it.item_nombre}</td><td>${it.tipo}</td><td>${it.cantidad} ${it.unidad||''}</td>
+      <td>${fmtMoney(it.precio_unitario)}</td><td>${fmtMoney(it.subtotal)}</td>
+    </tr>`).join('');
+
+    const acciones = document.getElementById('det-acciones');
+    let botones = '';
+    if (f.estado === 'pendiente') botones += `<button class="btn-primary btn-sm" onclick="confirmarFacturaDesdeDetalle('${f.id}')">✓ Confirmar (impacta stock)</button>`;
+    if (f.estado !== 'anulada') botones += `<button class="btn-outline btn-sm" onclick="anularFactura('${f.id}')" style="color:var(--danger);border-color:var(--danger)">Anular factura</button>`;
+    acciones.innerHTML = botones;
+
+    document.getElementById('det-pagos-wrap').style.display = f.estado==='anulada' ? 'none' : '';
+    const pagos = await sbApi(`proveedores_pagos?factura_id=eq.${facturaId}&order=fecha.desc&select=*`) || [];
+    document.getElementById('det-pagos').innerHTML = pagos.length ? pagos.map(p => `<div class="pago-row"><span>${p.fecha} · ${p.medio_pago}</span><span>${fmtMoney(p.monto)}</span></div>`).join('') : '<div style="color:var(--text-dim);font-size:13px">Sin pagos registrados</div>';
+
+    document.getElementById('modal-detalle').classList.add('open');
+  }
+
+  function cerrarModalDetalle() { document.getElementById('modal-detalle').classList.remove('open'); _detalleFacturaId = null; }
+
+  async function registrarPago() {
+    const monto = parseFloat(document.getElementById('pago-monto').value) || 0;
+    if (monto <= 0) { toast('Ingresá un monto válido', 'error'); return; }
+    const f = _facturas.find(x=>String(x.id)===String(_detalleFacturaId));
+    if (!f) return;
+    try {
+      await sbApi('proveedores_pagos', {method:'POST', body:JSON.stringify({
+        empresa_id: String(empresaActual), proveedor_id: f.proveedor_id, factura_id: f.id,
+        monto, fecha: document.getElementById('pago-fecha').value || hoy(),
+        medio_pago: document.getElementById('pago-medio').value, registrado_por: currentUser.username
+      })});
+      const nuevoSaldo = Math.max(0, Number(f.saldo) - monto);
+      const nuevoEstado = nuevoSaldo === 0 ? 'pagada' : 'parcial';
+      await sbApi(`proveedores_facturas?id=eq.${f.id}`, {method:'PATCH', body:JSON.stringify({saldo:nuevoSaldo, estado:nuevoEstado})});
+      toast('✓ Pago registrado');
+      document.getElementById('pago-monto').value = '';
+      await cargarFacturas();
+      renderFacturas();
+      renderProveedores();
+      abrirModalDetalle(f.id);
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  }
+
+  // ── INIT ─────────────────────────────────────────────────────────────
+  // La carga real de datos ocurre en startApp() luego del login.
+</script>
+</body>
+</html>

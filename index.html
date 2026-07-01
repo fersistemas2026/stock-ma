@@ -313,6 +313,7 @@
       </div>
       <span class="user-badge" id="user-badge"></span>
       <button id="btn-sesiones-admin" onclick="verSesionesActivas()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Ver sesiones activas">📡 Sesiones</button>
+      <button id="btn-proveedores-link" onclick="window.open('proveedores.html','_blank')" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir módulo de Proveedores">🚚 Proveedores</button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </header>
@@ -2960,6 +2961,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const roleLabel = isAdmin?'admin':isProduccion?'producción':isViewer?'usuario':isVisorPedidos?'visor pedidos':'operador';
       document.getElementById('user-badge').innerHTML = `<b>${currentUser.displayName||currentUser.username}</b> · ${roleLabel}`;
       updateHeaderEmpresa();
+      const btnProv = document.getElementById('btn-proveedores-link');
+      if (btnProv) btnProv.style.display = (isAdmin || currentUser.perms?.proveedores) ? '' : 'none';
 
       const hide = el => { if(el) el.style.display='none'; };
       const show = el => { if(el) el.style.display=''; };
@@ -6146,6 +6149,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             </label>
             <label class="pdv-check-item ${perms.pedidosOnline?'checked':''}" id="perm-lbl-${u.username}-pedidosOnline">
               <input type="checkbox" ${perms.pedidosOnline?'checked':''} onchange="togglePerm('${u.username}','pedidosOnline',this.checked)" />🌐 Pedidos Online
+            </label>
+            <label class="pdv-check-item ${perms.proveedores?'checked':''}" id="perm-lbl-${u.username}-proveedores">
+              <input type="checkbox" ${perms.proveedores?'checked':''} onchange="togglePerm('${u.username}','proveedores',this.checked)" />🚚 Proveedores
             </label>
 
           </div>
