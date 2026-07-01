@@ -1137,29 +1137,57 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     return Number(cfg.costo_manual) || 0;
   }
 
+  function filaCostoHtml(prodId, gustoId, nombreMostrar) {
+    const cfg = _costos.find(c => String(c.prod_id) === String(prodId) && String(c.gusto_id||'') === String(gustoId||''));
+    const tipo = cfg?.tipo_costo === 'receta' ? 'Receta' : (cfg ? 'Manual' : '—');
+    const costo = costoDeFila(prodId, gustoId);
+    const precioFinal = _preciosProd[prodId + '::' + gustoId] || 0;
+    const precioSinIva = precioFinal ? precioFinal / (1 + (_ivaPct/100)) : 0;
+    const mgDinero = precioFinal ? (precioFinal - costo) : 0;
+    const mgPct = precioFinal ? (mgDinero / precioFinal * 100) : 0;
+    return `<tr>
+      <td>${nombreMostrar}</td>
+      <td>${tipo}</td>
+      <td style="text-align:right">${fmtMoney(costo)}</td>
+      <td style="text-align:right">${precioFinal ? fmtMoney(precioSinIva) : '—'}</td>
+      <td style="text-align:right">${precioFinal ? fmtMoney(precioFinal) : '<span style="color:var(--text-dim)">Sin precio</span>'}</td>
+      <td style="text-align:right;color:${mgDinero>=0?'var(--accent)':'var(--danger)'}">${precioFinal ? fmtMoney(mgDinero) : '—'}</td>
+      <td style="text-align:right;color:${mgPct>=0?'var(--accent)':'var(--danger)'}">${precioFinal ? mgPct.toFixed(1)+'%' : '—'}</td>
+      <td><button class="btn-danger-outline" onclick="abrirModalCosto('${prodId}','${gustoId}')" title="Configurar costo">✏️</button></td>
+    </tr>`;
+  }
+
+  let _costosExpandido = {};
+
+  function toggleCostoGrupo(prodId) {
+    _costosExpandido[prodId] = !_costosExpandido[prodId];
+    renderCostos();
+  }
+
   function renderCostos() {
     const tbody = document.getElementById('tbl-costos');
-    const filas = filasCostos();
-    if (!filas.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay productos cargados todavía</td></tr>'; return; }
-    tbody.innerHTML = filas.map(f => {
-      const cfg = _costos.find(c => String(c.prod_id) === String(f.prodId) && String(c.gusto_id||'') === String(f.gustoId||''));
-      const tipo = cfg?.tipo_costo === 'receta' ? 'Receta' : (cfg ? 'Manual' : '—');
-      const costo = costoDeFila(f.prodId, f.gustoId);
-      const precioFinal = _preciosProd[f.prodId + '::' + f.gustoId] || 0;
-      const precioSinIva = precioFinal ? precioFinal / (1 + (_ivaPct/100)) : 0;
-      const mgDinero = precioFinal ? (precioFinal - costo) : 0;
-      const mgPct = precioFinal ? (mgDinero / precioFinal * 100) : 0;
-      return `<tr>
-        <td><b>${f.nombre}</b></td>
-        <td>${tipo}</td>
-        <td style="text-align:right">${fmtMoney(costo)}</td>
-        <td style="text-align:right">${precioFinal ? fmtMoney(precioSinIva) : '—'}</td>
-        <td style="text-align:right">${precioFinal ? fmtMoney(precioFinal) : '<span style="color:var(--text-dim)">Sin precio</span>'}</td>
-        <td style="text-align:right;color:${mgDinero>=0?'var(--accent)':'var(--danger)'}">${precioFinal ? fmtMoney(mgDinero) : '—'}</td>
-        <td style="text-align:right;color:${mgPct>=0?'var(--accent)':'var(--danger)'}">${precioFinal ? mgPct.toFixed(1)+'%' : '—'}</td>
-        <td><button class="btn-danger-outline" onclick="abrirModalCosto('${f.prodId}','${f.gustoId}')" title="Configurar costo">✏️</button></td>
-      </tr>`;
-    }).join('');
+    if (!_productos.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay productos cargados todavía</td></tr>'; return; }
+    let html = '';
+    _productos.forEach(p => {
+      const gustos = p.gustos || [];
+      if (gustos.length <= 1) {
+        const gustoId = gustos.length ? String(gustos[0].id) : '';
+        const nombre = gustos.length ? `<b>${p.nombre}</b> - ${gustos[0].nombre}` : `<b>${p.nombre}</b>`;
+        html += filaCostoHtml(String(p.id), gustoId, nombre);
+      } else {
+        const expandido = !!_costosExpandido[p.id];
+        html += `<tr style="cursor:pointer;background:rgba(255,255,255,.03)" onclick="toggleCostoGrupo('${p.id}')">
+          <td colspan="8">
+            <span style="display:inline-block;transition:transform .15s;margin-right:8px;transform:rotate(${expandido?90:0}deg);">▶</span>
+            <b>${p.nombre}</b> <span style="color:var(--text-muted);font-size:12px">(${gustos.length} sabores)</span>
+          </td>
+        </tr>`;
+        if (expandido) {
+          gustos.forEach(g => { html += filaCostoHtml(String(p.id), String(g.id), `<span style="padding-left:22px;color:var(--text-muted)">↳ ${g.nombre}</span>`); });
+        }
+      }
+    });
+    tbody.innerHTML = html;
   }
 
   async function guardarIva() {
