@@ -6456,27 +6456,24 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       byProd[prod].push({gusto, orden, sobra});
     });
 
-    var msg = '\uD83D\uDCE6 *ORDEN DE PEDIDO*' + (empresaNombre ? ' \u2014 ' + empresaNombre : '') + '\n';
-    msg += '\uD83D\uDCC5 ' + fecha + '\n';
-    msg += '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n';
+    var msg = '';
 
-    if (!Object.keys(byProd).length) {
-      msg += '\u2705 Sin productos que ordenar ni con sobrestock.\n';
+    var hayOrden = Object.values(byProd).some(function(gustos){ return gustos.some(function(g){ return g.orden > 0; }); });
+
+    if (!hayOrden) {
+      msg += 'Sin productos que ordenar.\n';
     } else {
       Object.entries(byProd).forEach(function(entry) {
         var prod=entry[0], gustos=entry[1];
+        var lineasProd = gustos.filter(function(g){ return g.orden > 0; });
+        if (!lineasProd.length) return;
         msg += '*' + prod + '*\n';
-        gustos.forEach(function(g) {
-          var linea = '  \u2022 ' + g.gusto + ':';
-          if (g.orden > 0) linea += ' \u26A0\uFE0F +' + g.orden;
-          if (g.sobra > 0) linea += ' \uD83D\uDCE6 sobra +' + g.sobra;
-          msg += linea + '\n';
+        lineasProd.forEach(function(g) {
+          msg += '  \u2022 ' + g.gusto + ': +' + g.orden + '\n';
         });
         msg += '\n';
       });
     }
-
-    msg += '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n_Generado: ' + new Date().toLocaleString('es-AR') + '_';
 
     var url = 'https://wa.me/?text=' + encodeURIComponent(msg);
     window.open(url, '_blank');
