@@ -247,6 +247,7 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
           </div>
           <div class="form-group"><label>Categoría</label><input type="text" id="ins-categoria" placeholder="Ej: Harinas, Envases"></div>
           <div class="form-group"><label>Stock mínimo</label><input type="number" id="ins-stock-minimo" placeholder="0" step="0.01"></div>
+          <div class="form-group"><label>Proveedor habitual</label><select id="ins-proveedor"><option value="">Sin asignar</option></select></div>
         </div>
         <div class="form-actions">
           <button class="btn-outline" id="ins-cancel-btn" style="display:none" onclick="cancelarEdicionInsumo()">Cancelar edición</button>
@@ -255,8 +256,8 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th></th></tr></thead>
-          <tbody id="tbl-insumos"><tr><td colspan="6" class="empty-state">Cargando...</td></tr></tbody>
+          <thead><tr><th>Nombre</th><th>Categoría</th><th>Proveedor</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th></th></tr></thead>
+          <tbody id="tbl-insumos"><tr><td colspan="7" class="empty-state">Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -578,7 +579,7 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     document.getElementById('panel-'+name).classList.add('active');
     if (name === 'costos') {
       document.getElementById('tbl-costos').innerHTML = '<tr><td colspan="8" class="empty-state">Cargando...</td></tr>';
-      Promise.all([cargarProductos(), cargarCostos()]).then(renderCostos);
+      Promise.all([cargarProductos(), cargarInsumos(), cargarCostos()]).then(renderCostos);
     }
   }
 
@@ -614,6 +615,8 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
       _proveedores = await sbApi(`proveedores?empresa_id=eq.${empresaActual}&order=nombre.asc&select=*`) || [];
       const sel = document.getElementById('fil-proveedor');
       sel.innerHTML = '<option value="todos">Todos los proveedores</option>' + _proveedores.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+      const selIns = document.getElementById('ins-proveedor');
+      if (selIns) selIns.innerHTML = '<option value="">Sin asignar</option>' + _proveedores.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
     } catch(e) { _proveedores = []; toast('Error cargando proveedores: '+e.message,'error'); }
   }
 
@@ -750,6 +753,7 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     document.getElementById('ins-unidad').value = 'kg';
     document.getElementById('ins-categoria').value = '';
     document.getElementById('ins-stock-minimo').value = '';
+    document.getElementById('ins-proveedor').value = '';
     document.getElementById('ins-form-title').textContent = '+ Nuevo insumo';
     document.getElementById('ins-cancel-btn').style.display = 'none';
   }
@@ -764,6 +768,7 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
       unidad_medida: document.getElementById('ins-unidad').value,
       categoria: document.getElementById('ins-categoria').value.trim() || null,
       stock_minimo: parseFloat(document.getElementById('ins-stock-minimo').value) || 0,
+      proveedor_id: document.getElementById('ins-proveedor').value || null,
     };
     try {
       if (id) await sbApi(`insumos?id=eq.${id}`, {method:'PATCH', body:JSON.stringify(payload)});
@@ -783,6 +788,7 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     document.getElementById('ins-unidad').value = i.unidad_medida || 'kg';
     document.getElementById('ins-categoria').value = i.categoria || '';
     document.getElementById('ins-stock-minimo').value = i.stock_minimo || '';
+    document.getElementById('ins-proveedor').value = i.proveedor_id || '';
     document.getElementById('ins-form-title').textContent = '✏️ Editando insumo';
     document.getElementById('ins-cancel-btn').style.display = '';
     window.scrollTo({top:0, behavior:'smooth'});
@@ -802,12 +808,13 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
 
   function renderInsumos() {
     const tbody = document.getElementById('tbl-insumos');
-    if (!_insumos.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay insumos cargados todavía</td></tr>'; return; }
+    if (!_insumos.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay insumos cargados todavía</td></tr>'; return; }
     tbody.innerHTML = _insumos.map(i => {
       const bajo = Number(i.stock_actual) <= Number(i.stock_minimo||0) && Number(i.stock_minimo||0) > 0;
       return `<tr>
         <td><b>${i.nombre}</b></td>
         <td>${i.categoria||'—'}</td>
+        <td>${i.proveedor_id ? nombreProveedor(i.proveedor_id) : '—'}</td>
         <td>${i.unidad_medida}</td>
         <td style="color:${bajo?'var(--danger)':'var(--text)'}">${Number(i.stock_actual||0).toLocaleString('es-AR')}${bajo?' ⚠️':''}</td>
         <td>${Number(i.stock_minimo||0).toLocaleString('es-AR')}</td>
@@ -839,6 +846,25 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     const provId = document.getElementById('fac-proveedor').value;
     const prov = _proveedores.find(p=>String(p.id)===String(provId));
     if (prov && prov.pdv_id) document.getElementById('fac-pdv').value = prov.pdv_id;
+    // Refrescar las filas de items ya agregadas para que el combo de insumos
+    // muestre solo los insumos de este proveedor (más los que no tienen proveedor asignado)
+    _itemRows.forEach(rid => {
+      const tipo = document.getElementById('tipo-'+rid)?.value;
+      if (tipo === 'insumo') {
+        const selEl = document.getElementById('item-select-'+rid);
+        const valorPrevio = selEl.value;
+        onCambioTipoItem(rid);
+        if (valorPrevio && [...selEl.options].some(o=>o.value===valorPrevio)) selEl.value = valorPrevio;
+      }
+    });
+  }
+
+  function insumosParaProveedorActual() {
+    const provId = document.getElementById('fac-proveedor').value;
+    if (!provId) return _insumos;
+    const delProveedor = _insumos.filter(i => String(i.proveedor_id||'')===String(provId));
+    const sinAsignar = _insumos.filter(i => !i.proveedor_id);
+    return delProveedor.concat(sinAsignar);
   }
 
   function agregarFilaItem() {
@@ -867,7 +893,9 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
     const tipo = document.getElementById('tipo-'+rid).value;
     const sel = document.getElementById('item-select-'+rid);
     if (tipo === 'insumo') {
-      sel.innerHTML = '<option value="">Seleccionar insumo...</option>' + _insumos.map(i=>`<option value="${i.id}" data-nombre="${i.nombre}" data-unidad="${i.unidad_medida}">${i.nombre}</option>`).join('');
+      const provId = document.getElementById('fac-proveedor').value;
+      const lista = insumosParaProveedorActual();
+      sel.innerHTML = '<option value="">Seleccionar insumo...</option>' + lista.map(i=>`<option value="${i.id}" data-nombre="${i.nombre}" data-unidad="${i.unidad_medida}">${i.nombre}${(provId && !i.proveedor_id) ? ' (sin proveedor asignado)' : ''}</option>`).join('');
     } else {
       let opts = '<option value="">Seleccionar producto...</option>';
       _productos.forEach(p => {
@@ -967,8 +995,10 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
       toast(confirmarYa ? '✓ Factura guardada y confirmada — stock actualizado' : '✓ Factura guardada como pendiente');
       cerrarModalFactura();
       await cargarFacturas();
+      if (confirmarYa) { await cargarInsumos(); await cargarCostos(); renderCostos(); }
       renderFacturas();
       renderProveedores();
+      renderInsumos();
     } catch(e) { toast('Error guardando factura: '+e.message, 'error'); }
   }
 
@@ -1002,7 +1032,9 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
       await confirmarFacturaInterno(facturaId, factura.pdv_id, itemsNorm);
       toast('✓ Factura confirmada — stock actualizado');
       await cargarFacturas();
+      await cargarInsumos(); await cargarCostos(); renderCostos();
       renderFacturas();
+      renderInsumos();
       cerrarModalDetalle();
     } catch(e) { toast('Error: '+e.message, 'error'); }
   }
