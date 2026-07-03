@@ -16214,7 +16214,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (!body) return;
     body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
     try {
-      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas] = await Promise.all([
+      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas, desps, prods, listaRaw] = await Promise.all([
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,cliente_tel,ticket_id,created_at,descuento_monto,descuento_motivo&limit=200000`) || [],
         getPdv(),
         sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,pdv_id,telefono,created_at&order=created_at.asc&limit=50000`) || [],
@@ -16222,8 +16222,20 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,reporte_z,efectivo,tarjetas&order=fecha.asc`) || [],
         sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || [],
         sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || [],
-        sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio`) || []
+        sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio`) || [],
+        sbApi(`desperdicios?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`) || [],
+        getProd(),
+        sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos`) || []
       ]);
+
+      // Mapa de precios Lista1 para valorizar desperdicios: listaPrecio[prod_id][gusto_id] = precio
+      const listaPrecio = {};
+      listaRaw.forEach(ld => {
+        const gustosArr = ld.datos?.gustos;
+        if (!gustosArr || !Array.isArray(gustosArr)) return;
+        listaPrecio[String(ld.prod_id)] = {};
+        gustosArr.forEach(g => { listaPrecio[String(ld.prod_id)][String(g.gid||g.id||'')] = parseFloat(g.precio)||0; });
+      });
 
       if (!ventas.length) {
         body.innerHTML = `<div class="empty-state">📊<p>No hay ventas en el período seleccionado.</p></div>`;
@@ -16284,7 +16296,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
       // Función que renderiza las métricas de los PDVs seleccionados
       const todasMetas = metasRaw.length ? (metasRaw[0].datos || []) : [];
-      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[], ventas, desde, hasta };
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[], ventas, desde, hasta, desps: desps||[], prods: prods||[], listaPrecio };
       window._pdvMetricasActivos = 'all';
 
       window.pdvMetricasSelAll = function() {
@@ -16314,7 +16326,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       };
 
       window.renderPdvMetricas = function(ids) {
-        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas, ventas, desde, hasta } = window._pdvMetricasData;
+        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas, ventas, desde, hasta, desps, prods, listaPrecio } = window._pdvMetricasData;
         const contenido = document.getElementById('pdvm-contenido');
         if (!contenido) return;
 
@@ -16865,6 +16877,112 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                 + '</div>'
               + '</div>'
               : '')
+            // ── Bloque: Desperdicios ──
+            + (() => {
+                const despFiltrados = (desps||[]).filter(d => pdvIdCard === 'all' || String(d.pdv_id) === String(pdvIdCard));
+                if (!despFiltrados.length) return '';
+
+                const nombreProd = pid => { const p=(prods||[]).find(x=>String(x.id)===String(pid)); return p?.nombre||p?.name||'—'; };
+                const nombreGusto = (pid,gid) => { const p=(prods||[]).find(x=>String(x.id)===String(pid)); const g=(p?.gustos||[]).find(x=>String(x.id)===String(gid)); return g?.nombre||g?.name||'—'; };
+                const precioDe = (pid,gid) => (listaPrecio[String(pid)]||{})[String(gid)] || 0;
+
+                // Totales generales
+                let totalCant = 0, totalImporte = 0;
+                despFiltrados.forEach(d => {
+                  const cant = parseInt(d.cantidad)||0;
+                  totalCant += cant;
+                  totalImporte += cant * precioDe(d.prod_id, d.gusto_id);
+                });
+
+                // Ranking por PDV (solo en vista "Todos")
+                let rankingHtml = '';
+                if (pdvIdCard === 'all') {
+                  const porPdvD = {};
+                  despFiltrados.forEach(d => {
+                    const pid = String(d.pdv_id||'');
+                    if (!porPdvD[pid]) porPdvD[pid] = { nombre: pdvMap[pid]||pid, cant: 0, importe: 0 };
+                    const cant = parseInt(d.cantidad)||0;
+                    porPdvD[pid].cant += cant;
+                    porPdvD[pid].importe += cant * precioDe(d.prod_id, d.gusto_id);
+                  });
+                  const ranking = Object.values(porPdvD).sort((a,b) => b.importe - a.importe);
+                  const medalles = ['🥇','🥈','🥉'];
+                  rankingHtml = '<div style="margin-bottom:12px;">'
+                    + '<div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🏆 Ranking PDVs</div>'
+                    + ranking.map((r, i) => {
+                        const medal = medalles[i] || ('#' + (i+1));
+                        const pct = ranking[0].importe > 0 ? Math.round(r.importe / ranking[0].importe * 100) : 0;
+                        return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+                          + '<span style="font-size:14px;min-width:28px;">' + medal + '</span>'
+                          + '<span style="font-size:13px;font-weight:600;color:var(--text);min-width:100px;">' + r.nombre + '</span>'
+                          + '<div style="background:var(--surface);border-radius:3px;height:8px;overflow:hidden;flex:1;"><div style="width:' + pct + '%;height:100%;background:#ff5a5a;border-radius:3px;"></div></div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:70px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">Unidades</span>'
+                            + '<span style="font-size:13px;font-weight:800;color:#ff5a5a;font-family:var(--mono);">' + r.cant + '</span>'
+                          + '</div>'
+                          + '<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:90px;">'
+                            + '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;">Importe</span>'
+                            + '<span style="font-size:13px;font-weight:800;color:#ff5a5a;font-family:var(--mono);">' + fmtARS(r.importe) + '</span>'
+                          + '</div>'
+                          + '</div>';
+                      }).join('')
+                    + '</div>';
+                }
+
+                // Desglose por producto/gusto
+                const porProd = {};
+                despFiltrados.forEach(d => {
+                  const pk = String(d.prod_id||'?');
+                  if (!porProd[pk]) porProd[pk] = { nombre: nombreProd(d.prod_id), cant: 0, importe: 0, gustos: {} };
+                  const cant = parseInt(d.cantidad)||0;
+                  const imp = cant * precioDe(d.prod_id, d.gusto_id);
+                  porProd[pk].cant += cant;
+                  porProd[pk].importe += imp;
+                  const gk = String(d.gusto_id||'?');
+                  if (!porProd[pk].gustos[gk]) porProd[pk].gustos[gk] = { nombre: nombreGusto(d.prod_id, d.gusto_id), cant: 0, importe: 0 };
+                  porProd[pk].gustos[gk].cant += cant;
+                  porProd[pk].gustos[gk].importe += imp;
+                });
+                const prodsOrd = Object.values(porProd).sort((a,b) => b.importe - a.importe);
+
+                const desgloseHtml = prodsOrd.map(p => {
+                  const gustosOrds = Object.values(p.gustos).sort((a,b) => b.cant - a.cant);
+                  let gustoSpans = gustosOrds.map(g =>
+                    '<span style="display:inline-block;margin-right:8px;">' + g.nombre + ': <b style="color:#ff5a5a;">' + g.cant + '</b> &middot; ' + fmtARS(g.importe) + '</span>'
+                  ).join('');
+                  return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 8px;border-bottom:1px solid var(--border);gap:8px;">'
+                    + '<div style="flex:1;">'
+                      + '<div style="font-size:13px;font-weight:600;color:var(--text);">' + p.nombre + '</div>'
+                      + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + gustoSpans + '</div>'
+                    + '</div>'
+                    + '<div style="text-align:right;white-space:nowrap;">'
+                      + '<div style="font-size:13px;font-weight:700;color:#ff5a5a;">' + p.cant + ' uds</div>'
+                      + '<div style="font-size:12px;font-weight:700;color:#ff5a5a;">' + fmtARS(p.importe) + '</div>'
+                    + '</div>'
+                  + '</div>';
+                }).join('');
+
+                return '<div style="margin-top:16px;background:rgba(255,90,90,.06);border:1px solid rgba(255,90,90,.2);border-radius:10px;padding:14px;">'
+                  + '<div style="font-size:13px;font-weight:700;color:#ff5a5a;margin-bottom:12px;">🗑️ Desperdicios</div>'
+                  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;">'
+                  + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                    + '<div style="font-size:20px;font-weight:800;color:#ff5a5a;">' + totalCant + '</div>'
+                    + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Unidades desperdiciadas</div>'
+                  + '</div>'
+                  + '<div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                    + '<div style="font-size:20px;font-weight:800;color:#ff5a5a;">' + fmtARS(totalImporte) + '</div>'
+                    + '<div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Importe (precio Lista 1)</div>'
+                  + '</div>'
+                  + '</div>'
+                  + rankingHtml
+                  + (desgloseHtml
+                    ? '<div style="border-top:1px solid rgba(255,90,90,.15);padding-top:10px;margin-top:4px;">'
+                      + '<div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">📦 Detalle por producto</div>'
+                      + desgloseHtml
+                    + '</div>'
+                    : '')
+                  + '</div>';
+              })()
             + '</div>';
         };
 
