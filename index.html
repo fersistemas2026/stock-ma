@@ -387,6 +387,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;pedido-suc&#39;)" id="neg-btn-pedido-suc" style="display:none">🏪 Pedido por sucursal</button>
         <button class="neg-stab" onclick="switchNeg(&#39;elaboracion&#39;)" id="neg-btn-elaboracion" style="display:none">🧪 Elaboración</button>
         <button class="neg-stab" onclick="switchNeg(&#39;informes&#39;)" id="neg-btn-informes" style="display:none">📈 Informes</button>
+        <button class="neg-stab" onclick="switchNeg(&#39;pronostico&#39;)" id="neg-btn-pronostico" style="display:none">🔮 Pronóstico de Ventas</button>
         <button class="neg-stab" onclick="switchNeg(&#39;caja&#39;)" id="neg-btn-caja" style="display:none">💰 Caja</button>
         <button class="neg-stab" onclick="switchNeg(&#39;config&#39;)" id="neg-btn-config" style="display:none">⚙️ Configuración</button>
         <button class="neg-stab" onclick="switchNeg(&#39;accesos&#39;)" id="neg-btn-accesos" style="display:none">🔗 Accesos</button>
@@ -579,6 +580,22 @@
           </div>
         </div>
         <div id="inf-body"><div class="empty-state"><p>Seleccioná un período y hacé clic en Consultar.</p></div></div>
+      </div>
+
+      <!-- PRONÓSTICO DE VENTAS -->
+      <div id="neg-pronostico" class="neg-panel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+          <div><div class="form-title" style="margin-bottom:4px">🔮 Pronóstico de Ventas</div>
+          <p style="font-size:13px;color:var(--text-muted)">Sugerencia de cantidad a preparar la próxima semana, según el promedio de las últimas 2 semanas (lunes a domingo) por PDV.</p></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <label style="font-size:11px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">PDV</label>
+            <select id="pronostico-pdv-sel" onchange="renderPronostico()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 14px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;min-width:200px;"></select>
+          </div>
+          <button class="btn-outline" onclick="initPronostico()">↻ Actualizar</button>
+        </div>
+        <div id="pronostico-cont"><div class="empty-state"><p>Cargando...</p></div></div>
       </div>
 
       <!-- PRODUCTOS -->
@@ -4919,6 +4936,115 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   // ── INFORMES ──────────────────────────────────────────────────────────
   let informesData = [];
 
+  // ── PRONÓSTICO DE VENTAS ──────────────────────────────────────────────
+  // Calcula los rangos lunes-domingo de las últimas 2 semanas completas
+  // (no incluye la semana en curso, aunque esté a medias).
+  function pronosticoRangoSemanas() {
+    const hoy = new Date(fechaHoyAR() + 'T12:00:00');
+    const dow = hoy.getDay(); // 0=dom,1=lun,...6=sab
+    const diffLunesActual = dow === 0 ? 6 : dow - 1;
+    const lunesActual = new Date(hoy); lunesActual.setDate(hoy.getDate() - diffLunesActual);
+    const fmt = d => d.toISOString().slice(0, 10);
+
+    const lunesSem1 = new Date(lunesActual); lunesSem1.setDate(lunesActual.getDate() - 7);
+    const domingoSem1 = new Date(lunesActual); domingoSem1.setDate(lunesActual.getDate() - 1);
+    const lunesSem2 = new Date(lunesActual); lunesSem2.setDate(lunesActual.getDate() - 14);
+    const domingoSem2 = new Date(lunesActual); domingoSem2.setDate(lunesActual.getDate() - 8);
+
+    return {
+      sem1: { desde: fmt(lunesSem1), hasta: fmt(domingoSem1) }, // semana pasada (más reciente)
+      sem2: { desde: fmt(lunesSem2), hasta: fmt(domingoSem2) }  // semana anterior a esa
+    };
+  }
+
+  async function initPronostico() {
+    const cont = document.getElementById('pronostico-cont');
+    const pdvSelEl = document.getElementById('pronostico-pdv-sel');
+    if (!cont || !pdvSelEl) return;
+    cont.innerHTML = '<div class="empty-state"><span class="spin"></span></div>';
+    try {
+      const { sem1, sem2 } = pronosticoRangoSemanas();
+      const [pdvs, ventasSem1, ventasSem2] = await Promise.all([
+        getPdv(),
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${sem1.desde}&fecha=lte.${sem1.hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${sem2.desde}&fecha=lte.${sem2.hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad`) || []
+      ]);
+
+      // Popular selector de PDV (una sola vez, preservando selección si ya había)
+      const valPrevio = pdvSelEl.value;
+      pdvSelEl.innerHTML = pdvs.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+      if (valPrevio && pdvs.some(p => String(p.id) === String(valPrevio))) pdvSelEl.value = valPrevio;
+
+      window._pronosticoData = { pdvs, ventasSem1, ventasSem2, sem1, sem2 };
+      renderPronostico();
+    } catch (e) {
+      cont.innerHTML = '<div class="empty-state"><p>Error cargando el pronóstico.</p></div>';
+    }
+  }
+
+  function renderPronostico() {
+    const cont = document.getElementById('pronostico-cont');
+    const data = window._pronosticoData;
+    if (!cont || !data) return;
+    const { ventasSem1, ventasSem2, sem1, sem2 } = data;
+    const pdvId = document.getElementById('pronostico-pdv-sel')?.value || '';
+
+    function agrupar(ventas) {
+      const map = {};
+      ventas.filter(v => String(v.pdv_id) === String(pdvId)).forEach(v => {
+        const key = String(v.prod_id || '') + '||' + String(v.gusto_id || '');
+        if (!map[key]) map[key] = { prod: v.prod_nombre || '(sin producto)', gusto: v.gusto_nombre || '-', cant: 0 };
+        map[key].cant += Number(v.cantidad) || 0;
+      });
+      return map;
+    }
+
+    const g1 = agrupar(ventasSem1); // semana pasada (más reciente)
+    const g2 = agrupar(ventasSem2); // semana anterior a esa
+
+    const keys = new Set([...Object.keys(g1), ...Object.keys(g2)]);
+    const rows = Array.from(keys).map(k => {
+      const c1 = g1[k]?.cant || 0;
+      const c2 = g2[k]?.cant || 0;
+      const prod = g1[k]?.prod || g2[k]?.prod || '';
+      const gusto = g1[k]?.gusto || g2[k]?.gusto || '';
+      const sugerido = Math.round((c1 + c2) / 2);
+      return { prod, gusto, c1, c2, sugerido };
+    }).sort((a, b) => b.sugerido - a.sugerido);
+
+    const fmtFecha = f => f.split('-').reverse().join('/');
+
+    cont.innerHTML = `
+      <div style="margin-bottom:14px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">
+        📅 Semana anterior: ${fmtFecha(sem2.desde)} al ${fmtFecha(sem2.hasta)} &nbsp;|&nbsp;
+        📅 Semana pasada: ${fmtFecha(sem1.desde)} al ${fmtFecha(sem1.hasta)}
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:var(--surface2);">
+              <th style="text-align:left;padding:10px 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Producto</th>
+              <th style="text-align:left;padding:10px 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sabor</th>
+              <th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sem. anterior</th>
+              <th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sem. pasada</th>
+              <th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;">Sugerido próx. semana</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.length ? rows.map((r, i) => `
+              <tr style="${i % 2 === 1 ? 'background:rgba(255,255,255,.03);' : ''}border-top:1px solid var(--border);">
+                <td style="padding:10px 14px;font-weight:700;color:var(--text);">${r.prod}</td>
+                <td style="padding:10px 14px;color:var(--text-muted);">${r.gusto}</td>
+                <td style="padding:10px 14px;text-align:right;font-family:var(--mono);color:var(--text-muted);">${r.c2}</td>
+                <td style="padding:10px 14px;text-align:right;font-family:var(--mono);color:var(--text-muted);">${r.c1}</td>
+                <td style="padding:10px 14px;text-align:right;font-family:var(--mono);font-weight:900;color:var(--accent);font-size:15px;">${r.sugerido}</td>
+              </tr>`).join('') : '<tr><td colspan="5" style="padding:32px;text-align:center;color:var(--text-muted);">Sin ventas registradas en este PDV durante ese período.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   function initInformes() {
     const periodoEl=document.getElementById('inf-periodo');
     const fechaEl=document.getElementById('inf-fecha');
@@ -7202,6 +7328,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (sub==='recibo-pedido')   initReciboPedido();
     if (sub==='elaboracion')     initElaboracion();
     if (sub==='informes')        initInformes();
+    if (sub==='pronostico')      initPronostico();
     if (sub==='caja') {
       const isAdmin=currentUser&&currentUser.role==='admin';
       if (isAdmin) renderCajaAdmin(); else renderCajaOp();
@@ -12740,7 +12867,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (isAdmin) {
       show('neg-btn-stock'); show('neg-btn-pedido'); show('neg-btn-pedido-suc');
       show('neg-btn-productos'); show('neg-btn-empresa');
-      show('neg-btn-elaboracion'); show('neg-btn-informes'); show('neg-btn-caja');
+      show('neg-btn-elaboracion'); show('neg-btn-informes'); show('neg-btn-caja'); show('neg-btn-pronostico');
       show('neg-btn-config'); show('neg-btn-accesos'); show('neg-btn-ingresos'); show('neg-btn-cashflow'); hide('neg-btn-egresos-op'); hide('neg-btn-pedido-recibido');
       if (perms.mensajes !== false) show('neg-btn-mensajes'); else hide('neg-btn-mensajes'); show('neg-btn-desperdicios'); show('neg-btn-recuento'); show('neg-btn-lista-prod'); show('neg-btn-ventas'); show('neg-btn-monitor'); show('neg-btn-egresos-op'); hide('neg-btn-egresos'); hide('neg-btn-ventas-op');
       show('neg-btn-envio-pedido'); show('neg-btn-recibo-pedido');
@@ -12755,20 +12882,20 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       if (perms.pedido) show('neg-btn-pedido'); else hide('neg-btn-pedido');
       hide('neg-btn-pedido-suc');
       hide('neg-btn-productos'); hide('neg-btn-empresa');
-      hide('neg-btn-elaboracion'); hide('neg-btn-informes'); hide('neg-btn-caja');
+      hide('neg-btn-elaboracion'); hide('neg-btn-informes'); hide('neg-btn-caja'); hide('neg-btn-pronostico');
       hide('neg-btn-avisos');
     } else if (isViewer) {
       if (perms.productos)  show('neg-btn-productos');   else hide('neg-btn-productos');
       if (perms.stock)      show('neg-btn-stock');        else hide('neg-btn-stock');
       if (perms.pedido)     show('neg-btn-pedido');       else hide('neg-btn-pedido');
       if (perms.pedidoSuc)  show('neg-btn-pedido-suc');  else hide('neg-btn-pedido-suc');
-      hide('neg-btn-empresa'); hide('neg-btn-elaboracion'); hide('neg-btn-informes'); hide('neg-btn-caja');
+      hide('neg-btn-empresa'); hide('neg-btn-elaboracion'); hide('neg-btn-informes'); hide('neg-btn-caja'); hide('neg-btn-pronostico');
       hide('neg-btn-avisos');
     } else if (isVisorPedidos) {
       // Solo muestra el botón de pedidos online
       hide('neg-btn-stock'); hide('neg-btn-pedido'); hide('neg-btn-pedido-suc');
       hide('neg-btn-productos'); hide('neg-btn-empresa'); hide('neg-btn-elaboracion');
-      hide('neg-btn-informes'); hide('neg-btn-caja'); hide('neg-btn-config');
+      hide('neg-btn-informes'); hide('neg-btn-caja'); hide('neg-btn-config'); hide('neg-btn-pronostico');
       hide('neg-btn-ingresos'); hide('neg-btn-cashflow'); hide('neg-btn-egresos-op');
       hide('neg-btn-mensajes'); hide('neg-btn-desperdicios'); hide('neg-btn-recuento');
       hide('neg-btn-lista-precios-op'); hide('neg-btn-lista-prod'); hide('neg-btn-envio-pedido');
@@ -12785,6 +12912,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       if (perms.productos)  show('neg-btn-productos');   else hide('neg-btn-productos');
       if (perms.elaboracion) show('neg-btn-elaboracion'); else hide('neg-btn-elaboracion');
       if (perms.informes)   show('neg-btn-informes');    else hide('neg-btn-informes');
+      hide('neg-btn-pronostico');
       if (perms.config)        show('neg-btn-config');       else hide('neg-btn-config');
       show('neg-btn-mensajes');
       if (perms.desperdicios)  show('neg-btn-desperdicios'); else hide('neg-btn-desperdicios');
