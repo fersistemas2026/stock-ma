@@ -4953,7 +4953,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     return {
       sem1: { desde: fmt(lunesSem1), hasta: fmt(domingoSem1) }, // semana pasada (más reciente)
-      sem2: { desde: fmt(lunesSem2), hasta: fmt(domingoSem2) }  // semana anterior a esa
+      sem2: { desde: fmt(lunesSem2), hasta: fmt(domingoSem2) }, // semana anterior a esa
+      semActual: { desde: fmt(lunesActual), hasta: fechaHoyAR() } // semana en curso (lunes a hoy)
     };
   }
 
@@ -4963,19 +4964,28 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (!cont || !pdvSelEl) return;
     cont.innerHTML = '<div class="empty-state"><span class="spin"></span></div>';
     try {
-      const { sem1, sem2 } = pronosticoRangoSemanas();
-      const [pdvs, ventasSem1, ventasSem2] = await Promise.all([
+      const { sem1, sem2, semActual } = pronosticoRangoSemanas();
+      const [pdvs, prodsRaw, gustosRaw, ventasSem1, ventasSem2, ventasSemActual] = await Promise.all([
         getPdv(),
+        sbApi(`productos?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=id,nombre,orden`) || [],
+        sbApi(`gustos?select=id,producto_id,nombre,orden&order=orden.asc&limit=2000`) || [],
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${sem1.desde}&fecha=lte.${sem1.hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad`) || [],
-        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${sem2.desde}&fecha=lte.${sem2.hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad`) || []
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${sem2.desde}&fecha=lte.${sem2.hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${semActual.desde}&fecha=lte.${semActual.hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad`) || []
       ]);
+
+      // Orden de productos y sabores, para agrupar la tabla igual que en el resto del sistema
+      const prodOrdenIdx = {};
+      prodsRaw.forEach((p, i) => { prodOrdenIdx[String(p.id)] = i; });
+      const gustoOrdenIdx = {};
+      gustosRaw.forEach((g, i) => { gustoOrdenIdx[String(g.id)] = i; });
 
       // Popular selector de PDV (una sola vez, preservando selección si ya había)
       const valPrevio = pdvSelEl.value;
       pdvSelEl.innerHTML = pdvs.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
       if (valPrevio && pdvs.some(p => String(p.id) === String(valPrevio))) pdvSelEl.value = valPrevio;
 
-      window._pronosticoData = { pdvs, ventasSem1, ventasSem2, sem1, sem2 };
+      window._pronosticoData = { pdvs, ventasSem1, ventasSem2, ventasSemActual, sem1, sem2, semActual, prodOrdenIdx, gustoOrdenIdx };
       renderPronostico();
     } catch (e) {
       cont.innerHTML = '<div class="empty-state"><p>Error cargando el pronóstico.</p></div>';
@@ -4986,7 +4996,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const cont = document.getElementById('pronostico-cont');
     const data = window._pronosticoData;
     if (!cont || !data) return;
-    const { ventasSem1, ventasSem2, sem1, sem2 } = data;
+    const { ventasSem1, ventasSem2, ventasSemActual, sem1, sem2, semActual, prodOrdenIdx, gustoOrdenIdx } = data;
     const pdvId = document.getElementById('pronostico-pdv-sel')?.value || '';
 
     function agrupar(ventas) {
@@ -4999,25 +5009,36 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       return map;
     }
 
-    const g1 = agrupar(ventasSem1); // semana pasada (más reciente)
-    const g2 = agrupar(ventasSem2); // semana anterior a esa
+    const g1 = agrupar(ventasSem1);       // semana pasada (más reciente)
+    const g2 = agrupar(ventasSem2);       // semana anterior a esa
+    const g3 = agrupar(ventasSemActual);  // semana en curso (lunes a hoy)
 
-    const keys = new Set([...Object.keys(g1), ...Object.keys(g2)]);
+    const keys = new Set([...Object.keys(g1), ...Object.keys(g2), ...Object.keys(g3)]);
     const rows = Array.from(keys).map(k => {
+      const [prodId, gustoId] = k.split('||');
       const c1 = g1[k]?.cant || 0;
       const c2 = g2[k]?.cant || 0;
-      const prod = g1[k]?.prod || g2[k]?.prod || '';
-      const gusto = g1[k]?.gusto || g2[k]?.gusto || '';
+      const cActual = g3[k]?.cant || 0;
+      const prod = g1[k]?.prod || g2[k]?.prod || g3[k]?.prod || '';
+      const gusto = g1[k]?.gusto || g2[k]?.gusto || g3[k]?.gusto || '';
       const sugerido = Math.round((c1 + c2) / 2);
-      return { prod, gusto, c1, c2, sugerido };
-    }).sort((a, b) => b.sugerido - a.sugerido);
+      const prodIdx = prodOrdenIdx?.[prodId] !== undefined ? prodOrdenIdx[prodId] : 9999;
+      const gustoIdx = gustoOrdenIdx?.[gustoId] !== undefined ? gustoOrdenIdx[gustoId] : 9999;
+      return { prod, gusto, c1, c2, cActual, sugerido, prodIdx, gustoIdx };
+    }).sort((a, b) =>
+      a.prodIdx - b.prodIdx ||
+      a.prod.localeCompare(b.prod) ||
+      a.gustoIdx - b.gustoIdx ||
+      a.gusto.localeCompare(b.gusto)
+    );
 
     const fmtFecha = f => f.split('-').reverse().join('/');
 
     cont.innerHTML = `
       <div style="margin-bottom:14px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">
         📅 Semana anterior: ${fmtFecha(sem2.desde)} al ${fmtFecha(sem2.hasta)} &nbsp;|&nbsp;
-        📅 Semana pasada: ${fmtFecha(sem1.desde)} al ${fmtFecha(sem1.hasta)}
+        📅 Semana pasada: ${fmtFecha(sem1.desde)} al ${fmtFecha(sem1.hasta)} &nbsp;|&nbsp;
+        📅 Semana en curso: ${fmtFecha(semActual.desde)} al ${fmtFecha(semActual.hasta)}
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -5027,6 +5048,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               <th style="text-align:left;padding:10px 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sabor</th>
               <th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sem. anterior</th>
               <th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Sem. pasada</th>
+              <th style="text-align:right;padding:10px 14px;font-size:11px;color:#93c5fd;text-transform:uppercase;letter-spacing:.05em;">Sem. actual (en curso)</th>
               <th style="text-align:right;padding:10px 14px;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;">Sugerido próx. semana</th>
             </tr>
           </thead>
@@ -5037,8 +5059,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
                 <td style="padding:10px 14px;color:var(--text-muted);">${r.gusto}</td>
                 <td style="padding:10px 14px;text-align:right;font-family:var(--mono);color:var(--text-muted);">${r.c2}</td>
                 <td style="padding:10px 14px;text-align:right;font-family:var(--mono);color:var(--text-muted);">${r.c1}</td>
+                <td style="padding:10px 14px;text-align:right;font-family:var(--mono);color:#93c5fd;">${r.cActual}</td>
                 <td style="padding:10px 14px;text-align:right;font-family:var(--mono);font-weight:900;color:var(--accent);font-size:15px;">${r.sugerido}</td>
-              </tr>`).join('') : '<tr><td colspan="5" style="padding:32px;text-align:center;color:var(--text-muted);">Sin ventas registradas en este PDV durante ese período.</td></tr>'}
+              </tr>`).join('') : '<tr><td colspan="6" style="padding:32px;text-align:center;color:var(--text-muted);">Sin ventas registradas en este PDV durante ese período.</td></tr>'}
           </tbody>
         </table>
       </div>
