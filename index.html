@@ -8989,6 +8989,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
   async function guardarVenta() {
     if (!_ventasItems.length) { toast('No hay ítems para guardar','error'); return; }
+    // Si el operador acaba de tipear el tel/email del cliente, esperar a que termine
+    // de verificarse el descuento antes de calcular/mostrar el total (evita cobrar sin descuento).
+    if (window._verificarClientePendiente && window._verificarClientePromise) {
+      await window._verificarClientePromise;
+    }
     const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
     const fechaEl = document.getElementById('ventas-fecha');
     if (fechaEl && !fechaEl.value) fechaEl.value = fechaHoyAR();
@@ -11531,9 +11536,15 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
   // ── VERIFICAR CLIENTE EN VENTAS ───────────────────────────────────────
   let _verificarTimeout = null;
+  window._verificarClientePendiente = false;
+  window._verificarClientePromise = Promise.resolve();
   async function verificarClienteExistente() {
     clearTimeout(_verificarTimeout);
+    window._verificarClientePendiente = true;
+    let _resolverVerificacion;
+    window._verificarClientePromise = new Promise((resolve) => { _resolverVerificacion = resolve; });
     _verificarTimeout = setTimeout(async () => {
+      try {
       const tel = document.getElementById('ventas-cliente-tel')?.value?.trim();
       const email = document.getElementById('ventas-cliente-email')?.value?.trim();
       const msgTel = document.getElementById('ventas-cliente-msg-tel');
@@ -11656,6 +11667,10 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         window._ventasDescuentoAutoActivo = false;
         window._ventasDescuentoAutoNombre = '';
         ventasRenderTabla();
+      }
+      } finally {
+        window._verificarClientePendiente = false;
+        _resolverVerificacion();
       }
     }, 600);
   }
