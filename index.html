@@ -1506,7 +1506,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
               <option value="apertura">🟢 Apertura caja</option>
               <option value="cierre">🔴 Cierre caja</option>
             </select>
+            <span style="flex:1;"></span>
+            <button onclick="renderInformeAuditoria('diario')" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);cursor:pointer;">📄 Informe Diario</button>
+            <button onclick="renderInformeAuditoria('semanal')" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);cursor:pointer;">📅 Informe Semanal</button>
+            <button onclick="renderInformeAuditoria('mensual')" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:13px;color:var(--text);cursor:pointer;">🗓️ Informe Mensual</button>
           </div>
+          <div id="audit-informe-body"></div>
           <div id="audit-body">
             <div class="empty-state">🔐<p>Seleccioná un período y hacé clic en Buscar.</p></div>
           </div>
@@ -20736,6 +20741,170 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
 
   // ══════════════════════════════════════ AUDITORÍA ══
 
+  // ══════════ INFORME NARRATIVO DE MANEJOS INCONSISTENTES (diario/semanal/mensual) ══════════
+  const _normTSInf = s => { if(!s) return null; let t = String(s).trim().replace(' ', 'T'); t = t.replace(/([+-]\d{2})$/, '$1:00'); if (t.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(t)) return t; return t + 'Z'; };
+  const _getTSInf = s => s ? new Date(_normTSInf(s)).getTime() : 0;
+  const _fmtARSInf = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
+
+  // Detecta patrones de manejo inconsistente (agrupados por operador+pdv+día) para un rango de fechas.
+  function detectarPatronesInconsistentes(ventasRango, cancelsRango, arqueosRango) {
+    const RAFAGA_MIN = 10, REEMPLAZO_MIN = 15, MONTO_SOSPECHOSO_PCT = 0.05;
+    const porOpDia = {};
+    (cancelsRango || []).forEach(c => {
+      const fecha = (c.fecha || c.created_at || '').slice(0, 10);
+      const k = `${c.pdv_id}_${c.username}_${fecha}`;
+      if (!porOpDia[k]) porOpDia[k] = { pdv_id: c.pdv_id, username: c.username, fecha, cancels: [] };
+      porOpDia[k].cancels.push(c);
+    });
+    const ventasPorOpDia = {};
+    (ventasRango || []).forEach(v => {
+      const fecha = (v.fecha || v.created_at || '').slice(0, 10);
+      const k = `${v.pdv_id}_${v.username}_${fecha}`;
+      if (!ventasPorOpDia[k]) ventasPorOpDia[k] = [];
+      ventasPorOpDia[k].push(v);
+    });
+
+    const hallazgos = [];
+    const reincidenciaMap = {};
+
+    Object.values(porOpDia).forEach(grp => {
+      const patrones = [];
+      const cancs = grp.cancels;
+      const conDinero = cancs.filter(c => (c.monto_cliente || 0) > 0);
+
+      if (conDinero.length) patrones.push({ tipo: 'cliente_entrego', detalle: conDinero.map(c => _fmtARSInf(c.monto_cliente)) });
+      if (cancs.length > 1) patrones.push({ tipo: 'sin_repasar', detalle: cancs.length });
+
+      const sospechosas = cancs.filter(c => (c.monto_cliente || 0) > 0 && (c.total || 0) > 0 && (c.monto_cliente / c.total) < MONTO_SOSPECHOSO_PCT);
+      if (sospechosas.length) patrones.push({ tipo: 'monto_sospechoso', detalle: sospechosas.map(c => `${_fmtARSInf(c.monto_cliente)} sobre ${_fmtARSInf(c.total)}`) });
+
+      const cancsOrdenadas = [...cancs].sort((a, b) => _getTSInf(a.created_at) - _getTSInf(b.created_at));
+      for (let i = 1; i < cancsOrdenadas.length; i++) {
+        const diffMin = Math.abs(_getTSInf(cancsOrdenadas[i].created_at) - _getTSInf(cancsOrdenadas[i - 1].created_at)) / 60000;
+        if (diffMin <= RAFAGA_MIN) { patrones.push({ tipo: 'rafaga', detalle: cancsOrdenadas.length }); break; }
+      }
+
+      const ventasGrp = ventasPorOpDia[`${grp.pdv_id}_${grp.username}_${grp.fecha}`] || [];
+      cancs.forEach(c => {
+        const cTs = _getTSInf(c.created_at);
+        const cercana = ventasGrp.find(v => {
+          const diffMin = (_getTSInf(v.created_at) - cTs) / 60000;
+          const totalV = (v.precio || 0) * (v.cantidad || 1);
+          return diffMin >= 0 && diffMin <= REEMPLAZO_MIN && Math.abs(totalV - (c.total || 0)) < (c.total || 0) * 0.2;
+        });
+        if (cercana) patrones.push({ tipo: 'venta_reemplazo', detalle: { cancelTotal: _fmtARSInf(c.total), minutos: Math.round((_getTSInf(cercana.created_at) - cTs) / 60000) } });
+      });
+
+      const arqueo = (arqueosRango || []).find(a => a.username === grp.username && String(a.pdv_id) === String(grp.pdv_id) && (a.fecha || '').slice(0, 10) === grp.fecha && Math.abs(a.diferencia || 0) > 100);
+      if (arqueo) patrones.push({ tipo: 'cruce_arqueo', detalle: _fmtARSInf(arqueo.diferencia) });
+
+      if (patrones.length) {
+        hallazgos.push({ pdv_id: grp.pdv_id, username: grp.username, fecha: grp.fecha, patrones });
+        if (!reincidenciaMap[grp.username]) reincidenciaMap[grp.username] = new Set();
+        reincidenciaMap[grp.username].add(grp.fecha);
+      }
+    });
+
+    Object.entries(reincidenciaMap).forEach(([username, fechas]) => {
+      if (fechas.size >= 3) hallazgos.filter(h => h.username === username).forEach(h => h.reincidente = fechas.size);
+    });
+
+    return hallazgos.sort((a, b) => a.fecha < b.fecha ? 1 : -1);
+  }
+
+  // Arma el informe narrativo (oraciones) + tabla de evaluación de características, para un set de hallazgos.
+  function generarInformeNarrativo(hallazgos, pdvMapRef, userMapRef) {
+    const nombreOp = (u) => (userMapRef && userMapRef[u]) || u || '?';
+    const nombrePdv = (p) => (pdvMapRef && pdvMapRef[String(p)]) || p || '?';
+    const parrafos = [];
+    const conteo = { cliente_entrego: 0, sin_repasar: 0, monto_sospechoso: 0, rafaga: 0, venta_reemplazo: 0, cruce_arqueo: 0, reincidencia: 0 };
+
+    hallazgos.forEach(h => {
+      const frases = [];
+      h.patrones.forEach(p => {
+        conteo[p.tipo] = (conteo[p.tipo] || 0) + 1;
+        if (p.tipo === 'cliente_entrego') frases.push(`el cliente entregó ${p.detalle.join(', ')} en cancelaciones sin repasar`);
+        if (p.tipo === 'sin_repasar') frases.push(`acumula ${p.detalle} cancelaciones sin repasar`);
+        if (p.tipo === 'monto_sospechoso') frases.push(`registró montos entregados llamativamente bajos frente al total cancelado (${p.detalle.join('; ')})`);
+        if (p.tipo === 'rafaga') frases.push(`hizo ${p.detalle} cancelaciones en una ráfaga de pocos minutos`);
+        if (p.tipo === 'venta_reemplazo') frases.push(`canceló ${p.detalle.cancelTotal} y ${p.detalle.minutos} minutos después registró una venta de monto similar, lo que podría indicar un reemplazo de venta`);
+        if (p.tipo === 'cruce_arqueo') frases.push(`ese mismo día su arqueo mostró una diferencia de ${p.detalle}`);
+      });
+      if (h.reincidente) { frases.push(`es reincidente: tuvo alertas en ${h.reincidente} días distintos del período`); conteo.reincidencia++; }
+      if (frases.length) {
+        const fechaFmt = (() => { try { return new Date(h.fecha + 'T00:00:00').toLocaleDateString('es-AR'); } catch(e) { return h.fecha; } })();
+        parrafos.push(`El ${fechaFmt} en ${nombrePdv(h.pdv_id)}, ${nombreOp(h.username)} ${frases.join('; ')}.`);
+      }
+    });
+
+    return { parrafos, conteo };
+  }
+
+  const _ETIQUETAS_PATRON = {
+    cliente_entrego: '🔴 Cliente entregó dinero en cancelación',
+    sin_repasar: '🟡 Cancelaciones acumuladas sin repasar',
+    monto_sospechoso: '🟠 Monto entregado sospechosamente bajo',
+    rafaga: '🟣 Ráfaga de cancelaciones',
+    venta_reemplazo: '🔵 Posible venta reemplazo',
+    cruce_arqueo: '⚫ Cruce con diferencia de arqueo',
+    reincidencia: '🔺 Reincidencia por operador'
+  };
+
+  async function renderInformeAuditoria(nivel) {
+    const cont = document.getElementById('audit-informe-body');
+    if (!cont) return;
+    cont.innerHTML = '<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Generando informe...</p></div>';
+
+    const hoy = fechaHoyAR();
+    let desde = hoy, hasta = hoy, titulo = '📄 Informe diario';
+    if (nivel === 'semanal') {
+      const d = new Date(hoy + 'T00:00:00');
+      const diaSemana = (d.getDay() + 6) % 7; // lunes=0
+      const lunes = new Date(d); lunes.setDate(d.getDate() - diaSemana);
+      const fmt = (x) => x.toISOString().slice(0, 10);
+      desde = fmt(lunes); hasta = hoy; titulo = '📅 Informe semanal';
+    } else if (nivel === 'mensual') {
+      desde = hoy.slice(0, 8) + '01'; hasta = hoy; titulo = '🗓️ Informe mensual';
+    }
+
+    try {
+      const [cancels, arqueos, ventas, pdvs, usuarios] = await Promise.all([
+        sbApi(`cancelaciones_venta?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`) || [],
+        sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,username,precio,cantidad,created_at,fecha`) || [],
+        getPdv(),
+        sbApi(`usuarios?select=username,display_name`) || []
+      ]);
+
+      const pdvMap = {}; (pdvs || []).forEach(p => pdvMap[String(p.id)] = p.nombre || p.name);
+      const userMap = {}; (usuarios || []).forEach(u => userMap[u.username] = u.display_name || u.username);
+
+      const hallazgos = detectarPatronesInconsistentes(ventas, cancels, arqueos);
+      const { parrafos, conteo } = generarInformeNarrativo(hallazgos, pdvMap, userMap);
+
+      const periodoLabel = desde === hasta ? desde : `${desde} → ${hasta}`;
+      let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:16px;">
+        <div style="font-weight:800;font-size:14px;margin-bottom:4px;">${titulo} <span style="color:var(--text-muted);font-weight:500;font-size:12px;">(${periodoLabel})</span></div>`;
+
+      if (!parrafos.length) {
+        html += `<div style="color:var(--text-muted);font-size:13px;margin-top:8px;">✅ No se detectaron manejos inconsistentes en el período.</div>`;
+      } else {
+        html += `<div style="font-size:13px;line-height:1.7;margin-top:10px;">${parrafos.map(p => `<p style="margin:0 0 8px;">${p}</p>`).join('')}</div>`;
+
+        const filasEval = Object.entries(_ETIQUETAS_PATRON).filter(([k]) => conteo[k] > 0)
+          .map(([k, label]) => `<tr><td style="padding:4px 10px;font-size:12px;color:var(--text-muted);">${label}</td><td style="padding:4px 10px;font-size:12px;font-weight:700;text-align:right;">${conteo[k]}</td></tr>`).join('');
+        html += `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Evaluación de características detectadas</div>
+          <table style="width:100%;border-collapse:collapse;">${filasEval}</table>
+        </div>`;
+      }
+      html += `</div>`;
+      cont.innerHTML = html;
+    } catch (e) {
+      cont.innerHTML = `<div class="empty-state">⚠️<p>Error generando el informe: ${e.message || e}</p></div>`;
+    }
+  }
+
   async function cargarAuditoria() {
     const body = document.getElementById('audit-body');
     if (!body) return;
@@ -20912,10 +21081,23 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
             const metodo = tk.metodo === 'mixto' ? '💵+💳' : (tk.metodo||'').includes('tarjeta') ? '💳' : '💵';
             const tieneVarios = tk.items.some(i => (i||'').toLowerCase() === 'varios');
             const cancelKey = `${(tk.created_at||'').slice(0,10)}_${tk.pdv_id}_${tk.username}`;
-            const tieneCancelPrev = cancelSet.has(cancelKey);
+            const gruposDelDia = (cancelMap[cancelKey] || []);
+            // Asignar solo la(s) cancelación(es) más cercana(s) en el tiempo a esta venta puntual,
+            // para no repetir el mismo bloque de cancelaciones en todas las ventas del día del operador.
+            let cancelesDeEstaVenta = [];
+            if (gruposDelDia.length) {
+              const tkTs = getTS(tk.created_at);
+              let mejorDiff = Infinity;
+              gruposDelDia.forEach(c => {
+                const diff = Math.abs(getTS(c.created_at) - tkTs);
+                if (diff < mejorDiff) mejorDiff = diff;
+              });
+              // ventana de 15 min: si hay más de una cancelación igual de cercana, se incluyen todas
+              cancelesDeEstaVenta = gruposDelDia.filter(c => Math.abs(getTS(c.created_at) - tkTs) - mejorDiff < 60000 && mejorDiff <= 15 * 60000);
+            }
             const alertas = [];
             if (tieneVarios) alertas.push({ label: '⚠️ Producto "Varios"', color: '#fbbf24' });
-            if (tieneCancelPrev) motivosSospecha(cancelMap[cancelKey], tk.total).forEach(m => alertas.push(m));
+            if (cancelesDeEstaVenta.length) motivosSospecha(cancelesDeEstaVenta, tk.total).forEach(m => alertas.push(m));
             if (alertas.length) totalAlertas++;
             const descBadge = tk.descMonto > 0
               ? `<span title="${tk.descMotivo||'Descuento'}" style="background:#facc1522;color:#facc15;border:1px solid #facc1544;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">🏷️ -${fmtARS(tk.descMonto)}</span>`
