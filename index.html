@@ -11613,7 +11613,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         const hoyD = new Date();
         const desde = hoyD.getFullYear()+'-'+(String(hoyD.getMonth()+1).padStart(2,'0'))+'-01';
         const hasta = hoyD.toISOString().slice(0,10);
-        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cliente_tel,cliente_nombre,fecha&order=fecha.desc&limit=5000`) || [];
+        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cliente_tel,cliente_nombre,fecha&order=fecha.desc`) || [];
         window._ventasClientesCache = ventasMes;
       } catch(e) { window._ventasClientesCache = []; }
 
@@ -11785,7 +11785,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         const hoy = new Date();
         const desde = hoy.getFullYear()+'-'+(String(hoy.getMonth()+1).padStart(2,'0'))+'-01';
         // Buscar ventas con cliente_tel O cruzar por nombre
-        const v = await sbApi('ventas?empresa_id=eq.'+empresaActual+'&fecha=gte.'+desde+'&select=cliente_tel,cliente_nombre,fecha&limit=5000') || [];
+        const v = await sbApi('ventas?empresa_id=eq.'+empresaActual+'&fecha=gte.'+desde+'&select=cliente_tel,cliente_nombre,fecha') || [];
         window._ventasClientesCache = v;
         console.log('Ventas mes:', v.length, 'con tel:', v.filter(x=>x.cliente_tel).length, 'con nombre:', v.filter(x=>x.cliente_nombre).length);
       } catch(e) { console.error(e); }
