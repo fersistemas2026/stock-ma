@@ -992,7 +992,7 @@
               <thead><tr style="background:var(--surface2);">
                 <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Nombre</th>
                 <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Teléfono</th>
-                <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">Email</th>
+                <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;max-width:150px;">Email</th>
                 <th style="padding:9px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:500;">PDV</th>
               </tr></thead>
               <tbody id="clientes-op-tbody">
@@ -11653,7 +11653,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           <thead><tr style="background:var(--surface2);border-bottom:2px solid var(--accent);">
             <th style="padding:10px 14px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Nombre</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Teléfono</th>
-            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Email</th>
+            <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;max-width:150px;">Email</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">PDV</th>
             <th style="padding:10px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Fecha</th>
             <th style="padding:10px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">Visitas mes</th>
@@ -11678,11 +11678,11 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     return clientes.map((c, i) => {
       const fecha = c.created_at ? new Date(c.created_at).toLocaleDateString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
       const telLink = c.telefono ? `<a href="https://wa.me/${c.telefono.replace(/[^0-9]/g,'')}" target="_blank" style="color:#25D366;text-decoration:none;font-family:var(--mono);">📱 ${c.telefono}</a>` : '—';
-      const emailLink = c.email ? `<a href="mailto:${c.email}" style="color:var(--accent);text-decoration:none;">✉️ ${c.email}</a>` : '—';
+      const emailLink = c.email ? `<a href="mailto:${c.email}" title="${c.email}" style="color:var(--accent);text-decoration:none;display:inline-block;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;">✉️ ${c.email}</a>` : '—';
       return `<tr style="border-top:1px solid var(--border);${i%2===1?'background:rgba(255,255,255,.02)':''}">
         <td style="padding:9px 14px;font-size:13px;font-weight:600;color:var(--text);">${c.nombre||'—'}</td>
         <td style="padding:9px 12px;font-size:13px;">${telLink}</td>
-        <td style="padding:9px 12px;font-size:13px;">${emailLink}</td>
+        <td style="padding:9px 12px;font-size:13px;max-width:150px;">${emailLink}</td>
         <td style="padding:9px 12px;font-size:13px;color:var(--text-muted);">${c.pdv_nombre||c.pdv_id||'—'}</td>
         <td style="padding:9px 12px;font-size:12px;color:var(--text-muted);font-family:var(--mono);">${fecha}</td>
         <td style="padding:9px 12px;text-align:center;">
