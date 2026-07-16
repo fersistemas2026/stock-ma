@@ -11608,11 +11608,12 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       ]);
       window._clientesPdvs = pdvs;
       window._vouchersData = vouchers || [];
-      // Cargar ventas del rango seleccionado para conteo de visitas
+      // Cargar ventas del MES CALENDARIO ACTUAL para el conteo de "Visitas mes" (independiente del filtro de período elegido arriba)
       try {
-        const desde = range?.desde || (()=>{ const h=new Date(); return h.getFullYear()+'-'+(String(h.getMonth()+1).padStart(2,'0'))+'-01'; })();
-        const hasta = range?.hasta || new Date().toISOString().slice(0,10);
-        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cliente_tel,fecha&order=fecha.desc&limit=5000`) || [];
+        const hoyD = new Date();
+        const desde = hoyD.getFullYear()+'-'+(String(hoyD.getMonth()+1).padStart(2,'0'))+'-01';
+        const hasta = hoyD.toISOString().slice(0,10);
+        const ventasMes = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=cliente_tel,cliente_nombre,fecha&order=fecha.desc&limit=5000`) || [];
         window._ventasClientesCache = ventasMes;
       } catch(e) { window._ventasClientesCache = []; }
 
