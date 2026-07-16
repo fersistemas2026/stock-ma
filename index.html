@@ -404,6 +404,7 @@
         <button class="neg-stab" onclick="switchNeg(&#39;ventas&#39;)" id="neg-btn-ventas-op" style="display:none">🛒 Ventas</button>
         <button class="neg-stab" onclick="poOpAbrirModal()" id="neg-btn-pedidos-op" style="display:none">📲 Pedidos Online <span id="po-op-badge" style="display:none;background:#D85A30;color:white;border-radius:999px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:4px">0</span></button>
         <button class="neg-stab" onclick="switchNeg(&#39;clientes-op&#39;)" id="neg-btn-clientes-op" style="display:none">👥 Clientes</button>
+        <button class="neg-stab" onclick="abrirInformesClientesOp()" id="neg-btn-informes-clientes-op" style="display:none">👥 Informes Clientes</button>
         <button class="neg-stab" onclick="switchNeg(&#39;lista-prod&#39;)" id="neg-btn-lista-prod" style="display:none">📋 Lista de productos</button>
         <button class="neg-stab" onclick="switchNeg(&#39;envio-pedido&#39;)" id="neg-btn-envio-pedido" style="display:none">📦 Envío pedido</button>
         <button class="neg-stab" onclick="switchNeg(&#39;recibo-pedido&#39;)" id="neg-btn-recibo-pedido" style="display:none">📥 Pedidos internos</button>
@@ -5232,6 +5233,23 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     `;
   }
 
+  // Abre Informes → Clientes en modo restringido para operadores con perms.informesClientes.
+  // Reutiliza el mismo panel/función que usa el admin (loadInformesClientes), pero oculta
+  // el selector de "Sección" para que el operador no pueda navegar a otros informes.
+  window.abrirInformesClientesOp = function() {
+    switchNeg('informes');
+    const sel = document.getElementById('inf-seccion');
+    if (sel) sel.value = 'clientes';
+    const seccionWrap = sel ? sel.closest('div') : null;
+    if (seccionWrap) seccionWrap.style.display = 'none';
+    const tituloEl = document.querySelector('#neg-informes .form-title');
+    if (tituloEl) {
+      tituloEl.textContent = '👥 Informes Clientes';
+      const sub = tituloEl.parentElement?.querySelector('p');
+      if (sub) sub.textContent = 'Base de clientes, vouchers y promociones.';
+    }
+  };
+
   function initInformes() {
     const periodoEl=document.getElementById('inf-periodo');
     const fechaEl=document.getElementById('inf-fecha');
@@ -6485,6 +6503,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             </label>
             <label class="pdv-check-item ${perms.detalleCliente?'checked':''}" id="perm-lbl-${u.username}-detalleCliente">
               <input type="checkbox" ${perms.detalleCliente?'checked':''} onchange="togglePerm('${u.username}','detalleCliente',this.checked)" />👥 Detalle cliente
+            </label>
+            <label class="pdv-check-item ${perms.informesClientes?'checked':''}" id="perm-lbl-${u.username}-informesClientes">
+              <input type="checkbox" ${perms.informesClientes?'checked':''} onchange="togglePerm('${u.username}','informesClientes',this.checked)" />👥 Informes Clientes (carrito, vouchers, promos)
             </label>
             <label class="pdv-check-item ${perms.ventas?'checked':''}" id="perm-lbl-${u.username}-ventas">
               <input type="checkbox" ${perms.ventas?'checked':''} onchange="togglePerm('${u.username}','ventas',this.checked)" />🛒 Ventas
@@ -13102,6 +13123,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       hide('neg-btn-recibo-pedido'); hide('neg-btn-ventas'); hide('neg-btn-monitor');
       hide('neg-btn-ventas-op'); hide('neg-btn-clientes-op'); hide('neg-btn-promociones-op');
       hide('neg-btn-avisos'); hide('neg-btn-pedido-recibido');
+      hide('neg-btn-informes-clientes-op');
       show('neg-btn-pedidos-op');
       setupNegLayout(false);
     } else {
@@ -13126,6 +13148,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       if (perms.ventas)       show('neg-btn-ventas-op');       else hide('neg-btn-ventas-op');
       if (perms.monitor !== false) show('neg-btn-monitor'); else hide('neg-btn-monitor');
       if (perms.detalleCliente) show('neg-btn-clientes-op'); else hide('neg-btn-clientes-op');
+      if (perms.informesClientes) show('neg-btn-informes-clientes-op'); else hide('neg-btn-informes-clientes-op');
       show('neg-btn-promociones-op');
       if (perms.pedidosOnline) show('neg-btn-pedidos-op'); else hide('neg-btn-pedidos-op');
       setupNegLayout(false);
