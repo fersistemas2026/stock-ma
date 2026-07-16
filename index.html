@@ -707,11 +707,8 @@
             <span id="ventas-promo-detalle" style="font-size:14px;color:var(--accent);opacity:.85;font-weight:600;">—</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;justify-content:center;">
-            <span style="font-size:10px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Método de pago</span>
+            <span style="font-size:10px;font-family:var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Documento</span>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button id="ventas-btn-efectivo" onclick="ventasSetPago(&#39;efectivo&#39;)" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💵 Efectivo</button>
-              <button id="ventas-btn-tarjeta" onclick="ventasSetPago(&#39;tarjeta&#39;)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💳 Tarjeta</button>
-              <button id="ventas-btn-mixto" onclick="ventasSetPago(&#39;mixto&#39;)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">💵+💳 Mixto</button>
               <button id="ventas-btn-venta-doc" onclick="selDocTipo('venta')" style="background:var(--accent);color:#000;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">🛒 Venta</button>
               <button id="ventas-btn-presupuesto" onclick="selDocTipo('presupuesto')" style="background:none;border:1px solid #ffb432;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#ffb432;cursor:pointer;">📋 Presupuesto</button>
               <button id="ventas-btn-recibo" onclick="selDocTipo('recibo')" style="background:none;border:1px solid #6ee7b7;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;color:#6ee7b7;cursor:pointer;">🧾 Recibo</button>
@@ -8921,10 +8918,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (window._ventasHoraInterval) clearInterval(window._ventasHoraInterval);
     window._ventasHoraInterval = setInterval(ventasActualizarHora, 30000);
 
-    // Inicializar pago con efectivo por defecto
-    const btnEfInit = document.getElementById('ventas-btn-efectivo');
-    const btnTjInit = document.getElementById('ventas-btn-tarjeta');
-    if (btnEfInit) { btnEfInit.dataset.activo = '1'; btnTjInit.dataset.activo = '0'; }
+    // El método de pago ya no se preselecciona: se elige en el modal al tocar Guardar
+    window._ventaMetodoElegido = null;
 
     // Limpiar campos
     document.getElementById('ventas-prod-input').value = '';
@@ -9305,6 +9300,13 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     return totalBase;
   }
 
+  window._elegirMetodoVenta = function(tipo) {
+    window._ventaMetodoElegido = tipo;
+    document.getElementById('modal-elegir-metodo')?.remove();
+    window._ventaPaso = 1;
+    guardarVenta();
+  };
+
   async function guardarVenta() {
     if (!_ventasItems.length) { toast('No hay ítems para guardar','error'); return; }
     // Si el operador acaba de tipear el tel/email del cliente, esperar a que termine
@@ -9326,57 +9328,62 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       window._ventasClienteNombreGuardar = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
     }
 
-    // Modal según método de pago
-    const esEfectivo = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1';
-    const esTarjeta = document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1';
-    const esMixto = document.getElementById('ventas-btn-mixto')?.dataset?.activo === '1';
-
-    // Paso 1: confirmar método
+    // Paso 0: elegir método de pago (modal)
     if (!window._ventaPaso) window._ventaPaso = 0;
 
     if (window._ventaPaso === 0) {
       const total = calcularTotalConDescuento();
       const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
-      const metodoLabel = esEfectivo ? '💵 Efectivo' : esTarjeta ? '💳 Tarjeta' : esMixto ? '💵+💳 Mixto' : '💵 Efectivo';
-      const metodoColor = esEfectivo ? '#4ade80' : esTarjeta ? '#8b5cf6' : esMixto ? '#0ea5e9' : '#4ade80';
       const ov = document.createElement('div');
-      ov.id = 'modal-confirmar-metodo';
+      ov.id = 'modal-elegir-metodo';
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
       ov.innerHTML = `
-        <div style="background:var(--surface);border:2px solid ${metodoColor};border-radius:16px;width:100%;max-width:340px;padding:24px;text-align:center;">
-          <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">Confirmar venta</div>
-          <div style="font-size:36px;font-weight:900;color:${metodoColor};margin:12px 0;">${fmtARS(total)}</div>
-          <div style="font-size:20px;font-weight:800;color:${metodoColor};margin-bottom:20px;">${metodoLabel}</div>
-          <div style="display:flex;gap:10px;">
-            <button onclick="document.getElementById('modal-confirmar-metodo').remove();window._ventaPaso=0;window._registrarCancelMetodo && window._registrarCancelMetodo();" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;color:var(--text);cursor:pointer;font-weight:700;">✗ Cancelar</button>
-            <button onclick="document.getElementById('modal-confirmar-metodo').remove();window._ventaPaso=1;guardarVenta();" style="flex:2;background:${metodoColor};color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;">✓ Confirmar</button>
+        <div style="background:var(--surface);border:2px solid var(--accent);border-radius:16px;width:100%;max-width:340px;padding:24px;text-align:center;">
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">¿Cómo paga el cliente?</div>
+          <div style="font-size:36px;font-weight:900;color:var(--accent);margin:12px 0 20px;">${fmtARS(total)}</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button onclick="window._elegirMetodoVenta('efectivo')" style="background:#4ade80;color:#000;border:none;border-radius:8px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;">💵 Efectivo</button>
+            <button onclick="window._elegirMetodoVenta('tarjeta')" style="background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;">💳 Tarjeta</button>
+            <button onclick="window._elegirMetodoVenta('mixto')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;">💵+💳 Mixto</button>
           </div>
+          <button onclick="document.getElementById('modal-elegir-metodo').remove();window._ventaPaso=0;window._registrarCancelMetodo && window._registrarCancelMetodo();" style="margin-top:14px;width:100%;background:none;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text-muted);cursor:pointer;font-weight:700;">✗ Cancelar</button>
         </div>`;
       document.body.appendChild(ov);
       return;
     }
 
-    // Paso 2: vuelto, tarjeta o mixto
+    // Paso 1: vuelto, tarjeta o mixto según lo elegido en el modal
     if (window._ventaPaso === 1) {
-      if (esEfectivo) {
+      const metodoElegido = window._ventaMetodoElegido;
+      if (metodoElegido === 'efectivo') {
         const total = calcularTotalConDescuento();
         abrirModalVuelto(total, () => { window._ventaPaso = 2; guardarVenta(); });
         return;
       }
-      if (esTarjeta) {
+      if (metodoElegido === 'tarjeta') {
         abrirModalTarjeta(() => { window._ventaPaso = 2; guardarVenta(); });
         return;
       }
-      if (esMixto) {
+      if (metodoElegido === 'mixto') {
         const total = calcularTotalConDescuento();
         abrirModalMixto(total, () => { window._ventaPaso = 2; guardarVenta(); });
         return;
       }
-      window._ventaPaso = 2;
+      // Si por algún motivo no quedó un método elegido, no seguimos silenciosamente
+      window._ventaPaso = 0;
+      toast('Elegí el método de pago','error');
+      return;
     }
 
-    // Paso 3: guardar
+    // Paso 2: guardar
+    if (!window._ventaMetodoElegido) {
+      window._ventaPaso = 0;
+      toast('Elegí el método de pago','error');
+      return;
+    }
+    const metodoPago = window._ventaMetodoElegido;
     window._ventaPaso = 0;
+    window._ventaMetodoElegido = null;
     window._ventasClienteTelGuardar = '';
     window._ventasClienteNombreGuardar = '';
     window._mixtoEfectivo = 0; window._mixtoTarjeta = 0; window._mixtoVuelto = 0;
@@ -9388,9 +9395,6 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }));
 
     const pdvs = await getPdv();
-    const metodoPago = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1' ? 'efectivo' :
-                       document.getElementById('ventas-btn-tarjeta')?.dataset?.activo === '1' ? 'tarjeta' :
-                       document.getElementById('ventas-btn-mixto')?.dataset?.activo === '1' ? 'mixto' : 'efectivo';
     const clienteTelVenta = window._ventasClienteTelGuardar || (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
     const clienteNombreVenta = window._ventasClienteNombreGuardar || document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
     const ticketId = `${fecha}_${pdvId}_${Date.now()}`;
@@ -9486,7 +9490,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       }
       const grandT = _ventasItems.reduce((s,i)=>s+parsePrecioAR(i.precio)*i.cant,0);
       const listaLabel2 = document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex]?.text||'';
-      const metodoPagoLabel = metodoPago === 'tarjeta' ? '💳 Tarjeta' : '💵 Efectivo';
+      const metodoPagoLabel = metodoPago === 'tarjeta' ? '💳 Tarjeta' : metodoPago === 'mixto' ? '💵+💳 Mixto' : '💵 Efectivo';
       document.getElementById('ventas-ultima-monto').textContent = '$ '+grandT.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
       document.getElementById('ventas-ultima-info').textContent = metodoPagoLabel + ' · ' + listaLabel2 + ' · ' + horaAR();
       // Marcar voucher como usado
@@ -20378,7 +20382,6 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
       }));
       if (!items.length) return;
       const total = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
-      const esEfectivo = document.getElementById('ventas-btn-efectivo')?.dataset?.activo === '1';
       const cancelacion = {
         empresa_id: empresaActual,
         pdv_id: pdvId,
@@ -20387,7 +20390,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
         total: total,
         monto_cliente: 0,
         fecha: fecha,
-        metodo_pago: esEfectivo ? 'efectivo' : 'tarjeta',
+        metodo_pago: window._ventaMetodoElegido || null,
         motivo: 'cancelacion_confirmacion_metodo'
       };
       await sbApi('cancelaciones_venta', { method: 'POST', body: JSON.stringify(cancelacion) });
@@ -20906,7 +20909,7 @@ ${items.map(it => `<div class="item"><span>${it.cantidad}x ${it.prod_nombre} ${i
           if (tipo === 'venta') {
             const tk = data;
             const total = fmtARS(tk.total);
-            const metodo = (tk.metodo||'').includes('tarjeta') ? '💳' : '💵';
+            const metodo = tk.metodo === 'mixto' ? '💵+💳' : (tk.metodo||'').includes('tarjeta') ? '💳' : '💵';
             const tieneVarios = tk.items.some(i => (i||'').toLowerCase() === 'varios');
             const cancelKey = `${(tk.created_at||'').slice(0,10)}_${tk.pdv_id}_${tk.username}`;
             const tieneCancelPrev = cancelSet.has(cancelKey);
