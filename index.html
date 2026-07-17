@@ -11643,6 +11643,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
           <button id="clientes-btn-ranking" onclick="window.toggleRanking()" title="Ranking por visitas"
             style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;color:var(--text);cursor:pointer;">🏆 Ranking</button>
+          <button onclick="window.abrirRecontactar()" title="Clientes que compraron una sola vez y no volvieron"
+            style="background:rgba(167,139,250,.12);border:1px solid #a78bfa;border-radius:7px;padding:7px 14px;font-size:12px;color:#a78bfa;cursor:pointer;font-weight:700;">🔄 Recontactar</button>
           <button onclick="exportarClientesExcel()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📊 Excel</button>
           <button onclick="exportarClientesWA()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 14px;font-size:12px;color:var(--text);cursor:pointer;">📱 WhatsApp</button>
           <button onclick="window.enviarPromoWATodos()" style="background:rgba(255,215,0,.12);border:1px solid #ffd700;border-radius:7px;padding:7px 14px;font-size:12px;color:#ffd700;cursor:pointer;font-weight:700;">🏷️ Promo a todos</button>
@@ -11856,6 +11858,123 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       }
     }
   }
+
+  // ── RECOMPRA: clientes que compraron 1 sola vez y no volvieron ─────────
+  window.abrirRecontactar = async function(diasDesdeCfg, diasHastaCfg) {
+    const diasDesde = diasDesdeCfg != null ? diasDesdeCfg : 15;
+    const diasHasta = diasHastaCfg != null ? diasHastaCfg : 45;
+
+    let ov = document.getElementById('recontactar-ov');
+    if (ov) ov.remove();
+    ov = document.createElement('div');
+    ov.id = 'recontactar-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:20px 16px;';
+    ov.onclick = function(e){ if (e.target===ov) ov.remove(); };
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:760px;margin:0 auto;';
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--surface2);border-radius:14px 14px 0 0;">
+        <span style="font-size:15px;font-weight:900;color:#a78bfa;">🔄 Recompra — Clientes que no volvieron</span>
+        <button onclick="document.getElementById('recontactar-ov').remove()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;">×</button>
+      </div>
+      <div style="padding:16px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--text-muted);">Compraron una sola vez, hace entre</span>
+        <input type="number" id="recontactar-desde" value="${diasDesde}" min="1" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;color:var(--text);text-align:center;">
+        <span style="font-size:12px;color:var(--text-muted);">y</span>
+        <input type="number" id="recontactar-hasta" value="${diasHasta}" min="1" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;color:var(--text);text-align:center;">
+        <span style="font-size:12px;color:var(--text-muted);">días</span>
+        <button onclick="window.abrirRecontactar(parseInt(document.getElementById('recontactar-desde').value)||15, parseInt(document.getElementById('recontactar-hasta').value)||45)"
+          style="background:var(--accent);border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;color:#000;cursor:pointer;">Recalcular</button>
+      </div>
+      <div id="recontactar-body" style="padding:20px;"><div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Buscando clientes...</p></div></div>
+    `;
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+
+    try {
+      const ventas = await sbApi(`ventas?empresa_id=eq.${empresaActual}&select=cliente_tel,cliente_nombre,fecha,ticket_id,prod_nombre,gusto_nombre&order=fecha.asc&limit=200000`) || [];
+
+      const porTel = {};
+      ventas.forEach(v => {
+        const tel = (v.cliente_tel||'').replace(/[^0-9]/g,'');
+        if (!tel) return;
+        if (!porTel[tel]) porTel[tel] = { nombre: v.cliente_nombre||'', fechas: new Set(), primer: v };
+        porTel[tel].fechas.add(v.fecha);
+        if (v.cliente_nombre && !porTel[tel].nombre) porTel[tel].nombre = v.cliente_nombre;
+      });
+
+      const hoy = new Date();
+      const candidatos = Object.entries(porTel).filter(([tel, d]) => d.fechas.size === 1).map(([tel, d]) => {
+        const fecha = [...d.fechas][0];
+        const dias = Math.floor((hoy - new Date(fecha+'T00:00:00')) / 86400000);
+        const prod = d.primer.prod_nombre ? (d.primer.prod_nombre + (d.primer.gusto_nombre ? ' ('+d.primer.gusto_nombre+')' : '')) : '—';
+        return { tel, nombre: d.nombre, fecha, dias, prod };
+      }).filter(c => c.dias >= diasDesde && c.dias <= diasHasta)
+        .sort((a,b) => a.dias - b.dias);
+
+      const cont = document.getElementById('recontactar-body');
+      if (!cont) return;
+
+      if (!candidatos.length) {
+        cont.innerHTML = `<div class="empty-state">🔄<p>No hay clientes en ese rango de días (${diasDesde}-${diasHasta}).</p></div>`;
+        return;
+      }
+
+      window._recontactarData = candidatos;
+
+      cont.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <span style="font-size:13px;color:var(--text-muted);"><b style="color:#a78bfa;">${candidatos.length}</b> cliente${candidatos.length!==1?'s':''} para recontactar</span>
+          <button onclick="window.enviarRecontactarTodos()" style="background:rgba(37,211,102,.12);border:1px solid #25D366;border-radius:7px;padding:7px 14px;font-size:12px;color:#25D366;cursor:pointer;font-weight:700;">📱 Enviar a todos</button>
+        </div>
+        <div style="max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--surface2);position:sticky;top:0;">
+            <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Nombre</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Compró</th>
+            <th style="padding:8px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Días</th>
+            <th style="padding:8px 12px;text-align:center;font-size:11px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;"></th>
+          </tr></thead>
+          <tbody>
+            ${candidatos.map((c,i) => `
+              <tr style="border-top:1px solid var(--border);${i%2===1?'background:rgba(255,255,255,.02)':''}">
+                <td style="padding:8px 12px;font-size:13px;font-weight:600;">${c.nombre||'Sin nombre'}<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">${c.tel}</div></td>
+                <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">${c.prod}</td>
+                <td style="padding:8px 12px;text-align:center;font-size:12px;font-family:var(--mono);color:#facc15;">${c.dias}d</td>
+                <td style="padding:8px 12px;text-align:center;">
+                  <button onclick="window.enviarRecontactarUno('${c.tel}')" style="background:none;border:1px solid #25D366;border-radius:7px;padding:4px 10px;font-size:12px;color:#25D366;cursor:pointer;">📱 WA</button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        </div>`;
+    } catch(e) {
+      const cont = document.getElementById('recontactar-body');
+      if (cont) cont.innerHTML = `<div class="empty-state">❌<p>Error: ${e.message}</p></div>`;
+    }
+  };
+
+  function _msgRecontactar(c) {
+    const nom = c.nombre ? c.nombre.split(' ')[0] : 'qué tal';
+    return `Hola ${nom}! Somos Miguel Angel Pastas 🍝 Vimos que probaste ${c.prod!=='—'?c.prod:'nuestros productos'} y queremos que vuelvas a disfrutarlo. Te dejamos un 10% de descuento en tu próximo pedido, ¡te esperamos!`;
+  }
+
+  window.enviarRecontactarUno = function(tel) {
+    const c = (window._recontactarData||[]).find(x => x.tel === tel);
+    if (!c) return;
+    _abrirMsgWA(tel, c.nombre, _msgRecontactar(c));
+  };
+
+  window.enviarRecontactarTodos = function() {
+    const candidatos = window._recontactarData || [];
+    if (!candidatos.length) return;
+    if (!confirm(`Se abrirá WhatsApp para ${candidatos.length} clientes, uno por uno. ¿Continuar?`)) return;
+    candidatos.forEach((c, i) => {
+      setTimeout(() => {
+        window.open('https://wa.me/'+c.tel+'?text='+encodeURIComponent(_msgRecontactar(c)), '_blank');
+      }, i*800);
+    });
+  };
 
   function exportarClientesExcel() {
     if (!window._clientesData?.length) return;
