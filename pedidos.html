@@ -339,6 +339,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="slabel">Resumen</div>
         <div id="confirmResumen"></div>
+        <div class="form-row">
+          <label class="form-label">Código de descuento</label>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" type="text" placeholder="Ej: DESC10-AB12" id="inVoucher" style="text-transform:uppercase">
+            <button onclick="aplicarVoucherOnline()" style="flex-shrink:0;padding:0 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:700;cursor:pointer">Aplicar</button>
+          </div>
+          <div id="voucherOnlineMsg" style="font-size:12px;margin-top:6px"></div>
+        </div>
+        <div class="cart-total-row" id="rowDescuentoOnline" style="display:none">
+          <span class="cart-total-label">Descuento</span>
+          <span class="cart-total-amt" id="confirmDescuento" style="color:#22c55e">-$0</span>
+        </div>
         <div class="cart-total-row">
           <span class="cart-total-label">Total a pagar</span>
           <span class="cart-total-amt" id="confirmTotal">$0</span>
@@ -495,6 +507,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <button onclick="enviarPrePedido()" style="width:100%;padding:14px;background:#9333ea;color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">📅 Confirmar pre-pedido</button>
     <button onclick="cerrarPrePedido()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text2);cursor:pointer">Cancelar</button>
+  </div>
+</div>
+
+<!-- Banner de bienvenida: captura contacto + genera voucher de 10% -->
+<div id="welcomeOverlay" onclick="cerrarBannerBienvenidaFuera(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;align-items:flex-end;justify-content:center">
+  <div style="background:var(--bg);border-radius:18px 18px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:20px 16px">
+    <div style="width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px"></div>
+    <div id="welcomeStep1">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:28px">🎁</span>
+        <div>
+          <div style="font-size:17px;font-weight:700;color:var(--text)">¡Bienvenido/a!</div>
+          <div style="font-size:12px;color:var(--text2)">Dejanos tus datos y te regalamos un 10% en tu compra retirando en sucursal</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Nombre</label>
+        <input type="text" id="welNombre" placeholder="¿Cómo te llamás?" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Celular (WhatsApp)</label>
+        <input type="tel" id="welTel" placeholder="Ej: 11 1234-5678" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px;box-sizing:border-box">
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Válido por 5 días, solo retirando en sucursal.</div>
+      <button onclick="enviarBannerBienvenida()" id="welBtnEnviar" style="width:100%;padding:14px;background:var(--primary);color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">🎁 Quiero mi 10% de descuento</button>
+      <button onclick="cerrarBannerBienvenida()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text2);cursor:pointer">Ahora no, gracias</button>
+    </div>
+    <div id="welcomeStep2" style="display:none;text-align:center">
+      <div style="font-size:40px;margin-bottom:10px">✅</div>
+      <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px">¡Listo! Tu código está generado</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Usalo al finalizar tu compra retirando en sucursal. Válido 5 días.</div>
+      <div style="background:var(--bg2);border:2px dashed var(--primary);border-radius:var(--radius);padding:16px;font-size:22px;font-weight:800;letter-spacing:1px;color:var(--primary);margin-bottom:16px" id="welCodigoDisplay"></div>
+      <button onclick="cerrarBannerBienvenida()" style="width:100%;padding:14px;background:var(--primary);color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer">Empezar a comprar →</button>
+    </div>
   </div>
 </div>
 
@@ -1111,6 +1157,77 @@ async function init() {
   document.getElementById('inDir').closest('.form-row').style.display = 'none';
   document.getElementById('rowPlazo').style.display = 'block';
   actualizarHorarios('retiro');
+
+  // Banner de bienvenida (captura contacto + voucher 10%) — solo si no fue descartado ni ya tiene código
+  try {
+    if (!sessionStorage.getItem('sma_welcome_dismissed') && !sessionStorage.getItem('sma_welcome_codigo')) {
+      setTimeout(() => { document.getElementById('welcomeOverlay').style.display = 'flex'; }, 1800);
+    } else {
+      const codigoGuardado = sessionStorage.getItem('sma_welcome_codigo');
+      if (codigoGuardado) window._welcomeVoucherCodigo = codigoGuardado;
+    }
+  } catch(e) { /* sessionStorage no disponible */ }
+}
+
+function cerrarBannerBienvenidaFuera(e) {
+  if (e.target === document.getElementById('welcomeOverlay')) cerrarBannerBienvenida();
+}
+function cerrarBannerBienvenida() {
+  document.getElementById('welcomeOverlay').style.display = 'none';
+  try { sessionStorage.setItem('sma_welcome_dismissed', '1'); } catch(e){}
+}
+
+async function enviarBannerBienvenida() {
+  const nombre = document.getElementById('welNombre').value.trim();
+  const tel = document.getElementById('welTel').value.trim();
+  if (!nombre) { toast('Ingresá tu nombre'); return; }
+  if (!tel)    { toast('Ingresá tu celular'); return; }
+  const btn = document.getElementById('welBtnEnviar');
+  btn.disabled = true; btn.textContent = 'Generando...';
+
+  const telLimpio = tel.replace(/\s/g,'');
+  const codigo = 'BIENV10-' + Math.random().toString(36).substring(2,6).toUpperCase();
+  const hoy = new Date();
+  const vence = new Date(hoy); vence.setDate(vence.getDate() + 5);
+  const venceStr = vence.toISOString().slice(0,10);
+
+  try {
+    // Guardar contacto en la visita (para poder recontactar aunque no compre)
+    if (_visitaId) {
+      fetch(`${SUPABASE_URL}/rest/v1/visitas_tienda?id=eq.${_visitaId}`, {
+        method: 'PATCH', headers: H,
+        body: JSON.stringify({ nombre, telefono: telLimpio })
+      }).catch(()=>{});
+    }
+    // Generar voucher de bienvenida
+    await fetch(`${SUPABASE_URL}/rest/v1/vouchers`, {
+      method: 'POST', headers: {...H, 'Prefer':'return=minimal'},
+      body: JSON.stringify({
+        empresa_id: EMPRESA_ID, codigo, tipo: 'pct', pct: 10,
+        cliente_nombre: nombre, cliente_tel: telLimpio,
+        descripcion: 'Bienvenida tienda online — válido solo retiro en sucursal',
+        vence: venceStr, usado: false
+      })
+    });
+
+    // Precargar datos para el checkout
+    document.getElementById('inNombre').value = nombre;
+    document.getElementById('inTel').value = tel;
+    document.getElementById('inVoucher').value = codigo;
+    window._welcomeVoucherCodigo = codigo;
+    try {
+      sessionStorage.setItem('sma_welcome_codigo', codigo);
+      sessionStorage.setItem('sma_welcome_dismissed', '1');
+    } catch(e){}
+
+    document.getElementById('welcomeStep1').style.display = 'none';
+    document.getElementById('welcomeStep2').style.display = 'block';
+    document.getElementById('welCodigoDisplay').textContent = codigo;
+  } catch(e) {
+    toast('Error generando el código, intentá de nuevo');
+  } finally {
+    btn.disabled = false; btn.textContent = '🎁 Quiero mi 10% de descuento';
+  }
 }
 
 function renderPdvs() {
@@ -1147,6 +1264,12 @@ function selMode(el, mode) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   selectedMode = mode;
+  // Si había un voucher "solo retiro" aplicado y pasa a delivery, se invalida
+  if (mode === 'delivery' && window._voucherOnlineData && (window._voucherOnlineData.descripcion||'').toLowerCase().includes('retiro')) {
+    window._voucherOnlineData = null;
+    const msg = document.getElementById('voucherOnlineMsg');
+    if (msg) { msg.textContent = 'El código aplicado era solo para retiro y se quitó'; msg.style.color = '#ef4444'; }
+  }
   document.getElementById('addressRow').style.display = 'block';
   document.getElementById('inDir').closest('.form-row').style.display = mode === 'delivery' ? 'block' : 'none';
   document.getElementById('rowPlazo').style.display = 'block';
@@ -1388,6 +1511,55 @@ function getCartTotal() {
   return t;
 }
 
+// ── Voucher online (descuento en checkout) ──────────────────────────
+window._voucherOnlineData = null;
+window._voucherOnlineCodigo = '';
+
+function getTotalConDescuento() {
+  const base = getCartTotal();
+  const v = window._voucherOnlineData;
+  if (!v) return { total: base, descuento: 0 };
+  let descuento = 0;
+  if (v.tipo === 'monto') descuento = parseFloat(v.monto_fijo) || 0;
+  else descuento = base * ((parseFloat(v.pct) || 0) / 100);
+  descuento = Math.min(descuento, base);
+  return { total: Math.max(base - descuento, 0), descuento };
+}
+
+async function aplicarVoucherOnline() {
+  const input = document.getElementById('inVoucher');
+  const msg = document.getElementById('voucherOnlineMsg');
+  const codigo = (input.value || '').trim().toUpperCase();
+  if (!codigo) { msg.textContent = 'Ingresá un código'; msg.style.color = '#ef4444'; return; }
+
+  msg.textContent = 'Verificando...'; msg.style.color = 'var(--text2)';
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/vouchers?empresa_id=eq.${EMPRESA_ID}&codigo=eq.${codigo}&select=*&limit=1`, { headers: H });
+    const found = await r.json();
+    if (!found || !found.length) { msg.textContent = '❌ Código no válido'; msg.style.color = '#ef4444'; window._voucherOnlineData = null; renderConfirm(); return; }
+    const v = found[0];
+    const hoy = new Date().toISOString().slice(0,10);
+    if (v.usado) { msg.textContent = '❌ Este código ya fue utilizado'; msg.style.color = '#ef4444'; window._voucherOnlineData = null; renderConfirm(); return; }
+    if (v.vence && v.vence < hoy) { msg.textContent = `❌ Código vencido (${v.vence})`; msg.style.color = '#ef4444'; window._voucherOnlineData = null; renderConfirm(); return; }
+    // Restricción: si el voucher es "solo retiro", validar modalidad actual
+    const soloRetiro = (v.descripcion || '').toLowerCase().includes('retiro');
+    if (soloRetiro && selectedMode !== 'retiro') {
+      msg.textContent = '❌ Este código es válido solo retirando en sucursal';
+      msg.style.color = '#ef4444';
+      window._voucherOnlineData = null; renderConfirm(); return;
+    }
+    window._voucherOnlineData = v;
+    window._voucherOnlineCodigo = codigo;
+    const beneficio = v.tipo === 'monto' ? `$${v.monto_fijo} de descuento` : `${v.pct}% de descuento`;
+    msg.textContent = `✓ Código aplicado: ${beneficio}`;
+    msg.style.color = '#22c55e';
+    renderConfirm();
+  } catch(e) {
+    msg.textContent = 'Error verificando el código'; msg.style.color = '#ef4444';
+  }
+}
+// Si cambian de modalidad (retiro/delivery) con un voucher "solo retiro" aplicado, se revalida al reintentar aplicar
+
 function getCartItems() {
   const items = [];
   Object.entries(cart).forEach(([pid, gm]) => {
@@ -1484,7 +1656,20 @@ function renderConfirm() {
       </div>`;
     }).join('');
   }).join('');
-  document.getElementById('confirmTotal').textContent = '$' + getCartTotal().toLocaleString('es-AR');
+  // Prefill del código de bienvenida si existe y todavía no se cargó nada en el campo
+  const inV = document.getElementById('inVoucher');
+  if (inV && !inV.value && window._welcomeVoucherCodigo && !window._voucherOnlineData) {
+    inV.value = window._welcomeVoucherCodigo;
+  }
+  const { total, descuento } = getTotalConDescuento();
+  const rowDesc = document.getElementById('rowDescuentoOnline');
+  if (descuento > 0) {
+    rowDesc.style.display = 'flex';
+    document.getElementById('confirmDescuento').textContent = '-$' + Math.round(descuento).toLocaleString('es-AR');
+  } else {
+    rowDesc.style.display = 'none';
+  }
+  document.getElementById('confirmTotal').textContent = '$' + Math.round(total).toLocaleString('es-AR');
 }
 
 
@@ -1711,7 +1896,8 @@ async function enviarPedido() {
     });
   });
 
-  const total = getCartTotal();
+  const { total, descuento } = getTotalConDescuento();
+  const voucherAplicado = window._voucherOnlineData;
   const pedido = {
     empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: tel,
     pdv_id: String(selectedPdv?.id||''), pdv_nombre: selectedPdv?.nombre||'',
@@ -1721,7 +1907,7 @@ async function enviarPedido() {
     fecha_especial: selectedFechaEsp ? selectedFechaEsp.fecha : null,
     fecha_especial_nombre: selectedFechaEsp ? selectedFechaEsp.nombre : null,
     items,
-    total, total_final: total, descuento: 0,
+    total: getCartTotal(), total_final: total, descuento,
     metodo_pago: selectedPay, estado: 'nuevo', origen: 'online'
   };
 
@@ -1737,6 +1923,14 @@ async function enviarPedido() {
       fetch(`${SUPABASE_URL}/rest/v1/visitas_tienda?id=eq.${_visitaId}`, {
         method: 'PATCH', headers: H, body: JSON.stringify({ convirtio: true, pdv_id: String(selectedPdv?.id||'') })
       }).catch(() => {});
+    }
+    // Marcar voucher como usado
+    if (voucherAplicado) {
+      fetch(`${SUPABASE_URL}/rest/v1/vouchers?id=eq.${voucherAplicado.id}`, {
+        method: 'PATCH', headers: H,
+        body: JSON.stringify({ usado: true, usado_fecha: new Date().toISOString().slice(0,10), usado_pdv: (selectedPdv?.nombre||'') + ' (Online)' })
+      }).catch(() => {});
+      try { sessionStorage.removeItem('sma_welcome_codigo'); } catch(e){}
     }
 
     if (!clienteData) {
@@ -1843,6 +2037,12 @@ function resetApp() {
   document.getElementById('inNombre').value = '';
   document.getElementById('inTel').value = '';
   document.getElementById('inDir').value = '';
+  document.getElementById('inVoucher').value = '';
+  document.getElementById('voucherOnlineMsg').textContent = '';
+  document.getElementById('rowDescuentoOnline').style.display = 'none';
+  window._voucherOnlineData = null;
+  window._voucherOnlineCodigo = '';
+  window._welcomeVoucherCodigo = null;
   // Rehabilitar botón enviar
   const btnEnviar = document.getElementById('btnEnviar');
   if (btnEnviar) { btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar pedido 🚀'; }
