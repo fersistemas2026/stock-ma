@@ -2016,7 +2016,8 @@ async function enviarPedido() {
     document.getElementById('successScreen').classList.add('visible');
     window.scrollTo({top:0, behavior:'smooth'});
   } catch(e) {
-    toast('Error al enviar. Intentá de nuevo.');
+    console.error('Error enviarPedido:', e);
+    toast('Error: ' + (e?.message || 'intentá de nuevo').slice(0,120));
     btn.disabled = false; btn.textContent = 'Enviar pedido 🚀';
   }
 }
