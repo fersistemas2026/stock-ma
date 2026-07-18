@@ -16707,7 +16707,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,fecha,reporte_z,efectivo,tarjetas&order=fecha.asc`) || [],
         sbApi(`gastos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,monto`) || [],
         sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.${METAS_KEY}&select=datos`) || [],
-        sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio`) || [],
+        sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio,telefono,nombre,productos_vistos`) || [],
         sbApi(`desperdicios?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`) || [],
         getProd(),
         sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos`) || []
@@ -16939,6 +16939,24 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const pctConvPed = visitasPed > 0 ? Math.round(convPed / visitasPed * 100) : 0;
           const pctConvMay = visitasMay > 0 ? Math.round(convMay / visitasMay * 100) : 0;
 
+          // ── Contacto dejado y productos vistos (solo tienda pedidos online) ──
+          const visitasPedItems = visitasFiltradas.filter(v => v.pagina === 'pedidos');
+          const visitasPedConContacto = visitasPedItems.filter(v => v.telefono).length;
+          const visitasPedSinContacto = visitasPedItems.length - visitasPedConContacto;
+          const prodVistosMap = {};
+          const catVistosMap = {};
+          visitasPedItems.forEach(v => {
+            (v.productos_vistos||[]).forEach(pv => {
+              const nombre = pv.nombre || 'Sin nombre';
+              if (!prodVistosMap[nombre]) prodVistosMap[nombre] = { nombre, categoria: pv.categoria||'Sin categoría', cant: 0 };
+              prodVistosMap[nombre].cant++;
+              const cat = pv.categoria || 'Sin categoría';
+              catVistosMap[cat] = (catVistosMap[cat]||0) + 1;
+            });
+          });
+          const prodVistosTop = Object.values(prodVistosMap).sort((a,b)=>b.cant-a.cant).slice(0,8);
+          const catVistosTop = Object.entries(catVistosMap).sort((a,b)=>b[1]-a[1]);
+
           // ── Ventas con descuento (por ticket, agrupando líneas) ──
           const ticketsDescMap = {};
           vts.forEach(v => {
@@ -16967,6 +16985,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             buzon_manana, buzon_tarde,
             clsNuevos, clsConCompra, clsPromCompra, clsRecompra,
             visitasTotal, visitasPed, visitasMay, convPed, convMay, pctConvPed, pctConvMay,
+            visitasPedConContacto, visitasPedSinContacto, prodVistosTop, catVistosTop,
             cantVentasDesc, totalDescuentoMonto, facturacionConDesc, pctVentasConDesc,
             ticketsConClienteCant: ticketsConCliente.size, promVentaPorCliente,
             clsTelUnicos, clsRecompra, clsRecompraPct };
@@ -17359,6 +17378,30 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                     + '<span style="color:var(--text-muted);"> conversión</span>'
                   + '</div>'
                 + '</div>'
+                // ── Sub-bloque: contacto dejado + productos vistos (solo pedidos online) ──
+                + (m.visitasPed > 0
+                  ? '<div style="margin-top:10px;background:rgba(255,255,255,.03);border-radius:8px;padding:10px;">'
+                    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:600;">📇 Contacto dejado (pedidos online)</div>'
+                    + '<div style="display:flex;gap:14px;margin-bottom:' + (m.prodVistosTop.length ? '10px' : '0') + ';">'
+                      + '<div><span style="font-size:18px;font-weight:800;color:#4ade80;">' + m.visitasPedConContacto + '</span> <span style="font-size:11px;color:var(--text-muted);">dejaron nombre y tel</span></div>'
+                      + '<div><span style="font-size:18px;font-weight:800;color:#f97316;">' + m.visitasPedSinContacto + '</span> <span style="font-size:11px;color:var(--text-muted);">no lo cargaron</span></div>'
+                    + '</div>'
+                    + (m.catVistosTop.length
+                      ? '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;">🍽️ Tipo de productos que miraron</div>'
+                        + '<div style="display:flex;flex-direction:column;gap:5px;">'
+                        + m.catVistosTop.map(([cat, cant]) => {
+                            const maxCat = m.catVistosTop[0][1];
+                            const pct = maxCat > 0 ? Math.round(cant/maxCat*100) : 0;
+                            return '<div style="display:flex;align-items:center;gap:8px;">'
+                              + '<span style="font-size:11px;color:var(--text);min-width:110px;">' + cat + '</span>'
+                              + '<div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden;flex:1;"><div style="width:' + pct + '%;height:100%;background:#22c55e;border-radius:3px;"></div></div>'
+                              + '<span style="font-size:11px;color:var(--text-muted);min-width:16px;text-align:right;">' + cant + '</span>'
+                            + '</div>';
+                          }).join('')
+                        + '</div>'
+                      : '<div style="font-size:11px;color:var(--text-dim);">Sin datos de productos vistos en el período.</div>')
+                  + '</div>'
+                  : '')
                 + '</div>'
               + '</div>'
               : '')

@@ -1384,6 +1384,22 @@ function abrirModal(prodId) {
   const prod = productos.find(p => String(p.id) === String(prodId));
   const ld = listaDatos[String(prodId)];
   if (!prod || !ld) return;
+
+  // Trackear producto visto (para métricas de qué tipo de productos miran los visitantes)
+  if (_visitaId) {
+    window._prodVistos = window._prodVistos || [];
+    if (!window._prodVistos.some(p => String(p.prod_id) === String(prodId))) {
+      window._prodVistos.push({ prod_id: prodId, nombre: prod.nombre, categoria: prod.categoria || '' });
+      if (window._prodVistos.length > 30) window._prodVistos.shift();
+      clearTimeout(window._prodVistosTimeout);
+      window._prodVistosTimeout = setTimeout(() => {
+        fetch(`${SUPABASE_URL}/rest/v1/visitas_tienda?id=eq.${_visitaId}`, {
+          method: 'PATCH', headers: H,
+          body: JSON.stringify({ productos_vistos: window._prodVistos })
+        }).catch(()=>{});
+      }, 1200);
+    }
+  }
   const gustosOnline = ld.gustos.filter(g => ld.activosSet.has(String(g.gid)) && parsePrecioAR(g.precio) > 0);
   if (!gustosOnline.length) return;
 
