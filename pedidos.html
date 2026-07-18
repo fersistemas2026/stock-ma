@@ -1727,6 +1727,25 @@ function calcularOpciones(mode) {
     diaNum2 = proximoDia(diaNum1, 1);
   }
 
+  // ── Fechas reales (no solo el día de la semana) ──────────────────────
+  // Mismo criterio que diaNum1/diaNum2 pero avanzando fechas de calendario reales,
+  // para poder guardar la fecha exacta de entrega/retiro en el pedido.
+  function siguienteFechaActiva(fecha) {
+    const f = new Date(fecha);
+    do { f.setDate(f.getDate() + 1); } while (!diasActivos.has(f.getDay()));
+    return f;
+  }
+  const hoyFecha = new Date(ahora); hoyFecha.setHours(0,0,0,0);
+  let fecha1, fecha2;
+  if (esModoRetiro) {
+    fecha1 = diasActivos.has(hoy) ? new Date(hoyFecha) : siguienteFechaActiva(hoyFecha);
+  } else {
+    fecha1 = new Date(hoyFecha);
+    for (let i = 0; i < deliveryPlazo; i++) fecha1 = siguienteFechaActiva(fecha1);
+  }
+  fecha2 = siguienteFechaActiva(fecha1);
+  const toISO = f => f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0');
+
   function parseMin(hhmm) {
     const [hh, mm] = (hhmm||'00:00').split(':').map(Number);
     return hh * 60 + mm;
@@ -1775,6 +1794,8 @@ function calcularOpciones(mode) {
     dia2: opcionesHorario(diaNum2, false),
     nombreDia1: (esModoRetiro && diaNum1 === hoy) ? 'Hoy' : DIAS_NOMBRE[diaNum1],
     nombreDia2: DIAS_NOMBRE[diaNum2],
+    fecha1ISO: toISO(fecha1),
+    fecha2ISO: toISO(fecha2),
     deliveryActivo: h.delivery_activo !== false,
   };
 }
@@ -1900,6 +1921,8 @@ async function enviarPedido() {
 
   const { total, descuento } = getTotalConDescuento();
   const voucherAplicado = window._voucherOnlineData;
+  const optsEntrega = calcularOpciones(selectedMode);
+  const fechaEntregaISO = selectedFechaEsp ? selectedFechaEsp.fecha : (selectedEnvio === 'pasado' ? optsEntrega.fecha2ISO : optsEntrega.fecha1ISO);
   const pedido = {
     empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: tel,
     pdv_id: String(selectedPdv?.id||''), pdv_nombre: selectedPdv?.nombre||'',
@@ -1908,6 +1931,7 @@ async function enviarPedido() {
     envio_horario: selectedFechaEsp ? (selectedFechaEsp.desde + '-' + selectedFechaEsp.hasta) : (selectedHorario==='manana'?(selectedMode==='retiro'&&selectedEnvio==='manana'?'hasta-13:30':'10:00-14:00'):'16:30-20:30'),
     fecha_especial: selectedFechaEsp ? selectedFechaEsp.fecha : null,
     fecha_especial_nombre: selectedFechaEsp ? selectedFechaEsp.nombre : null,
+    fecha_entrega: fechaEntregaISO,
     items,
     total: getCartTotal(), total_final: total, descuento,
     metodo_pago: selectedPay, estado: 'nuevo', origen: 'online'

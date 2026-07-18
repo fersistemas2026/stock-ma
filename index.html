@@ -11546,14 +11546,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const modalidad = p.modalidad==='delivery'?'DELIVERY':'RETIRO EN LOCAL';
     const esMay = p.tipo==='mayorista';
     const esPre = p.fecha_especial||(p.envio_plazo&&p.envio_plazo.startsWith('pre-pedido:'));
-    let fechaLabel = '';
-    if (esPre && p.fecha_especial) {
-      fechaLabel = new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-      if (p.fecha_especial_nombre) fechaLabel = p.fecha_especial_nombre+' · '+fechaLabel;
-    } else {
-      const pl=p.envio_plazo||'';
-      fechaLabel = pl==='hoy'?('Hoy (' + poDiaDesde(p.created_at, 0) + ')'):pl==='mañana'?('Mañana (' + poDiaDesde(p.created_at, 1) + ')'):pl==='2-dias'?('En 2 días (' + poDiaDesde(p.created_at, 2) + ')'):pl;
-    }
+    const fechaLabel = poFechaEntregaLabel(p);
     const horario = p.envio_horario?p.envio_horario.replace('-',' a ')+' hs':'';
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:'Courier New',monospace;font-size:13px;width:80mm;margin:0 auto;padding:8px;color:#000}.centro{text-align:center}.linea{border-top:1px dashed #000;margin:6px 0}.grande{font-size:16px;font-weight:bold}.negrita{font-weight:bold}.item{display:flex;justify-content:space-between}@media print{body{margin:0;padding:4px}}</style></head><body>
 <div class="centro grande">MIGUEL ANGEL PASTAS</div>
@@ -20230,6 +20223,31 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     d.setDate(d.getDate() + dias);
     return DIAS[d.getDay()];
   }
+  // Devuelve la etiqueta de fecha de entrega/retiro de un pedido online.
+  // Prioriza p.fecha_entrega (fecha real calculada al momento del pedido, respetando
+  // días activos y cortes de horario). Si el pedido es viejo y no la tiene, cae en
+  // una aproximación con poDiaDesde (puede no ser exacta si hubo días cerrados de por medio).
+  function poFechaEntregaLabel(p) {
+    const esPre = p.fecha_especial || (p.envio_plazo && p.envio_plazo.startsWith('pre-pedido:'));
+    if (esPre && p.fecha_especial) {
+      let label = new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+      if (p.fecha_especial_nombre) label = p.fecha_especial_nombre + ' · ' + label;
+      return label;
+    }
+    if (p.fecha_entrega) {
+      const fe = new Date(p.fecha_entrega+'T12:00:00');
+      const diaSemana = fe.toLocaleDateString('es-AR',{weekday:'long'});
+      const diaSemanaCap = diaSemana.charAt(0).toUpperCase()+diaSemana.slice(1);
+      const esHoy = p.fecha_entrega === fechaHoyAR();
+      return (esHoy ? 'Hoy' : diaSemanaCap) + ' (' + fe.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}) + ')';
+    }
+    // Fallback para pedidos hechos antes de este fix (sin fecha_entrega guardada)
+    const pl = p.envio_plazo || '';
+    if (pl==='hoy') return 'Hoy (' + poDiaDesde(p.created_at,0) + ')';
+    if (pl==='mañana' || pl==='ma\u00f1ana') return 'Mañana (' + poDiaDesde(p.created_at,1) + ')';
+    if (pl==='2-dias') return 'En 2 días (' + poDiaDesde(p.created_at,2) + ')';
+    return pl;
+  }
   function poOpRender(){
     const el=document.getElementById('po-op-lista');
     if(!el)return;
@@ -20257,17 +20275,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       const items=Array.isArray(p.items)?p.items:[];
       const horaRecibido=new Date(p.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       const esPre = p.fecha_especial || (p.envio_plazo && p.envio_plazo.startsWith('pre-pedido:'));
-      let fechaEntregaLabel = '';
-      if (esPre && p.fecha_especial) {
-        const fe = new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-        fechaEntregaLabel = '📅 ' + fe;
-      } else {
-        const plazo = p.envio_plazo || '';
-        if (plazo === 'hoy') fechaEntregaLabel = '📅 Hoy';
-        else if (plazo === 'mañana' || plazo === 'ma\u00f1ana') fechaEntregaLabel = '📅 Mañana (' + poDiaDesde(p.created_at, 1) + ')';
-        else if (plazo === '2-dias') fechaEntregaLabel = '📅 En 2 días (' + poDiaDesde(p.created_at, 2) + ')';
-        else fechaEntregaLabel = '📅 ' + plazo;
-      }
+      const fechaEntregaLabel = '📅 ' + poFechaEntregaLabel(p);
       const horarioLabel = p.envio_horario ? '🕐 ' + p.envio_horario.replace('-',' a ') + ' hs' : '';
       const pagoLabel = p.metodo_pago === 'transfe' ? '🏦 Transferencia' : '💵 Efectivo';
       const pagoColor = p.metodo_pago === 'transfe' ? '#3b82f6' : '#16a34a';
@@ -20314,14 +20322,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     const items = Array.isArray(p.items) ? p.items : [];
     const hora = new Date(p.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const esPre = p.fecha_especial || (p.envio_plazo && p.envio_plazo.startsWith('pre-pedido:'));
-    let fechaLabel = '';
-    if (esPre && p.fecha_especial) {
-      fechaLabel = new Date(p.fecha_especial+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
-      if (p.fecha_especial_nombre) fechaLabel = p.fecha_especial_nombre + ' · ' + fechaLabel;
-    } else {
-      const pl = p.envio_plazo || '';
-      fechaLabel = pl === 'hoy' ? ('Hoy (' + poDiaDesde(p.created_at, 0) + ')') : pl === 'mañana' ? ('Mañana (' + poDiaDesde(p.created_at, 1) + ')') : pl === '2-dias' ? ('En 2 días (' + poDiaDesde(p.created_at, 2) + ')') : pl;
-    }
+    const fechaLabel = poFechaEntregaLabel(p);
     const horario = p.envio_horario ? p.envio_horario.replace('-',' a ') + ' hs' : '';
     const pago = p.metodo_pago === 'transfe' ? 'Transferencia' : 'Efectivo';
     const total = (p.total_final || p.total || 0).toLocaleString('es-AR');
