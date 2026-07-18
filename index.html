@@ -11627,6 +11627,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             <option value="clientes">🛍️ Compradores</option>
             <option value="presupuestos">📋 Con presupuesto</option>
             <option value="recibos">🧾 Con recibo</option>
+            <option value="online">🌐 Pedidos Online</option>
           </select>
           <select id="clientes-filtro-pdv" onchange="filtrarClientes()"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;color:var(--text);outline:none;cursor:pointer;">
@@ -11716,10 +11717,12 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             const notas = (c.notas||'').toUpperCase();
             const hasPres = notas.includes('[PRESUPUESTO');
             const hasRec = notas.includes('[RECIBO');
+            const hasOnline = notas.includes('[ONLINE');
             const tags = [];
             if (!hasPres && !hasRec) tags.push('<span style="background:rgba(200,240,74,.15);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">🛒 Venta</span>');
             if (hasPres) tags.push('<span style="background:rgba(255,180,50,.15);color:#ffb432;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">📋 Presup.</span>');
             if (hasRec) tags.push('<span style="background:rgba(110,231,183,.15);color:#6ee7b7;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">🧾 Recibo</span>');
+            if (hasOnline) tags.push('<span style="background:rgba(147,197,253,.15);color:#93c5fd;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">🌐 Online</span>');
             return tags.join(' ') || '—';
           })()}
         </td>
@@ -11812,6 +11815,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       const notas = (c.notas||'').toUpperCase();
       if (tipo === 'presupuestos') return notas.includes('[PRESUPUESTO');
       if (tipo === 'recibos') return notas.includes('[RECIBO');
+      if (tipo === 'online') return notas.includes('[ONLINE');
       return true;
     });
 

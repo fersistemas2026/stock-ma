@@ -1210,6 +1210,26 @@ async function enviarBannerBienvenida() {
         vence: venceStr, usado: false
       })
     });
+    // Crear (o marcar) el cliente en Supabase como venido de la tienda online,
+    // aunque después no llegue a confirmar el pedido
+    try {
+      const existente = await sbGet(`clientes?empresa_id=eq.${EMPRESA_ID}&telefono=eq.${encodeURIComponent(telLimpio)}&select=id,nombre,notas&limit=1`);
+      if (existente && existente.length) {
+        clienteData = existente[0];
+        const notasPrev = existente[0].notas || '';
+        if (!notasPrev.toUpperCase().includes('[ONLINE')) {
+          fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${existente[0].id}`, {
+            method: 'PATCH', headers: H,
+            body: JSON.stringify({ notas: (notasPrev ? notasPrev + ' ' : '') + '[ONLINE]' })
+          }).catch(()=>{});
+        }
+      } else {
+        fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
+          method: 'POST', headers: {...H, 'Prefer':'return=minimal'},
+          body: JSON.stringify({ empresa_id: EMPRESA_ID, nombre, telefono: telLimpio, notas: '[ONLINE][BANNER]' })
+        }).catch(()=>{});
+      }
+    } catch(e) { /* silencioso: no bloquea el flujo del voucher */ }
 
     // Precargar datos para el checkout
     document.getElementById('inNombre').value = nombre;
@@ -1962,7 +1982,7 @@ async function enviarPedido() {
     if (!clienteData) {
       await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
         method:'POST', headers:{...H,'Prefer':'return=minimal'},
-        body: JSON.stringify({ empresa_id:EMPRESA_ID, nombre, telefono:tel.replace(/\s/g,''), pdv_nombre:selectedPdv?.nombre||'' })
+        body: JSON.stringify({ empresa_id:EMPRESA_ID, nombre, telefono:tel.replace(/\s/g,''), pdv_nombre:selectedPdv?.nombre||'', notas:'[ONLINE]' })
       });
     }
 
