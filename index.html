@@ -1397,6 +1397,17 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
         <!-- Tab Efectivo -->
         <div id="cfg-tab-efectivo" style="display:none;max-width:720px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px;">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">⚠️ Alerta de venta importante</div>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Si una venta supera este monto, se le pide al operador que confirme antes de guardarla — se aplica en todos los PDV.</p>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <input type="number" id="cfg-monto-alerta-venta" min="0" step="1000" placeholder="100000"
+                style="width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:15px;font-family:var(--mono);color:var(--text);outline:none;">
+              <span style="font-size:12px;color:var(--text-muted);">$ · dejá en 0 o vacío para desactivar la alerta</span>
+              <button class="btn-outline" onclick="guardarMontoAlertaVenta()">💾 Guardar</button>
+            </div>
+            <div id="cfg-monto-alerta-status" style="font-size:12px;color:#6ee7b7;display:none;margin-top:8px;">✓ Guardado</div>
+          </div>
           <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Configurá el tope de efectivo y la cantidad de avisos antes de bloquear las ventas en cada punto de venta.</p>
           <div id="control-efectivo-pdvs" style="display:flex;flex-direction:column;gap:8px;">
             <div style="color:var(--text-dim);font-size:13px;">Cargando PDVs...</div>
@@ -8865,9 +8876,12 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     _ventasSavedMap = {};
     _ventasPctMap = {};
     _ventasConfig = { pct2: 0, pct3: 0 };
+    window._montoAlertaVenta = 0;
     (saved||[]).forEach(r => {
       if (r.prod_id === '__config__') {
         _ventasConfig = { pct2: r.datos?.pct2||0, pct3: r.datos?.pct3||0, pct4: r.datos?.pct4||0 };
+      } else if (r.prod_id === 'CONFIG_VENTA_ALERTA') {
+        window._montoAlertaVenta = parseFloat(r.datos?.monto) || 0;
       } else {
         // Soportar formato nuevo {gustos:[...], pct:N} y viejo (array)
         if (String(r.prod_id).startsWith('SCHED_')) {
@@ -9362,6 +9376,28 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (window._ventaPaso === 0) {
       const total = calcularTotalConDescuento();
       const fmtARS = n => '$' + Math.round(n).toLocaleString('es-AR');
+
+      // Alerta de monto importante (configurable en Admin → Configuración → Efectivo)
+      const montoAlerta = window._montoAlertaVenta || 0;
+      if (montoAlerta > 0 && total > montoAlerta && !window._ventaMontoConfirmado) {
+        const ovA = document.createElement('div');
+        ovA.id = 'modal-alerta-monto';
+        ovA.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
+        ovA.innerHTML = `
+          <div style="background:var(--surface);border:2px solid #f97316;border-radius:16px;width:100%;max-width:340px;padding:24px;text-align:center;">
+            <div style="font-size:34px;margin-bottom:8px;">⚠️</div>
+            <div style="font-size:14px;color:var(--text);font-weight:700;margin-bottom:8px;">Monto importante</div>
+            <div style="font-size:30px;font-weight:900;color:#f97316;margin:8px 0 14px;">${fmtARS(total)}</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Esta venta supera los ${fmtARS(montoAlerta)}. ¿Es correcta?</div>
+            <div style="display:flex;gap:10px;">
+              <button onclick="document.getElementById('modal-alerta-monto').remove();window._ventaPaso=0;window._registrarCancelMetodo && window._registrarCancelMetodo();" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text);cursor:pointer;font-weight:700;">✗ No, revisar</button>
+              <button onclick="window._ventaMontoConfirmado=true;document.getElementById('modal-alerta-monto').remove();guardarVenta();" style="flex:1;background:#f97316;color:#000;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:900;cursor:pointer;">✓ Sí, confirmar</button>
+            </div>
+          </div>`;
+        document.body.appendChild(ovA);
+        return;
+      }
+
       const ov = document.createElement('div');
       ov.id = 'modal-elegir-metodo';
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
@@ -9374,7 +9410,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             <button onclick="window._elegirMetodoVenta('tarjeta')" style="background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;">💳 Tarjeta</button>
             <button onclick="window._elegirMetodoVenta('mixto')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;">💵+💳 Mixto</button>
           </div>
-          <button onclick="document.getElementById('modal-elegir-metodo').remove();window._ventaPaso=0;window._registrarCancelMetodo && window._registrarCancelMetodo();" style="margin-top:14px;width:100%;background:none;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text-muted);cursor:pointer;font-weight:700;">✗ Cancelar</button>
+          <button onclick="document.getElementById('modal-elegir-metodo').remove();window._ventaPaso=0;window._ventaMontoConfirmado=false;window._registrarCancelMetodo && window._registrarCancelMetodo();" style="margin-top:14px;width:100%;background:none;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text-muted);cursor:pointer;font-weight:700;">✗ Cancelar</button>
         </div>`;
       document.body.appendChild(ov);
       return;
@@ -9415,6 +9451,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._ventasClienteTelGuardar = '';
     window._ventasClienteNombreGuardar = '';
     window._mixtoEfectivo = 0; window._mixtoTarjeta = 0; window._mixtoVuelto = 0;
+    window._ventaMontoConfirmado = false;
     // Guardar snapshot de items para comparar con cancelaciones posteriores
     window._lastVentaItems = (_ventasItems || []).map(i => ({
       prod_id: i.prodId || '',
@@ -15892,6 +15929,35 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   };
   // ─────────────────────────────────────────────────────────────────────────
 
+  async function cargarMontoAlertaVenta() {
+    const inp = document.getElementById('cfg-monto-alerta-venta');
+    if (!inp) return;
+    try {
+      const r = await sbApi(`lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.CONFIG_VENTA_ALERTA&select=datos`) || [];
+      const monto = r.length ? parseFloat(r[0].datos?.monto) || 0 : 0;
+      inp.value = monto || '';
+      window._montoAlertaVenta = monto;
+    } catch(e) { console.warn('Error cargando monto de alerta:', e); }
+  }
+
+  window.guardarMontoAlertaVenta = async function() {
+    const monto = parseFloat(document.getElementById('cfg-monto-alerta-venta')?.value) || 0;
+    try {
+      const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+      await fetch(`${SUPABASE_URL}/rest/v1/lista_datos?empresa_id=eq.${empresaActual}&prod_id=eq.CONFIG_VENTA_ALERTA`, { method: 'DELETE', headers: H });
+      if (monto > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/lista_datos`, {
+          method: 'POST', headers: H,
+          body: JSON.stringify({ empresa_id: String(empresaActual), prod_id: 'CONFIG_VENTA_ALERTA', datos: { monto } })
+        });
+      }
+      window._montoAlertaVenta = monto;
+      const st = document.getElementById('cfg-monto-alerta-status');
+      if (st) { st.style.display='block'; setTimeout(()=>st.style.display='none', 2000); }
+      toast('✓ Alerta de venta guardada','success');
+    } catch(e) { toast('Error guardando: '+e.message,'error'); }
+  };
+
   function switchCfgTab(tab) {
     ['mensajes','efectivo','prodop','prodint','desp','egresos','seguridad','metas'].forEach(t => {
       const btn = document.getElementById(`cfg-tab-btn-${t}`);
@@ -15900,7 +15966,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       if (btn) { btn.style.background = active ? 'var(--accent)' : 'none'; btn.style.color = active ? '#000' : 'var(--text-muted)'; btn.style.fontWeight = active ? '700' : '600'; }
       if (panel) panel.style.display = active ? '' : 'none';
     });
-    if (tab === 'efectivo')   renderControlEfectivo();
+    if (tab === 'efectivo')   { renderControlEfectivo(); cargarMontoAlertaVenta(); }
     if (tab === 'prodop')     renderProdOpConfig();
     if (tab === 'prodint')    renderProdIntConfig();
     if (tab === 'desp')       renderCfgDesp();
