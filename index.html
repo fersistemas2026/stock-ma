@@ -17546,7 +17546,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                   const mismoDia = p.cierre.fecha === p.inicio.fecha;
                   const transicion = mismoDia
                     ? 'Cierre ' + fmtHora(p.cierre.tsRaw) + ' → Apertura ' + fmtHora(p.inicio.tsRaw) + ' (mismo día)'
-                    : 'Cierre ' + p.cierre.fecha + ' → Apertura ' + p.inicio.fecha;
+                    : 'Cierre ' + p.cierre.fecha + ' ' + fmtHora(p.cierre.tsRaw) + ' → Apertura ' + p.inicio.fecha + ' ' + fmtHora(p.inicio.tsRaw);
                   const fuentes = p.cierre.fuente === p.inicio.fuente
                     ? fuenteLabel(p.cierre.fuente)
                     : fuenteLabel(p.cierre.fuente) + ' → ' + fuenteLabel(p.inicio.fuente);
