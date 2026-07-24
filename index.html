@@ -16765,7 +16765,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     if (!body) return;
     body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
     try {
-      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas, desps, prods, listaRaw] = await Promise.all([
+      const fechaPrevRango = (() => { const d = new Date(desde+'T00:00:00'); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })();
+      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas, desps, prods, listaRaw, cajaApCie] = await Promise.all([
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,monto_efectivo,monto_tarjeta,cliente_tel,ticket_id,created_at,descuento_monto,descuento_motivo&limit=200000`) || [],
         getPdv(),
         sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,pdv_id,telefono,created_at&order=created_at.asc&limit=50000`) || [],
@@ -16776,7 +16777,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`visitas_tienda?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=pdv_id,pagina,convirtio,telefono,nombre,productos_vistos`) || [],
         sbApi(`desperdicios?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`) || [],
         getProd(),
-        sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos`) || []
+        sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos`) || [],
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${fechaPrevRango}&fecha=lte.${hasta}&tipo=in.(inicio,cierre)&select=pdv_id,fecha,turno,tipo,efectivo&order=fecha.asc`) || []
       ]);
 
       // Mapa de precios Lista1 para valorizar desperdicios: listaPrecio[prod_id][gusto_id] = precio
@@ -16847,7 +16849,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
       // Función que renderiza las métricas de los PDVs seleccionados
       const todasMetas = metasRaw.length ? (metasRaw[0].datos || []) : [];
-      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[], ventas, desde, hasta, desps: desps||[], prods: prods||[], listaPrecio };
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[], ventas, desde, hasta, desps: desps||[], prods: prods||[], listaPrecio, cajaApCie: cajaApCie||[] };
       window._pdvMetricasActivos = 'all';
 
       window.pdvMetricasSelAll = function() {
@@ -16877,7 +16879,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       };
 
       window.renderPdvMetricas = function(ids) {
-        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas, ventas, desde, hasta, desps, prods, listaPrecio } = window._pdvMetricasData;
+        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas, ventas, desde, hasta, desps, prods, listaPrecio, cajaApCie } = window._pdvMetricasData;
         const contenido = document.getElementById('pdvm-contenido');
         if (!contenido) return;
 
@@ -17487,6 +17489,67 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                       + '</div>'
                     : '')
                   + '</div>';
+              })()
+            // ── Bloque: Apertura/Cierre por turno ──
+            + (() => {
+                if (pdvIdCard === 'all') return '';
+                const rowsPdv = (cajaApCie||[]).filter(x => String(x.pdv_id) === String(pdvIdCard));
+                if (!rowsPdv.length) return '';
+
+                const ordenTurno = { 'mañana': 0, 'tarde': 1 };
+                // Lista cronológica de eventos inicio/cierre
+                const eventosOrd = rowsPdv
+                  .map(x => ({ fecha: x.fecha, turno: x.turno||'', tipo: x.tipo, efectivo: parseFloat(x.efectivo||0) }))
+                  .sort((a,b) => {
+                    if (a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
+                    const ta = ordenTurno[a.turno] ?? 0, tb = ordenTurno[b.turno] ?? 0;
+                    if (ta !== tb) return ta - tb;
+                    // dentro del mismo turno, 'inicio' antes que 'cierre'
+                    return a.tipo === 'inicio' ? -1 : 1;
+                  });
+
+                // Emparejar cada 'cierre' con el próximo 'inicio' que le sigue
+                const pares = [];
+                for (let i = 0; i < eventosOrd.length - 1; i++) {
+                  if (eventosOrd[i].tipo === 'cierre' && eventosOrd[i+1].tipo === 'inicio') {
+                    pares.push({ cierre: eventosOrd[i], inicio: eventosOrd[i+1] });
+                  }
+                }
+                // Solo mostrar pares cuya apertura caiga dentro del rango elegido
+                const paresEnRango = pares.filter(p => p.inicio.fecha >= desde && p.inicio.fecha <= hasta);
+                if (!paresEnRango.length) return '';
+
+                const nombreTurno = t => t === 'mañana' ? '🌅 Mañana' : t === 'tarde' ? '🌆 Tarde' : (t||'—');
+
+                const filas = paresEnRango.map(p => {
+                  const dif = p.inicio.efectivo - p.cierre.efectivo;
+                  const ok = Math.abs(dif) < 0.5;
+                  const mismoDia = p.cierre.fecha === p.inicio.fecha;
+                  const transicion = mismoDia
+                    ? nombreTurno(p.cierre.turno) + ' → ' + nombreTurno(p.inicio.turno)
+                    : 'Cierre ' + nombreTurno(p.cierre.turno) + ' (' + p.cierre.fecha + ') → Apertura ' + nombreTurno(p.inicio.turno) + ' (' + p.inicio.fecha + ')';
+                  return '<tr style="border-bottom:1px solid var(--border);">'
+                    + '<td style="padding:8px 10px;font-size:12px;color:var(--text);">' + p.inicio.fecha + '</td>'
+                    + '<td style="padding:8px 10px;font-size:12px;color:var(--text-muted);">' + transicion + '</td>'
+                    + '<td style="padding:8px 10px;font-size:12px;font-family:var(--mono);text-align:right;color:var(--text);">' + fmtARS(p.cierre.efectivo) + '</td>'
+                    + '<td style="padding:8px 10px;font-size:12px;font-family:var(--mono);text-align:right;color:var(--text);">' + fmtARS(p.inicio.efectivo) + '</td>'
+                    + '<td style="padding:8px 10px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:' + (ok?'#6ee7b7':'#ff5a5a') + ';">' + (dif>=0?'+':'') + fmtARS(dif) + '</td>'
+                    + '<td style="padding:8px 10px;text-align:center;">' + (ok?'✅':'⚠️') + '</td>'
+                  + '</tr>';
+                }).join('');
+
+                return '<div style="margin-top:16px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2);border-radius:10px;padding:14px;">'
+                  + '<div style="font-size:13px;font-weight:700;color:#60a5fa;margin-bottom:12px;">🔄 Apertura/Cierre por turno</div>'
+                  + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:520px;">'
+                  + '<thead><tr style="border-bottom:1px solid var(--border);">'
+                    + '<th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Fecha</th>'
+                    + '<th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Transición</th>'
+                    + '<th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Cierre</th>'
+                    + '<th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Apertura</th>'
+                    + '<th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Diferencia</th>'
+                    + '<th style="padding:6px 10px;text-align:center;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Estado</th>'
+                  + '</tr></thead><tbody>' + filas + '</tbody></table></div>'
+                + '</div>';
               })()
             // ── Bloque: Visitas tienda ──
             + (m.visitasTotal > 0
