@@ -16766,7 +16766,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Cargando métricas...</p></div>`;
     try {
       const fechaPrevRango = (() => { const d = new Date(desde+'T00:00:00'); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })();
-      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas, desps, prods, listaRaw, cajaApCie] = await Promise.all([
+      const [ventas, pdvs, clientes, buzon, caja, gastos, metasRaw, visitas, desps, prods, listaRaw, cajaApCie, turnosVentasRaw, arqueosVentasRaw] = await Promise.all([
         sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,prod_id,prod_nombre,gusto_id,gusto_nombre,cantidad,precio,metodo_pago,monto_efectivo,monto_tarjeta,cliente_tel,ticket_id,created_at,descuento_monto,descuento_motivo&limit=200000`) || [],
         getPdv(),
         sbApi(`clientes?empresa_id=eq.${empresaActual}&created_at=gte.${desde}T00:00:00&created_at=lte.${hasta}T23:59:59&select=id,pdv_id,telefono,created_at&order=created_at.asc&limit=50000`) || [],
@@ -16778,8 +16778,24 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
         sbApi(`desperdicios?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*`) || [],
         getProd(),
         sbApi(`lista_datos?empresa_id=eq.${empresaActual}&select=prod_id,datos`) || [],
-        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${fechaPrevRango}&fecha=lte.${hasta}&tipo=in.(inicio,cierre)&select=pdv_id,fecha,turno,tipo,efectivo&order=fecha.asc`) || []
+        sbApi(`caja?empresa_id=eq.${empresaActual}&fecha=gte.${fechaPrevRango}&fecha=lte.${hasta}&tipo=in.(inicio,cierre)&select=pdv_id,fecha,turno,tipo,efectivo,created_at&order=fecha.asc`) || [],
+        sbApi(`turnos_caja?empresa_id=eq.${empresaActual}&fecha=gte.${fechaPrevRango}&fecha=lte.${hasta}&select=id,pdv_id,fecha,tipo,created_at&order=created_at.asc`) || [],
+        sbApi(`arqueos_turno?empresa_id=eq.${empresaActual}&fecha=gte.${fechaPrevRango}&fecha=lte.${hasta}&select=turno_id,pdv_id,fecha,tipo,total_declarado,created_at&order=created_at.asc`) || []
       ]);
+
+      // Unir turnos_caja (id, tipo confiable) + arqueos_turno (monto declarado) → eventos de apertura/cierre desde Ventas
+      const turnosMap = {};
+      (turnosVentasRaw||[]).forEach(t => { turnosMap[t.id] = t; });
+      const turnosVentasEventos = (arqueosVentasRaw||[]).map(a => {
+        const t = turnosMap[a.turno_id];
+        return {
+          pdv_id: a.pdv_id || t?.pdv_id,
+          fecha: a.fecha || t?.fecha,
+          tipo: t?.tipo || a.tipo || '',
+          efectivo: parseFloat(a.total_declarado||0),
+          created_at: a.created_at || t?.created_at
+        };
+      }).filter(e => e.pdv_id && e.tipo);
 
       // Mapa de precios Lista1 para valorizar desperdicios: listaPrecio[prod_id][gusto_id] = precio
       const listaPrecio = {};
@@ -16849,7 +16865,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
       // Función que renderiza las métricas de los PDVs seleccionados
       const todasMetas = metasRaw.length ? (metasRaw[0].datos || []) : [];
-      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[], ventas, desde, hasta, desps: desps||[], prods: prods||[], listaPrecio, cajaApCie: cajaApCie||[] };
+      window._pdvMetricasData = { porPdv, pdvMap, clientesPorPdv, pdvIds, buzon: buzon||[], clientes, ventasPorTelPM, caja: caja||[], gastos: gastos||[], todasMetas, visitas: visitas||[], ventas, desde, hasta, desps: desps||[], prods: prods||[], listaPrecio, cajaApCie: cajaApCie||[], turnosVentasEventos: turnosVentasEventos||[] };
       window._pdvMetricasActivos = 'all';
 
       window.pdvMetricasSelAll = function() {
@@ -16879,7 +16895,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       };
 
       window.renderPdvMetricas = function(ids) {
-        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas, ventas, desde, hasta, desps, prods, listaPrecio, cajaApCie } = window._pdvMetricasData;
+        const { porPdv, pdvMap, clientesPorPdv, buzon, clientes, ventasPorTelPM, caja, gastos, todasMetas, visitas, ventas, desde, hasta, desps, prods, listaPrecio, cajaApCie, turnosVentasEventos } = window._pdvMetricasData;
         const contenido = document.getElementById('pdvm-contenido');
         if (!contenido) return;
 
@@ -17493,22 +17509,25 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             // ── Bloque: Apertura/Cierre por turno ──
             + (() => {
                 if (pdvIdCard === 'all') return '';
-                const rowsPdv = (cajaApCie||[]).filter(x => String(x.pdv_id) === String(pdvIdCard));
-                if (!rowsPdv.length) return '';
 
-                const ordenTurno = { 'mañana': 0, 'tarde': 1 };
-                // Lista cronológica de eventos inicio/cierre
-                const eventosOrd = rowsPdv
-                  .map(x => ({ fecha: x.fecha, turno: x.turno||'', tipo: x.tipo, efectivo: parseFloat(x.efectivo||0) }))
-                  .sort((a,b) => {
-                    if (a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
-                    const ta = ordenTurno[a.turno] ?? 0, tb = ordenTurno[b.turno] ?? 0;
-                    if (ta !== tb) return ta - tb;
-                    // dentro del mismo turno, 'inicio' antes que 'cierre'
-                    return a.tipo === 'inicio' ? -1 : 1;
-                  });
+                const normTS = s => { if(!s) return null; let t=String(s).replace(' ','T'); if(t.includes('+')) t=t.split('+')[0]+'Z'; else if(!t.endsWith('Z')) t=t.replace(/\.\d+$/,'')+'Z'; return t; };
+                const getTS = s => { const n = normTS(s); return n ? new Date(n).getTime() : 0; };
+                const fmtHora = s => { const n = normTS(s); return n ? new Date(n).toLocaleTimeString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit'}) : ''; };
 
-                // Emparejar cada 'cierre' con el próximo 'inicio' que le sigue
+                // Eventos desde pestaña Caja (manual)
+                const evCaja = (cajaApCie||[])
+                  .filter(x => String(x.pdv_id) === String(pdvIdCard))
+                  .map(x => ({ fecha: x.fecha, tipo: x.tipo, efectivo: parseFloat(x.efectivo||0), tsRaw: x.created_at || (x.fecha+'T12:00:00'), ts: getTS(x.created_at) || getTS(x.fecha+'T12:00:00'), fuente: 'caja' }));
+
+                // Eventos desde Ventas (cierre/apertura de turno con arqueo)
+                const evVentas = (turnosVentasEventos||[])
+                  .filter(x => String(x.pdv_id) === String(pdvIdCard))
+                  .map(x => ({ fecha: x.fecha, tipo: x.tipo, efectivo: parseFloat(x.efectivo||0), tsRaw: x.created_at || (x.fecha+'T12:00:00'), ts: getTS(x.created_at) || getTS(x.fecha+'T12:00:00'), fuente: 'ventas' }));
+
+                const eventosOrd = [...evCaja, ...evVentas].sort((a,b) => a.ts - b.ts);
+                if (!eventosOrd.length) return '';
+
+                // Emparejar cada 'cierre' con el próximo 'inicio' que le sigue (de cualquier fuente)
                 const pares = [];
                 for (let i = 0; i < eventosOrd.length - 1; i++) {
                   if (eventosOrd[i].tipo === 'cierre' && eventosOrd[i+1].tipo === 'inicio') {
@@ -17519,18 +17538,22 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                 const paresEnRango = pares.filter(p => p.inicio.fecha >= desde && p.inicio.fecha <= hasta);
                 if (!paresEnRango.length) return '';
 
-                const nombreTurno = t => t === 'mañana' ? '🌅 Mañana' : t === 'tarde' ? '🌆 Tarde' : (t||'—');
+                const fuenteLabel = f => f === 'ventas' ? '🧮 Ventas' : '📋 Caja';
 
                 const filas = paresEnRango.map(p => {
                   const dif = p.inicio.efectivo - p.cierre.efectivo;
                   const ok = Math.abs(dif) < 0.5;
                   const mismoDia = p.cierre.fecha === p.inicio.fecha;
                   const transicion = mismoDia
-                    ? nombreTurno(p.cierre.turno) + ' → ' + nombreTurno(p.inicio.turno)
-                    : 'Cierre ' + nombreTurno(p.cierre.turno) + ' (' + p.cierre.fecha + ') → Apertura ' + nombreTurno(p.inicio.turno) + ' (' + p.inicio.fecha + ')';
+                    ? 'Cierre ' + fmtHora(p.cierre.tsRaw) + ' → Apertura ' + fmtHora(p.inicio.tsRaw) + ' (mismo día)'
+                    : 'Cierre ' + p.cierre.fecha + ' → Apertura ' + p.inicio.fecha;
+                  const fuentes = p.cierre.fuente === p.inicio.fuente
+                    ? fuenteLabel(p.cierre.fuente)
+                    : fuenteLabel(p.cierre.fuente) + ' → ' + fuenteLabel(p.inicio.fuente);
                   return '<tr style="border-bottom:1px solid var(--border);">'
                     + '<td style="padding:8px 10px;font-size:12px;color:var(--text);">' + p.inicio.fecha + '</td>'
                     + '<td style="padding:8px 10px;font-size:12px;color:var(--text-muted);">' + transicion + '</td>'
+                    + '<td style="padding:8px 10px;font-size:11px;color:var(--text-muted);">' + fuentes + '</td>'
                     + '<td style="padding:8px 10px;font-size:12px;font-family:var(--mono);text-align:right;color:var(--text);">' + fmtARS(p.cierre.efectivo) + '</td>'
                     + '<td style="padding:8px 10px;font-size:12px;font-family:var(--mono);text-align:right;color:var(--text);">' + fmtARS(p.inicio.efectivo) + '</td>'
                     + '<td style="padding:8px 10px;font-size:12px;font-family:var(--mono);text-align:right;font-weight:700;color:' + (ok?'#6ee7b7':'#ff5a5a') + ';">' + (dif>=0?'+':'') + fmtARS(dif) + '</td>'
@@ -17539,11 +17562,12 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
                 }).join('');
 
                 return '<div style="margin-top:16px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.2);border-radius:10px;padding:14px;">'
-                  + '<div style="font-size:13px;font-weight:700;color:#60a5fa;margin-bottom:12px;">🔄 Apertura/Cierre por turno</div>'
-                  + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:520px;">'
+                  + '<div style="font-size:13px;font-weight:700;color:#60a5fa;margin-bottom:12px;">🔄 Apertura/Cierre de caja</div>'
+                  + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:580px;">'
                   + '<thead><tr style="border-bottom:1px solid var(--border);">'
                     + '<th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Fecha</th>'
                     + '<th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Transición</th>'
+                    + '<th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Fuente</th>'
                     + '<th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Cierre</th>'
                     + '<th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Apertura</th>'
                     + '<th style="padding:6px 10px;text-align:right;font-size:10px;color:var(--text-muted);font-family:var(--mono);text-transform:uppercase;">Diferencia</th>'
