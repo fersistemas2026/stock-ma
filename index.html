@@ -16885,6 +16885,9 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const facturacion = vts.reduce((s,v) => s + (v.precio||0)*(v.cantidad||1), 0);
           // Buzón: filtrar por pdv_id (o todos si es 'all')
           const buzonFiltrado = (buzon||[]).filter(b => pdvId === 'all' || String(b.pdv_id) === String(pdvId));
+          // Gastos: filtrar por pdv_id (o todos si es 'all')
+          const gastosFiltrados = (gastos||[]).filter(g => pdvId === 'all' || String(g.pdv_id) === String(pdvId));
+          const totalGastos = gastosFiltrados.reduce((s,g) => s + parseFloat(g.monto||0), 0);
 
           // Tickets únicos = transacciones
           const ticketsUnicos = new Set(vts.filter(v=>v.ticket_id).map(v=>v.ticket_id));
@@ -17074,7 +17077,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           const facturacionConCliente = vts.filter(v=>v.cliente_tel).reduce((s,v)=>s+(v.precio||0)*(v.cantidad||1),0);
           const promVentaPorCliente = ticketsConCliente.size > 0 ? facturacionConCliente / ticketsConCliente.size : 0;
 
-          return { facturacion, clientesUnicos, ticketProm, efectivo, noEfectivo, pctEf, pctNoEf, txEf, txNoEf, pctTxEf, pctTxNoEf, top5,
+          return { facturacion, clientesUnicos, ticketProm, totalGastos, efectivo, noEfectivo, pctEf, pctNoEf, txEf, txNoEf, pctTxEf, pctTxNoEf, top5,
             txPagoEf, txPagoTj, txPagoMx, pctPagoEf, pctPagoTj, pctPagoMx, montoPagoEf, montoPagoTj, montoPagoMx, montoTarjetaVentas, montoEfectivoVentas,
             cl_manana: tickets_manana.size, cl_tarde: tickets_tarde.size,
             fac_manana, fac_tarde, prom_manana, prom_tarde,
@@ -17122,6 +17125,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             + '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:22px;font-weight:800;color:var(--accent);">' + m.clientesUnicos + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🎫 Transacciones</div></div>'
             + '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#4ade80;">' + fmtARS(m.facturacion) + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">💰 Facturación</div></div>'
             + '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#f97316;">' + fmtARS(m.ticketProm) + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🎯 Promedio / transacción</div></div>'
+            + '<div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center;"><div style="font-size:22px;font-weight:800;color:#ff5a5a;">' + fmtARS(m.totalGastos) + '</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">💸 Gastos</div></div>'
             + '</div>'
             + '<div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px;">'
             + '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;">💳 Clientes por método de pago</div>'
