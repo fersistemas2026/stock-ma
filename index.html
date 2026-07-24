@@ -9327,9 +9327,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   // Calcula el total de la venta aplicando el descuento por cliente/voucher/promo vigente.
-  // Usa el mismo total ya calculado por ventasRenderTabla() (window._ventasTotalFinalDesc),
-  // que contempla descuento %, monto fijo y promos automáticas (2da unidad, lleva N paga M, etc).
+  // Si hay una promo automática activa, suma directamente los subtotales por ítem ya
+  // calculados en _ventasPromosCalc (el mismo detalle que se muestra en la tabla de ventas),
+  // en vez de depender de window._ventasTotalFinalDesc, que se cachea en el render y puede
+  // no estar actualizado todavía al momento de cobrar.
   function calcularTotalConDescuento() {
+    if (window._ventasDescuentoAutoActivo && Array.isArray(window._ventasPromosCalc) && window._ventasPromosCalc.length === _ventasItems.length) {
+      return window._ventasPromosCalc.reduce((s, p) => s + p.subtotal, 0);
+    }
     if (typeof window._ventasTotalFinalDesc === 'number') return window._ventasTotalFinalDesc;
     // Fallback por si la tabla no llegó a renderizarse con descuento
     const totalBase = _ventasItems.reduce((s,it) => s + parsePrecioAR(it.precio||0) * it.cant, 0);
