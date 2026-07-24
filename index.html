@@ -9966,8 +9966,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const descPct = window._ventasDescuento || 0;
     const montoFijo = window._ventasMontoFijo || 0;
 
-    if (descData && tipoPromo !== 'pct') {
-      // promo por item (regalo o segunda) — usar los ya calculados
+    if (descData) {
+      // promo por item (pct, regalo o segunda) — usar los ya calculados
       totalFinalDesc = _promosCalc.reduce(function(s,p){ return s + p.subtotal; }, 0);
     } else if (montoFijo > 0) {
       totalFinalDesc = Math.max(0, grandTotal - montoFijo);
