@@ -9121,6 +9121,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
     window._vueltoRegistrarCancel(total);
     document.getElementById('modal-vuelto')?.remove();
+    window._ventaPaso = 0;
+    window._ventaMetodoElegido = null;
   };
 
   // Registrar cancelación cuando el operador cancela el modal de vuelto
@@ -9178,9 +9180,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   function abrirModalTarjeta(onConfirm) {
     const overlay = document.createElement('div');
     overlay.id = 'modal-tarjeta';
-    overlay.onclick = e => { if(e.target===overlay) { window._tarjetaRegistrarCancel(); overlay.remove(); } };
+    overlay.onclick = e => { if(e.target===overlay) { window._tarjetaRegistrarCancel(); overlay.remove(); window._ventaPaso=0; window._ventaMetodoElegido=null; } };
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
-    const totalTj = (_ventasItems||[]).reduce((s,i)=>s+parsePrecioAR(i.precio)*i.cant,0);
+    const totalTj = calcularTotalConDescuento();
     overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:340px;overflow:hidden;">
       <div style="padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface2);">
         <div style="font-size:14px;font-weight:800;">💳 Pago con tarjeta</div>
@@ -9192,7 +9194,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           <div style="font-size:14px;font-weight:700;color:#8b5cf6;">Procesá el pago y confirmá</div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button onclick="window._tarjetaRegistrarCancel(); document.getElementById('modal-tarjeta').remove();" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="window._tarjetaRegistrarCancel(); document.getElementById('modal-tarjeta').remove(); window._ventaPaso=0; window._ventaMetodoElegido=null;" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
           <button onclick="document.getElementById('modal-tarjeta').remove(); window._tarjetaOnConfirm && window._tarjetaOnConfirm();"
             style="flex:2;background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
         </div>
@@ -9232,7 +9234,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         </div>
         <div id="mixto-error" style="font-size:12px;color:#ff5a5a;display:none;">⚠️ Ingresá un monto válido en efectivo</div>
         <div style="display:flex;gap:8px;">
-          <button onclick="document.getElementById('modal-mixto').remove();window._ventaPaso=0;" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
+          <button onclick="window._mixtoRegistrarCancel(); document.getElementById('modal-mixto').remove();window._ventaPaso=0;window._ventaMetodoElegido=null;" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--text);cursor:pointer;">Cancelar</button>
           <button onclick="window.confirmarMixto(${total})" style="flex:2;background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:800;cursor:pointer;">💾 Confirmar y guardar</button>
         </div>
       </div>
@@ -9292,6 +9294,35 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       await sbApi('cancelaciones_venta', { method: 'POST', body: JSON.stringify(cancelacion) });
       window._notificarCancelAdmin && window._notificarCancelAdmin(cancelacion);
     } catch(e) { console.warn('[CancelTarjeta]', e); }
+  };
+
+  window._mixtoRegistrarCancel = async function() {
+    try {
+      const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
+      const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
+      const items = (_ventasItems || []).map(i => ({
+        prod_id: i.prodId || '',
+        prod_nombre: i.prod || '',
+        gusto_id: i.gustoId || '',
+        gusto_nombre: i.gusto || '',
+        cantidad: i.cant || 1,
+        precio: parsePrecioAR(i.precio)
+      }));
+      if (!items.length) return;
+      const total = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
+      const cancelacion = {
+        empresa_id: empresaActual,
+        pdv_id: pdvId,
+        username: currentUser?.username || '',
+        items: items,
+        total: total,
+        monto_cliente: 0,
+        fecha: fecha,
+        metodo_pago: 'mixto'
+      };
+      await sbApi('cancelaciones_venta', { method: 'POST', body: JSON.stringify(cancelacion) });
+      window._notificarCancelAdmin && window._notificarCancelAdmin(cancelacion);
+    } catch(e) { console.warn('[CancelMixto]', e); }
   };
 
   function selTarjetaTipo(tipo, btn) {
