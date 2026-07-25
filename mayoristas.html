@@ -1062,6 +1062,11 @@ async function init() {
 
   // Función para calcular precio según lista
   function calcPrecioMay(g) {
+    // Precio manual opcional cargado desde Config Mayorista → Productos: si está activado, pisa el cálculo automático
+    if (g.usarPrecioMayManual) {
+      const pm = parsePrecioAR(g.precioMayManual);
+      if (pm > 0) return pm;
+    }
     const base = parsePrecioAR(g.precio);
     if (!base) return 0;
     if (mayoristaNroLista === 1) return base;

@@ -19202,10 +19202,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           <span style="padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;color:white;background:${ec[p.estado]||'#888'}">${el2[p.estado]||p.estado}</span>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px">
-          ${items.map((it,idx)=>{
-            const puedeEditar = p.tipo==='mayorista' && p.estado!=='entregado' && p.estado!=='cancelado';
-            return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:2px 0"><span>${it.prod_nombre} · ${it.gusto_nombre} × ${it.cantidad}</span><span style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted)">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span>${puedeEditar?`<button onclick="poEditarPrecioItem('${p.id}',${idx})" title="Precio manual para esta línea (solo este pedido)" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;color:var(--text-muted)">✏️</button>`:''}</span></div>`;
-          }).join('')}
+          ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>${it.prod_nombre} · ${it.gusto_nombre} × ${it.cantidad}</span><span style="color:var(--text-muted)">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           ${p.estado==='cancelado'&&p.motivo_cancelacion?`<div style="font-size:12px;color:#ff5a5a;background:rgba(255,90,90,.08);border-radius:7px;padding:7px 10px;margin-bottom:10px">❌ Motivo cancelación: ${p.motivo_cancelacion}</div>`:''}
@@ -19312,41 +19309,6 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       toast('🗑️ Pedido eliminado','success');
       poCargarPedidos();
     } catch(e) { toast('Error: '+e.message,'error'); console.error(e); }
-  };
-
-  window.poEditarPrecioItem = async function(pedidoId, idx) {
-    const pedido = _poPedidos.find(p => String(p.id) === String(pedidoId));
-    if (!pedido) return;
-    const items = Array.isArray(pedido.items) ? pedido.items.map(it=>({...it})) : [];
-    const item = items[idx];
-    if (!item) return;
-    const actual = item.precio || 0;
-    const input = prompt(`Precio unitario manual para "${item.prod_nombre} · ${item.gusto_nombre}"\n(Aplica solo a este pedido, no cambia la lista de precios)`, actual);
-    if (input === null) return;
-    const nuevoPrecio = parsePrecioAR(input);
-    if (!nuevoPrecio && input.trim() !== '0') { toast('Precio inválido', 'error'); return; }
-
-    const totalBaseAnterior = items.reduce((s,it)=>s+(it.precio||0)*(it.cantidad||0),0);
-    const totalFinalAnterior = pedido.total_final||pedido.total||totalBaseAnterior;
-    const extra = totalFinalAnterior - totalBaseAnterior; // delivery/descuentos ya aplicados al pedido
-
-    item.precio = nuevoPrecio;
-    const nuevoTotalBase = items.reduce((s,it)=>s+(it.precio||0)*(it.cantidad||0),0);
-    const nuevoTotalFinal = nuevoTotalBase + extra;
-
-    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${pedidoId}`,{
-        method:'PATCH',headers:H2,
-        body:JSON.stringify({ items, total: nuevoTotalBase, total_final: nuevoTotalFinal })
-      });
-      if (!r.ok) { toast('Error al guardar el precio manual','error'); return; }
-      pedido.items = items;
-      pedido.total = nuevoTotalBase;
-      pedido.total_final = nuevoTotalFinal;
-      toast('💲 Precio actualizado para este pedido','success');
-      poRenderPedidos();
-    } catch(e) { toast('Error: '+e.message,'error'); }
   };
 
   async function poGenerarVenta(pedido){
@@ -19933,6 +19895,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       return base;
     }
     const listaMap = {};
+    const rawDatosMap = {};
     (listaR||[]).forEach(row=>{
       if (!row.prod_id || row.prod_id.startsWith('SCHED_') || row.prod_id==='__config__') return;
       try {
@@ -19942,8 +19905,10 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           ? (Array.isArray(row.may_activo) ? row.may_activo.map(String) : [])
           : (Array.isArray(row.online_activo) ? row.online_activo.map(String) : []);
         listaMap[String(row.prod_id)] = {gustos, mayActivo};
+        rawDatosMap[String(row.prod_id)] = d || {};
       } catch(e){}
     });
+    window._mayRawDatos = rawDatosMap;
     const html = (prodsR||[]).map(p => {
       const ld = listaMap[String(p.id)] || {gustos:[],mayActivo:[]};
       if (!ld.gustos.length) return '';
@@ -19962,11 +19927,19 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
             const precioLabel = pr > 0
               ? `<span style="font-size:13px;color:var(--accent);font-weight:700">$${pr.toLocaleString('es-AR')} <span style="font-size:11px;color:var(--text-muted);font-weight:400">(lista ${nroLista}${nroLista===3&&pct3m!==0?' '+( pct3m>0?'+':'')+pct3m+'%':''}${nroLista===2&&pct2m!==0?' '+(pct2m>0?'+':'')+pct2m+'%':''})</span></span>`
               : `<span style="font-size:12px;color:var(--text-muted)">sin precio base</span>`;
+            const usarManual = !!g.usarPrecioMayManual;
+            const precioManualVal = g.precioMayManual || '';
             return `<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:7px 0;border-bottom:1px solid var(--border)">
               <input type="checkbox" class="may-gusto-chk" data-prod="${p.id}" data-gid="${g.gid}" ${checked?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
               <span style="flex:1;font-size:14px">${g.nombre}</span>
               ${precioLabel}
-            </label>`;
+            </label>
+            <div style="display:flex;align-items:center;gap:8px;padding:4px 0 10px 26px;border-bottom:1px solid var(--border)">
+              <input type="checkbox" class="may-gusto-manual-chk" data-prod="${p.id}" data-gid="${g.gid}" ${usarManual?'checked':''} style="width:14px;height:14px;accent-color:var(--accent)">
+              <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Precio manual:</span>
+              <input type="text" inputmode="decimal" class="may-gusto-manual-precio" data-prod="${p.id}" data-gid="${g.gid}" value="${precioManualVal}" placeholder="ej: 1500" style="width:110px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px">
+              <span style="font-size:10px;color:var(--text-muted)">(si lo tildás, pisa el precio automático de arriba en la tienda)</span>
+            </div>`;
           }).join('')}
         </div>
       </div>`;
@@ -19989,10 +19962,37 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       if (!byProd[pid]) byProd[pid] = [];
       if (chk.checked) byProd[pid].push(String(gid));
     });
-    // Guardar may_activo para cada producto (incluso los que quedaron en [] = desactivar todos)
-    const results = await Promise.all(Object.entries(byProd).map(([pid,gids])=>
-      fetch(`${SUPABASE_URL}/rest/v1/lista_datos?prod_id=eq.${pid}&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:Hbase,body:JSON.stringify({may_activo:gids})})
-    ));
+    // Recolectar precio manual opcional por gusto (sin pisar otros campos de datos)
+    const manualByProd = {}; // { pid: { gid: {usar, precio} } }
+    document.querySelectorAll('.may-gusto-manual-chk').forEach(chk=>{
+      const pid = chk.dataset.prod, gid = chk.dataset.gid;
+      if (!manualByProd[pid]) manualByProd[pid] = {};
+      if (!manualByProd[pid][gid]) manualByProd[pid][gid] = {};
+      manualByProd[pid][gid].usar = chk.checked;
+    });
+    document.querySelectorAll('.may-gusto-manual-precio').forEach(inp=>{
+      const pid = inp.dataset.prod, gid = inp.dataset.gid;
+      if (!manualByProd[pid]) manualByProd[pid] = {};
+      if (!manualByProd[pid][gid]) manualByProd[pid][gid] = {};
+      manualByProd[pid][gid].precio = inp.value.trim();
+    });
+    const rawDatosMap = window._mayRawDatos || {};
+    // Guardar may_activo + datos (con precio manual) para cada producto
+    const allPids = new Set([...Object.keys(byProd), ...Object.keys(manualByProd)]);
+    const results = await Promise.all([...allPids].map(pid=>{
+      const gids = byProd[pid] || [];
+      const payload = {may_activo:gids};
+      const rawDatos = rawDatosMap[pid];
+      if (rawDatos && manualByProd[pid]) {
+        const nuevoDatos = {...rawDatos, gustos:(rawDatos.gustos||[]).map(g=>{
+          const m = manualByProd[pid][String(g.gid)];
+          if (!m) return g;
+          return {...g, usarPrecioMayManual: !!m.usar, precioMayManual: m.precio||''};
+        })};
+        payload.datos = nuevoDatos;
+      }
+      return fetch(`${SUPABASE_URL}/rest/v1/lista_datos?prod_id=eq.${pid}&empresa_id=eq.${empresaActual}`,{method:'PATCH',headers:Hbase,body:JSON.stringify(payload)});
+    }));
     const ok = results.every(r=>r.ok);
     if (ok) toast('Productos mayoristas guardados ✅','success');
     else toast('Error al guardar algunos productos','error');
