@@ -19202,7 +19202,10 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           <span style="padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;color:white;background:${ec[p.estado]||'#888'}">${el2[p.estado]||p.estado}</span>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px">
-          ${items.map(it=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>${it.prod_nombre} · ${it.gusto_nombre} × ${it.cantidad}</span><span style="color:var(--text-muted)">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
+          ${items.map((it,idx)=>{
+            const puedeEditar = p.tipo==='mayorista' && p.estado!=='entregado' && p.estado!=='cancelado';
+            return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:2px 0"><span>${it.prod_nombre} · ${it.gusto_nombre} × ${it.cantidad}</span><span style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-muted)">$${((it.precio||0)*it.cantidad).toLocaleString('es-AR')}</span>${puedeEditar?`<button onclick="poEditarPrecioItem('${p.id}',${idx})" title="Precio manual para esta línea (solo este pedido)" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;color:var(--text-muted)">✏️</button>`:''}</span></div>`;
+          }).join('')}
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           ${p.estado==='cancelado'&&p.motivo_cancelacion?`<div style="font-size:12px;color:#ff5a5a;background:rgba(255,90,90,.08);border-radius:7px;padding:7px 10px;margin-bottom:10px">❌ Motivo cancelación: ${p.motivo_cancelacion}</div>`:''}
@@ -19309,6 +19312,41 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       toast('🗑️ Pedido eliminado','success');
       poCargarPedidos();
     } catch(e) { toast('Error: '+e.message,'error'); console.error(e); }
+  };
+
+  window.poEditarPrecioItem = async function(pedidoId, idx) {
+    const pedido = _poPedidos.find(p => String(p.id) === String(pedidoId));
+    if (!pedido) return;
+    const items = Array.isArray(pedido.items) ? pedido.items.map(it=>({...it})) : [];
+    const item = items[idx];
+    if (!item) return;
+    const actual = item.precio || 0;
+    const input = prompt(`Precio unitario manual para "${item.prod_nombre} · ${item.gusto_nombre}"\n(Aplica solo a este pedido, no cambia la lista de precios)`, actual);
+    if (input === null) return;
+    const nuevoPrecio = parsePrecioAR(input);
+    if (!nuevoPrecio && input.trim() !== '0') { toast('Precio inválido', 'error'); return; }
+
+    const totalBaseAnterior = items.reduce((s,it)=>s+(it.precio||0)*(it.cantidad||0),0);
+    const totalFinalAnterior = pedido.total_final||pedido.total||totalBaseAnterior;
+    const extra = totalFinalAnterior - totalBaseAnterior; // delivery/descuentos ya aplicados al pedido
+
+    item.precio = nuevoPrecio;
+    const nuevoTotalBase = items.reduce((s,it)=>s+(it.precio||0)*(it.cantidad||0),0);
+    const nuevoTotalFinal = nuevoTotalBase + extra;
+
+    const H2={'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'};
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/pedidos_online?id=eq.${pedidoId}`,{
+        method:'PATCH',headers:H2,
+        body:JSON.stringify({ items, total: nuevoTotalBase, total_final: nuevoTotalFinal })
+      });
+      if (!r.ok) { toast('Error al guardar el precio manual','error'); return; }
+      pedido.items = items;
+      pedido.total = nuevoTotalBase;
+      pedido.total_final = nuevoTotalFinal;
+      toast('💲 Precio actualizado para este pedido','success');
+      poRenderPedidos();
+    } catch(e) { toast('Error: '+e.message,'error'); }
   };
 
   async function poGenerarVenta(pedido){
