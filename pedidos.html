@@ -308,9 +308,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .prod-accesos { display: flex; gap: 6px; overflow-x: auto; flex-wrap: nowrap; margin-top: 7px; padding-bottom: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .prod-accesos::-webkit-scrollbar { display: none; }
 .prod-accesos:empty { display: none; }
-.acc-chip { flex-shrink: 0; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border2); background: var(--bg); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.acc-chip:hover, .acc-chip:active { border-color: #FF6B00; color: #FF6B00; }
-.acc-chip.en-carrito { background: #FFF4EC; border-color: #FF6B00; color: #FF6B00; }
+.acc-chip { flex-shrink: 0; padding: 6px 12px; border-radius: 999px; border: 1px solid #FF6B00; background: #FF6B00; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; box-shadow: 0 1px 3px rgba(255,107,0,.3); }
+.acc-chip:hover, .acc-chip:active { background: #E85F00; border-color: #E85F00; }
+.acc-chip.en-carrito { background: #C2410C; border-color: #C2410C; color: #fff; }
 body:not(.en-catalogo) .prod-accesos { display: none; }
 @media (min-width: 768px) {
   .prod-accesos { flex-wrap: wrap; overflow-x: visible; max-height: 66px; overflow-y: auto; }
