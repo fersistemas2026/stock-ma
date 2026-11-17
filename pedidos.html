@@ -27,6 +27,55 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .header-logo-emoji { font-size: 100px; flex-shrink: 0; }
 .header-logo h1 { font-size: 17px; font-weight: 700; color: var(--text); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-logo p { font-size: 15px; font-weight: 700; color: #f97316; margin: 0; }
+/* Logo / nombre clickeables → reinicio */
+#headerLogoWrap, .header-logo { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.header-logo { min-width: 0; }
+/* Mini carrito del header */
+.mc-wrap { margin-left: auto; flex-shrink: 0; position: relative; }
+.mc-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 12px; border: 2px solid var(--border2); border-radius: 14px; background: var(--bg); color: var(--text3); cursor: pointer; font-size: 12px; font-weight: 700; line-height: 1.2; min-width: 84px; }
+.mc-btn .mc-ico { font-size: 22px; line-height: 1; }
+.mc-btn.has-items { border-color: #FF6B00; background: #FFF4EC; color: #FF6B00; }
+.mc-btn.bump { animation: mcBump .45s ease; }
+@keyframes mcBump { 0%{transform:scale(1)} 35%{transform:scale(1.15)} 70%{transform:scale(.95)} 100%{transform:scale(1)} }
+.mc-flash { position: absolute; right: 0; top: calc(100% + 6px); background: #166534; color: #fff; font-size: 12px; font-weight: 600; padding: 7px 10px; border-radius: 10px; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 4px 14px rgba(0,0,0,.18); opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity .2s, transform .2s; z-index: 61; }
+.mc-flash.show { opacity: 1; transform: translateY(0); }
+.mc-drop { display: none; position: absolute; right: 0; top: calc(100% + 6px); width: min(340px, calc(100vw - 24px)); max-height: 62vh; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 12px; z-index: 60; }
+.mc-drop.open { display: block; }
+.mc-tit { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.mc-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.mc-row-name { flex: 1; min-width: 0; font-size: 13px; color: var(--text); line-height: 1.3; }
+.mc-row-name small { display: block; color: var(--text2); font-size: 12px; }
+.mc-qty { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.mc-qty button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border2); background: var(--bg2); color: var(--text); font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1; }
+.mc-qty span { min-width: 18px; text-align: center; font-weight: 700; font-size: 13px; }
+.mc-row-price { flex-shrink: 0; min-width: 64px; text-align: right; font-size: 13px; font-weight: 700; color: var(--text); }
+.mc-total { display: flex; justify-content: space-between; font-size: 15px; font-weight: 800; padding: 10px 0 4px; color: var(--text); }
+.mc-go { width: 100%; margin-top: 8px; padding: 12px; background: #FF6B00; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+/* Manito guía */
+.mano-guia { display: none; align-items: center; gap: 6px; margin: 6px 0 2px; font-size: 13px; font-weight: 700; color: #d97706; }
+.mano-guia.show { display: flex; }
+.mano-guia .mano { font-size: 26px; display: inline-block; animation: manoBounce 1s ease-in-out infinite; }
+@keyframes manoBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+.guia-pulse .mode-btn, .guia-pulse .pay-opt { animation: guiaPulse 1.4s ease-in-out infinite; }
+@keyframes guiaPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 0 3px rgba(245,158,11,.45); } }
+/* Selector de sucursal */
+.pdv-ind { display: flex; align-items: center; gap: 6px; margin-top: 7px; padding: 6px 12px; border-radius: 999px; font-size: 13px; cursor: pointer; background: #FFF8E1; border: 1px solid #FFD54F; color: #795500; font-weight: 600; }
+.pdv-ind.ok { background: var(--primary-light); border-color: var(--primary-border); color: var(--primary); }
+.pdv-ind .pdv-ind-cambiar { margin-left: auto; text-decoration: underline; font-weight: 500; font-size: 12px; }
+.pdv-row.pdv-falta { outline: 2px dashed #f59e0b; outline-offset: 4px; border-radius: 10px; }
+.pdv-falta-msg { font-size: 12px; font-weight: 700; color: #d97706; margin: 4px 0 2px; }
+.pdvsel-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 590; align-items: center; justify-content: center; padding: 16px; }
+.pdvsel-overlay.open { display: flex; }
+.pdvsel-panel { background: var(--bg); border-radius: 16px; width: 100%; max-width: 340px; max-height: 70vh; overflow-y: auto; padding: 14px 12px 10px; box-shadow: 0 12px 34px rgba(0,0,0,.25); }
+.pdvsel-tit { font-size: 15px; font-weight: 800; color: var(--text); text-align: center; margin-bottom: 2px; }
+.pdvsel-sub { font-size: 12px; color: var(--text2); text-align: center; margin-bottom: 10px; }
+.pdvsel-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; margin-bottom: 6px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; text-align: left; }
+.pdvsel-opt:hover, .pdvsel-opt:active { border-color: var(--primary); background: var(--primary-light); }
+.pdvsel-opt .pdvsel-ico { font-size: 18px; flex-shrink: 0; }
+.pdvsel-opt b { display: block; font-size: 13px; color: var(--text); }
+.pdvsel-opt small { display: block; font-size: 11px; color: var(--text2); margin-top: 1px; }
+.mc-empty { text-align: center; color: var(--text3); font-size: 13px; padding: 14px 4px; }
 /* Panel avisos */
 .avisos-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 400; align-items: flex-end; justify-content: center; }
 .avisos-overlay.open { display: flex; }
@@ -116,6 +165,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg); color: var(--text); outline: none; }
 .form-input:focus { border-color: var(--primary-border); }
 .form-hint { font-size: 12px; color: var(--text3); margin-top: 4px; }
+/* Ayuda en vivo de datos del cliente */
+.req { color: #ef4444; font-weight: 700; }
+.hint-live { font-size: 12px; color: var(--text3); margin-top: 4px; transition: color .15s; }
+.hint-live.ok { color: #16a34a; font-weight: 600; }
+.hint-live.warn { color: #d97706; font-weight: 600; }
+.campo-invalido { border-color: #ef4444 !important; box-shadow: 0 0 0 2px rgba(239,68,68,.18) !important; }
+.cta-btn.pending { background: var(--border2); color: var(--text3); }
+.ayuda-datos { margin-top: 14px; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; border: 1px solid #FFD54F; background: #FFF8E1; color: #795500; }
+.ayuda-datos.listo { border-color: #86efac; background: #f0fdf4; color: #166534; font-weight: 600; }
+.ayuda-datos ul { margin: 4px 0 0 0; padding-left: 18px; }
+.ayuda-datos li { cursor: pointer; text-decoration: underline dotted; }
 .pay-opt { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; margin-bottom: 8px; font-size: 14px; color: var(--text); }
 .pay-opt.active { border-color: var(--primary-border); background: var(--primary-light); color: var(--primary); }
 .pay-radio { width: 17px; height: 17px; border-radius: 50%; border: 2px solid var(--border2); flex-shrink: 0; }
@@ -199,19 +259,71 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .fe-card-titulo { font-size: 14px; font-weight: 700; color: var(--text); }
 .fe-card-info { font-size: 12px; color: var(--text2); margin-top: 3px; }
 .fe-badge { display: inline-block; background: #FF6B00; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+/* ═══════════ Carrito lateral (solo PC) ═══════════ */
+.side-cart { display: none; }
+.side-cart.bump { animation: mcBump .45s ease; }
+
+/* ═══════════ TABLET (≥768px) ═══════════ */
+@media (min-width: 768px) {
+  .app { max-width: 900px; }
+  .content { padding: 20px 24px 120px; }
+  .products { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .pcard-img { height: 120px; font-size: 48px; }
+  .slider-slide img { height: 280px; }
+  .bottom-bar { max-width: 900px; }
+  #franjaFechasEsp { max-width: 900px !important; }
+  #cartPanel, #confirmPanel, .success-screen { max-width: 640px; margin-left: auto; margin-right: auto; }
+  /* Ventanas: tarjeta centrada en lugar de hoja desde abajo */
+  .overlay, .avisos-overlay { align-items: center; padding: 20px; }
+  .modal, .avisos-panel { max-width: 560px; border-radius: 18px; }
+  #prpOverlay, #welcomeOverlay { align-items: center !important; padding: 20px; }
+  #prpOverlay > div, #welcomeOverlay > div { max-width: 520px !important; border-radius: 18px !important; }
+  .modal-handle, .avisos-handle { display: none; }
+}
+
+/* ═══════════ PC (≥1100px) ═══════════ */
+@media (min-width: 1100px) {
+  .app { max-width: 1200px; }
+  .bottom-bar { max-width: 1200px; }
+  #franjaFechasEsp { max-width: 1200px !important; }
+  .content { padding: 24px 32px 120px; }
+  .pcard-img { height: 140px; }
+  .slider-slide img { height: 340px; }
+  .header { padding: 10px 24px; }
+  /* Catálogo + carrito lateral */
+  body.en-catalogo #mainContent { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
+  body.en-catalogo .side-cart { display: block; position: sticky; top: calc(var(--hdr-h, 200px) + 16px); max-height: calc(100vh - var(--hdr-h, 200px) - 110px); overflow-y: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+  /* Con el carrito al costado, el del header sobra */
+  body.en-catalogo .mc-wrap { display: none !important; }
+}
+
+/* Celular angosto: que el nombre no se corte por el mini carrito */
+@media (max-width: 480px) {
+  .header-logo h1 { white-space: normal; font-size: 16px; line-height: 1.15; }
+  .mc-btn { min-width: 70px; padding: 6px 8px; font-size: 11px; }
+  .mc-btn .mc-ico { font-size: 20px; }
+}
 </style>
 </head>
-<body>
+<body class="en-catalogo">
 <div class="app">
   <div class="header">
     <div class="header-row1">
-      <div id="headerLogoWrap">
+      <div id="headerLogoWrap" onclick="reiniciarDesdeCero()" title="Volver al inicio">
         <img id="headerLogoImg" src="" class="header-logo-img" style="display:none">
         <span id="headerLogoEmoji" class="header-logo-emoji">🍝</span>
       </div>
-      <div class="header-logo">
+      <div class="header-logo" onclick="reiniciarDesdeCero()" title="Volver al inicio">
         <h1 id="headerNombre">Miguel Angel Pastas</h1>
         <p>Pedidos online</p>
+      </div>
+      <div class="mc-wrap" id="mcWrap">
+        <button class="mc-btn" id="mcBtn" onclick="toggleMiniCarrito(event)">
+          <span class="mc-ico">🛒</span>
+          <span id="mcResumen">Vacío</span>
+        </button>
+        <div class="mc-flash" id="mcFlash"></div>
+        <div class="mc-drop" id="mcDrop" onclick="event.stopPropagation()"></div>
       </div>
     </div>
     <div class="header-search">
@@ -219,6 +331,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <input type="text" id="searchInput" placeholder="Buscar productos en MA" oninput="filtrarBusqueda(this.value)">
       <button class="search-clear" id="searchClear" onclick="limpiarBusqueda()">✕</button>
     </div>
+    <div class="pdv-ind" id="pdvIndicador" onclick="abrirSelectorPdv()">📍 Elegí tu sucursal</div>
   </div>
   <div class="slider-wrap" id="sliderWrap">
     <div class="slider-track" id="sliderTrack"></div>
@@ -266,15 +379,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div id="mainContent">
       <div id="catalogPanel">
         <div class="slabel" style="margin-top:0">¿Dónde retirás / pedís o enviamos?</div>
+        <div class="pdv-falta-msg" id="pdvFaltaMsg">👆 Elegí tu sucursal</div>
         <div class="pdv-row" id="pdvRow"><div class="loader"><div class="spin"></div></div></div>
         <div class="slabel">Tipo de pedido</div>
-        <div class="mode-row">
-          <div class="mode-btn active" onclick="selMode(this,'retiro')">🚶 Retiro en local</div>
-          <div class="mode-btn" onclick="selMode(this,'delivery')">🛵 Delivery</div>
+        <div class="mode-row" id="modeRow">
+          <div class="mode-btn" id="modeBtnRetiro" onclick="selMode(this,'retiro')">🚶 Retiro en local</div>
+          <div class="mode-btn" id="modeBtnDelivery" onclick="selMode(this,'delivery')">🛵 Delivery</div>
         </div>
+        <div class="mano-guia" id="manoModo"><span class="mano">👆</span><span>¿Lo retirás o te lo enviamos?</span></div>
         <div id="catalogContent"><div class="loader"><div class="spin"></div><br>Cargando productos...</div></div>
         <button class="cta-btn" onclick="irAlCarrito()">Ver mi pedido →</button>
       </div>
+      <aside class="side-cart" id="sideCart"></aside>
       <div class="panel" id="cartPanel">
         <div id="cartItems"></div>
         <div class="cart-total-row">
@@ -287,25 +403,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="panel" id="confirmPanel">
         <div class="slabel" style="margin-top:0">Tus datos</div>
         <div class="form-row">
-          <label class="form-label">Nombre</label>
-          <input class="form-input" type="text" placeholder="¿Cómo te llamás?" id="inNombre">
+          <label class="form-label">Nombre <span class="req">*</span></label>
+          <input class="form-input" type="text" placeholder="¿Cómo te llamás?" id="inNombre" oninput="actualizarAyudaDatos()" onblur="marcarTocado(this)">
+          <div class="hint-live" id="hintNombre"></div>
         </div>
         <div class="form-row">
-          <label class="form-label">Celular</label>
-          <input class="form-input" type="tel" placeholder="Ej: 11 1234-5678" id="inTel" oninput="onTelInput()">
+          <label class="form-label">Celular <span class="req">*</span></label>
+          <input class="form-input" type="tel" placeholder="Ej: 11 1234-5678" id="inTel" oninput="onTelInput()" onblur="marcarTocado(this)">
+          <div class="hint-live" id="hintTel"></div>
           <div class="form-hint">Con tu celular accedés a descuentos y promociones</div>
         </div>
-        <div id=\"clienteBanner\"></div>
+        <div id="clienteBanner"></div>
         <div id="addressRow" style="display:none">
           <div class="form-row">
-            <label class="form-label">Dirección de entrega</label>
-            <input class="form-input" type="text" placeholder="Calle y número" id="inDir">
+            <label class="form-label">Dirección de entrega <span class="req">*</span></label>
+            <input class="form-input" type="text" placeholder="Calle y altura" id="inDir" oninput="actualizarAyudaDatos()" onblur="marcarTocado(this)">
+            <div class="hint-live" id="hintDir"></div>
           </div>
           <div class="form-row" id="rowPlazo">
             <label class="form-label" id="labelPlazo">¿Cuándo lo recibís?</label>
             <div style="display:flex;gap:8px;">
-              <div class="pay-opt active" id="envio-24" onclick="selEnvio('manana')" style="flex:1;padding:10px 12px;">
-                <div class="pay-radio" id="radio-envio-24" style="background:var(--primary);border-color:var(--primary)"></div>
+              <div class="pay-opt" id="envio-24" onclick="selEnvio('manana')" style="flex:1;padding:10px 12px;">
+                <div class="pay-radio" id="radio-envio-24"></div>
                 <span id="label-envio-24">📦 Mañana</span>
               </div>
               <div class="pay-opt" id="envio-48" onclick="selEnvio('pasado')" style="flex:1;padding:10px 12px;">
@@ -313,12 +432,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 <span id="label-envio-48">📦 En 2 días</span>
               </div>
             </div>
+            <div class="mano-guia" id="manoDia"><span class="mano">👆</span><span id="manoDiaTxt">¿Qué día?</span></div>
           </div>
           <div class="form-row" id="rowHorario">
             <label class="form-label" id="labelHorario">Horario de entrega</label>
             <div style="display:flex;gap:8px;">
-              <div class="pay-opt active" id="horario-m" onclick="selHorario('manana')" style="flex:1;padding:10px 12px;">
-                <div class="pay-radio" id="radio-horario-m" style="background:var(--primary);border-color:var(--primary)"></div>
+              <div class="pay-opt" id="horario-m" onclick="selHorario('manana')" style="flex:1;padding:10px 12px;">
+                <div class="pay-radio" id="radio-horario-m"></div>
                 <span id="horario-m-label">🌤️ 10 a 14 hs</span>
               </div>
               <div class="pay-opt" id="horario-t" onclick="selHorario('tarde')" style="flex:1;padding:10px 12px;">
@@ -326,6 +446,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 <span id="horario-t-label">🌇 16:30 a 20:30 hs</span>
               </div>
             </div>
+            <div class="mano-guia" id="manoHorario"><span class="mano">👆</span><span>¿En qué horario?</span></div>
           </div>
         </div>
         <div class="slabel">Forma de pago</div>
@@ -355,6 +476,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <span class="cart-total-label">Total a pagar</span>
           <span class="cart-total-amt" id="confirmTotal">$0</span>
         </div>
+        <div class="ayuda-datos" id="ayudaDatos"></div>
         <button class="cta-btn" onclick="enviarPedido()" id="btnEnviar">Enviar pedido 🚀</button>
         <button class="back-btn" onclick="irAlCarrito()">← Volver al carrito</button>
       </div>
@@ -452,12 +574,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <!-- Datos del cliente -->
     <div style="margin-bottom:10px">
-      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Nombre</label>
-      <input type="text" id="prpNombre" placeholder="¿Cómo te llamás?" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Nombre <span class="req">*</span></label>
+      <input type="text" id="prpNombre" placeholder="¿Cómo te llamás?" oninput="prpActualizarAyuda()" onblur="marcarTocado(this)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+      <div class="hint-live" id="prpHintNombre"></div>
     </div>
     <div style="margin-bottom:10px">
-      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Celular</label>
-      <input type="tel" id="prpTel" placeholder="Ej: 11 1234-5678" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Celular <span class="req">*</span></label>
+      <input type="tel" id="prpTel" placeholder="Ej: 11 1234-5678" oninput="prpActualizarAyuda()" onblur="marcarTocado(this)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+      <div class="hint-live" id="prpHintTel"></div>
     </div>
     <!-- Sucursal -->
     <div style="margin-bottom:10px">
@@ -479,8 +603,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
     <div id="prpDirRow" style="display:none;margin-bottom:10px">
-      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Dirección de entrega</label>
-      <input type="text" id="prpDir" placeholder="Calle y número" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+      <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Dirección de entrega <span class="req">*</span></label>
+      <input type="text" id="prpDir" placeholder="Calle y altura" oninput="prpActualizarAyuda()" onblur="marcarTocado(this)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:14px">
+      <div class="hint-live" id="prpHintDir"></div>
     </div>
     <!-- Pago -->
     <div style="margin-bottom:14px">
@@ -505,7 +630,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <span>Total</span>
       <span id="prpTotal" style="color:#9333ea">$0</span>
     </div>
-    <button onclick="enviarPrePedido()" style="width:100%;padding:14px;background:#9333ea;color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">📅 Confirmar pre-pedido</button>
+    <div class="ayuda-datos" id="prpAyudaDatos" style="margin-top:0;margin-bottom:10px"></div>
+    <button onclick="enviarPrePedido()" id="prpBtnConfirmar" style="width:100%;padding:14px;background:#9333ea;color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">📅 Confirmar pre-pedido</button>
     <button onclick="cerrarPrePedido()" style="width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text2);cursor:pointer">Cancelar</button>
   </div>
 </div>
@@ -544,6 +670,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
+<!-- Selector de sucursal (obligatorio al inicio) -->
+<div class="pdvsel-overlay" id="pdvSelOverlay">
+  <div class="pdvsel-panel">
+    <div class="pdvsel-tit">📍 ¿A qué sucursal le hacés tu pedido?</div>
+    <div class="pdvsel-sub">Elegí dónde retirás o desde dónde te lo enviamos</div>
+    <div id="pdvSelLista"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -558,7 +693,7 @@ let pdvs = [], productos = [], gustos = [], promos = [], pdvDirs = {};
 let _waNumberCfg = WA_NUMBER;
 // prodId → { gustos: [{gid, nombre, precio}], activosSet: Set<gid> }
 let listaDatos = {};
-let selectedPdv = null, selectedMode = 'retiro', selectedPay = 'efectivo', selectedEnvio = 'manana', selectedHorario = 'manana';
+let selectedPdv = null, selectedMode = null, selectedPay = 'efectivo', selectedEnvio = null, selectedHorario = null; // modo/día/horario: los elige el cliente
 let clienteData = null; // datos del cliente si el teléfono ya existe en Supabase (se llena en onTelInput)
 let _visitaId = null; // ID del registro en visitas_tienda
 let _fechasEspeciales = []; // fechas especiales desde Supabase
@@ -616,6 +751,8 @@ window.selFechaEsp = function(idx) {
     if (modeRow) modeRow.style.display = '';
     actualizarHorarios(selectedMode);
   }
+  actualizarManos();
+  if (typeof actualizarAyudaDatos === 'function') actualizarAyudaDatos();
 };
 
   // ══════════════════════════════════════════════
@@ -756,6 +893,7 @@ window.selFechaEsp = function(idx) {
       _prpModo = 'retiro';
       document.getElementById('prpDirRow').style.display = 'none';
     }
+    window.prpActualizarAyuda();
     prpRenderPdvs();
     prpRenderDias();
     prpRenderCarrito();
@@ -777,6 +915,7 @@ window.selFechaEsp = function(idx) {
       _prpModo = 'retiro';
       document.getElementById('prpDirRow').style.display = 'none';
     }
+    window.prpActualizarAyuda();
   };
 
   function prpRenderPdvs() {
@@ -812,6 +951,7 @@ window.selFechaEsp = function(idx) {
       r.style.borderColor = m === modo ? 'var(--primary)' : '';
     });
     document.getElementById('prpDirRow').style.display = modo === 'delivery' ? '' : 'none';
+    window.prpActualizarAyuda();
   };
 
   window.prpSelPay = function(pay) {
@@ -859,19 +999,44 @@ window.selFechaEsp = function(idx) {
     if (e.target === document.getElementById('prpOverlay')) window.cerrarPrePedido();
   };
 
+  window.prpActualizarAyuda = function(forzar) {
+    const campos = [
+      { inputId:'prpNombre', hintId:'prpHintNombre', label:'Tu nombre', res: validarNombreCli(document.getElementById('prpNombre')?.value) },
+      { inputId:'prpTel',    hintId:'prpHintTel',    label:'Tu celular', res: validarTelCli(document.getElementById('prpTel')?.value) }
+    ];
+    if (_prpModo === 'delivery') {
+      campos.push({ inputId:'prpDir', hintId:'prpHintDir', label:'La dirección de entrega (elegiste delivery 🛵)', res: validarDirCli(document.getElementById('prpDir')?.value) });
+    } else {
+      const d = document.getElementById('prpDir');
+      if (d) { d.classList.remove('campo-invalido'); delete d.dataset.tocado; }
+    }
+    const faltan = pintarAyudaCampos(campos, 'prpAyudaDatos', forzar);
+    const btn = document.getElementById('prpBtnConfirmar');
+    if (btn) {
+      btn.style.background = faltan.length ? 'var(--border2)' : '#9333ea';
+      btn.style.color = faltan.length ? 'var(--text3)' : 'white';
+      btn.textContent = faltan.length ? 'Completá tus datos ✍️' : '📅 Confirmar pre-pedido';
+    }
+    return faltan;
+  };
+
   window.enviarPrePedido = async function() {
     const nombre = (document.getElementById('prpNombre')?.value || '').trim();
     const tel = (document.getElementById('prpTel')?.value || '').trim();
     const dir = (document.getElementById('prpDir')?.value || '').trim();
-    if (!nombre) { toast('Ingresá tu nombre'); return; }
-    if (!tel) { toast('Ingresá tu celular'); return; }
+    const faltanPrp = prpActualizarAyuda(true);
+    if (faltanPrp.length) {
+      toast('Falta: ' + faltanPrp[0].label.replace(/ \(.*\)$/, '').toLowerCase());
+      enfocarCampoCli(faltanPrp[0].inputId);
+      return;
+    }
     // Si hay fecha especial seleccionada, sincronizar _prpDiaSeleccionado con ella
     if (_prpFechaSeleccionada) {
       _prpDiaSeleccionado = { fecha: _prpFechaSeleccionada.fecha, label: _prpFechaSeleccionada.nombre, labelCorto: _prpFechaSeleccionada.nombre };
     }
     if (!_prpDiaSeleccionado) { toast('Elegí un día de entrega'); return; }
     if (!_prpPdvSeleccionado) { toast('Elegí una sucursal'); return; }
-    if (_prpModo === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
+    if (_prpModo === 'delivery' && !validarDirCli(dir).ok) { enfocarCampoCli('prpDir'); toast('Falta: la dirección de entrega'); return; }
     const items = getCartItemsList();
     if (!items.length) { toast('El carrito está vacío'); return; }
     const total = getCartTotal();
@@ -969,6 +1134,7 @@ window.selFechaEsp = function(idx) {
       if (newBtn) newBtn.style.display = 'none';
 
       document.getElementById('successScreen').classList.add('visible');
+      actualizarMiniCarrito();
       window.scrollTo({top:0, behavior:'smooth'});
     } catch(e) {
       toast('Error al enviar. Intentá de nuevo.');
@@ -1166,8 +1332,10 @@ async function init() {
     } else {
       const codigoGuardado = sessionStorage.getItem('sma_welcome_codigo');
       if (codigoGuardado) window._welcomeVoucherCodigo = codigoGuardado;
+      // Sin banner → pedir la sucursal directamente
+      setTimeout(() => { if (!selectedPdv) abrirSelectorPdv(); }, 600);
     }
-  } catch(e) { /* sessionStorage no disponible */ }
+  } catch(e) { setTimeout(() => { if (!selectedPdv) abrirSelectorPdv(); }, 600); }
 }
 
 function cerrarBannerBienvenidaFuera(e) {
@@ -1176,6 +1344,8 @@ function cerrarBannerBienvenidaFuera(e) {
 function cerrarBannerBienvenida() {
   document.getElementById('welcomeOverlay').style.display = 'none';
   try { sessionStorage.setItem('sma_welcome_dismissed', '1'); } catch(e){}
+  // Después del descuento, pedir la sucursal
+  if (!selectedPdv) setTimeout(abrirSelectorPdv, 250);
 }
 
 async function enviarBannerBienvenida() {
@@ -1257,24 +1427,216 @@ function renderPdvs() {
   if (!pdvs.length) { row.innerHTML = '<span style="color:var(--text3);font-size:13px">No hay sucursales</span>'; return; }
   row.innerHTML = pdvs.map((p,i) => {
     const dir = pdvDirs[String(p.id)] || '';
-    return `<div class="chip ${i===0?'active':''}" onclick="selPdv(this,'${p.id}','${p.nombre}')" style="display:flex;flex-direction:column;align-items:flex-start;padding:8px 14px">
+    return `<div class="chip" data-pdv-id="${p.id}" onclick="selPdv(this,'${p.id}','${p.nombre}')" style="display:flex;flex-direction:column;align-items:flex-start;padding:8px 14px">
       <span>${p.nombre}</span>
       ${dir ? `<span style="font-size:11px;color:var(--text3);margin-top:2px">${dir}</span>` : ''}
     </div>`;
   }).join('');
-  selectedPdv = pdvs[0];
+  // Antes se preseleccionaba la primera sucursal; ahora el cliente tiene que elegirla
+  selectedPdv = null;
+  actualizarIndicadorPdv();
 }
 
 function selPdv(el, id, nombre) {
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   selectedPdv = { id, nombre };
+  actualizarIndicadorPdv();
+  if (typeof actualizarAyudaDatos === 'function') actualizarAyudaDatos();
   // Actualizar pdv_id en visita
   if (_visitaId) {
     fetch(`${SUPABASE_URL}/rest/v1/visitas_tienda?id=eq.${_visitaId}`, {
       method: 'PATCH', headers: H, body: JSON.stringify({ pdv_id: String(id) })
     }).catch(() => {});
   }
+}
+
+// ═══ Manitos guía: tipo de pedido → día → horario ═══
+function actualizarManos() {
+  const delivOff = window._horariosCfg && window._horariosCfg.delivery_activo === false;
+  // Delivery desactivado → retiro directo, sin preguntar
+  if (delivOff && !selectedMode && document.getElementById('modeBtnRetiro')) {
+    selectedMode = 'retiro';
+    document.getElementById('modeBtnRetiro').classList.add('active');
+    actualizarHorarios('retiro');
+  }
+  const mostrar = (id, rowEl, on) => {
+    const m = document.getElementById(id);
+    if (m) m.classList.toggle('show', !!on);
+    if (rowEl) rowEl.classList.toggle('guia-pulse', !!on);
+  };
+  const modeRow = document.getElementById('modeRow');
+  mostrar('manoModo', modeRow, !!selectedPdv && !selectedMode);
+  const esp = !!selectedFechaEsp;
+  const rowPlazo = document.getElementById('rowPlazo');
+  const rowHorario = document.getElementById('rowHorario');
+  const txt = document.getElementById('manoDiaTxt');
+  if (txt) txt.textContent = selectedMode === 'delivery' ? '¿Qué día te lo enviamos?' : '¿Qué día lo retirás?';
+  mostrar('manoDia', rowPlazo, !!selectedMode && !selectedEnvio && !esp);
+  // El horario aparece recién cuando eligió el día
+  if (rowHorario && !esp) rowHorario.style.display = selectedEnvio ? '' : 'none';
+  mostrar('manoHorario', rowHorario, !!selectedEnvio && !selectedHorario && !esp);
+}
+function irAModo() {
+  const panelCat = document.getElementById('catalogPanel');
+  if (panelCat && panelCat.classList.contains('hidden')) volverAlCatalogo();
+  actualizarManos();
+  try { document.getElementById('modeRow').scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e) {}
+}
+function irAFila(id) {
+  try { document.getElementById(id).scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e) {}
+}
+// true si ya eligió retiro/delivery; si no, muestra la manito y guarda la acción
+function exigirModo(accion) {
+  actualizarManos();
+  if (selectedMode) return true;
+  window._accionPendienteModo = accion || null;
+  irAModo();
+  toast('👆 Elegí si lo retirás o te lo enviamos');
+  return false;
+}
+
+// ═══ Selector de sucursal ═══
+function actualizarIndicadorPdv() {
+  const ind = document.getElementById('pdvIndicador');
+  const row = document.getElementById('pdvRow');
+  const msg = document.getElementById('pdvFaltaMsg');
+  const ok = !!selectedPdv;
+  if (ind) {
+    ind.classList.toggle('ok', ok);
+    ind.innerHTML = ok
+      ? '📍 Pedís a <b>' + selectedPdv.nombre + '</b><span class="pdv-ind-cambiar">cambiar</span>'
+      : '📍 Elegí tu sucursal<span class="pdv-ind-cambiar">elegir</span>';
+    ind.style.display = pdvs.length ? '' : 'none';
+  }
+  if (row) row.classList.toggle('pdv-falta', !ok && pdvs.length > 0);
+  if (msg) msg.style.display = (!ok && pdvs.length) ? '' : 'none';
+}
+function abrirSelectorPdv() {
+  if (!pdvs.length) return;
+  const lista = document.getElementById('pdvSelLista');
+  if (lista) {
+    lista.innerHTML = pdvs.map(p => {
+      const dir = pdvDirs[String(p.id)] || '';
+      const idJs = String(p.id).replace(/'/g, "\\'");
+      const activo = selectedPdv && String(selectedPdv.id) === String(p.id);
+      return '<button class="pdvsel-opt" onclick="elegirPdvDesdeSelector(\'' + idJs + '\')"' + (activo ? ' style="border-color:var(--primary);background:var(--primary-light)"' : '') + '>' +
+        '<span class="pdvsel-ico">🏪</span><span><b>' + p.nombre + '</b>' + (dir ? '<small>' + dir + '</small>' : '') + '</span></button>';
+    }).join('');
+  }
+  if (typeof cerrarMiniCarrito === 'function') cerrarMiniCarrito();
+  document.getElementById('pdvSelOverlay')?.classList.add('open');
+}
+function elegirPdvDesdeSelector(id) {
+  const chip = document.querySelector('#pdvRow .chip[data-pdv-id="' + String(id).replace(/"/g, '') + '"]');
+  const p = pdvs.find(x => String(x.id) === String(id));
+  if (chip && p) selPdv(chip, p.id, p.nombre);
+  else if (p) { selectedPdv = { id: p.id, nombre: p.nombre }; actualizarIndicadorPdv(); }
+  document.getElementById('pdvSelOverlay')?.classList.remove('open');
+  if (p) toast('📍 Pedís a ' + p.nombre);
+  actualizarManos();
+  if (!selectedMode && !window._accionPendientePdv) setTimeout(irAModo, 200);
+  // Si venía de una acción bloqueada (abrir un producto), retomarla
+  const pend = window._accionPendientePdv; window._accionPendientePdv = null;
+  if (typeof pend === 'function') setTimeout(pend, 150);
+}
+// Devuelve true si ya hay sucursal; si no, abre el selector y guarda la acción para retomarla
+function exigirPdv(accion) {
+  if (selectedPdv || !pdvs.length) return true;
+  window._accionPendientePdv = accion || null;
+  abrirSelectorPdv();
+  return false;
+}
+
+// ═══ Ayuda en vivo / validación de datos del cliente (checkout y pre-pedido) ═══
+function validarNombreCli(v) {
+  v = (v || '').trim();
+  const letras = (v.match(/[a-záéíóúüñ]/gi) || []).length;
+  if (!v) return { ok:false, msg:'Escribí tu nombre' };
+  if (letras < 2) return { ok:false, warn:true, msg:'Escribí al menos 2 letras' };
+  return { ok:true, msg:'✓ Perfecto' };
+}
+function validarTelCli(v) {
+  const dig = (v || '').replace(/\D/g, '');
+  if (!dig) return { ok:false, msg:'Código de área + número, ej: 11 1234-5678' };
+  if (dig.length < 8) return { ok:false, warn:true, msg:'Faltan números (' + dig.length + ' de al menos 8)' };
+  return { ok:true, msg:'✓ Listo' };
+}
+function validarDirCli(v) {
+  v = (v || '').trim();
+  if (!v) return { ok:false, msg:'Calle y altura, ej: Av. Mitre 1234' };
+  if (!/[a-záéíóúüñ]{2,}/i.test(v)) return { ok:false, warn:true, msg:'Agregá el nombre de la calle' };
+  if (!/\d/.test(v)) return { ok:false, warn:true, msg:'Agregá la altura (número de la calle)' };
+  return { ok:true, msg:'✓ Listo' };
+}
+function marcarTocado(input) {
+  if (!input) return;
+  input.dataset.tocado = '1';
+  if (input.id && input.id.indexOf('prp') === 0) prpActualizarAyuda(); else actualizarAyudaDatos();
+}
+// campos: [{ inputId, hintId, label, res }] → pinta hints, bordes y la tarjeta "Te falta"
+function pintarAyudaCampos(campos, ayudaId, forzar) {
+  const faltan = [];
+  campos.forEach(c => {
+    const inp = document.getElementById(c.inputId);
+    const hint = document.getElementById(c.hintId);
+    if (forzar && inp) inp.dataset.tocado = '1';
+    if (hint) {
+      hint.textContent = c.res.msg;
+      hint.classList.toggle('ok', !!c.res.ok);
+      hint.classList.toggle('warn', !c.res.ok && !!c.res.warn);
+    }
+    if (inp) inp.classList.toggle('campo-invalido', !c.res.ok && inp.dataset.tocado === '1');
+    if (!c.res.ok) faltan.push(c);
+  });
+  const box = document.getElementById(ayudaId);
+  if (box) {
+    if (!faltan.length) {
+      box.className = 'ayuda-datos listo';
+      box.innerHTML = '✅ ¡Todo listo! Ya podés enviar tu pedido';
+    } else {
+      box.className = 'ayuda-datos';
+      box.innerHTML = '📝 Para enviar tu pedido te falta:<ul>' +
+        faltan.map(c => '<li onclick="' + (c.accion ? c.accion : 'enfocarCampoCli(\'' + c.inputId + '\')') + '">' + c.label + '</li>').join('') + '</ul>';
+    }
+  }
+  return faltan;
+}
+function enfocarCampoCli(inputId) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.dataset.tocado = '1';
+  inp.classList.add('campo-invalido');
+  try { inp.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e) {}
+  setTimeout(() => { try { inp.focus(); } catch(e) {} }, 250);
+}
+function camposDatosCheckout() {
+  const campos = [
+    { inputId:'', hintId:'', accion:'abrirSelectorPdv()', label:'Elegir sucursal', res: { ok: !!selectedPdv, msg:'' } },
+    { inputId:'', hintId:'', accion:'irAModo()', label:'Elegir si lo retirás o te lo enviamos', res: { ok: !!selectedMode, msg:'' } },
+    { inputId:'inNombre', hintId:'hintNombre', label:'Tu nombre', res: validarNombreCli(document.getElementById('inNombre')?.value) },
+    { inputId:'inTel',    hintId:'hintTel',    label:'Tu celular', res: validarTelCli(document.getElementById('inTel')?.value) }
+  ];
+  if (selectedMode === 'delivery') {
+    campos.push({ inputId:'inDir', hintId:'hintDir', label:'La dirección de entrega (elegiste delivery 🛵)', res: validarDirCli(document.getElementById('inDir')?.value) });
+  } else {
+    const inDir = document.getElementById('inDir');
+    if (inDir) { inDir.classList.remove('campo-invalido'); delete inDir.dataset.tocado; }
+  }
+  if (!selectedFechaEsp) {
+    campos.push({ inputId:'', hintId:'', accion:"irAFila('rowPlazo')", label: selectedMode === 'delivery' ? 'Elegir qué día te lo enviamos' : 'Elegir qué día lo retirás', res: { ok: !!selectedEnvio, msg:'' } });
+    campos.push({ inputId:'', hintId:'', accion:"irAFila(selectedEnvio ? 'rowHorario' : 'rowPlazo')", label:'Elegir el horario', res: { ok: !!selectedHorario, msg:'' } });
+  }
+  return campos;
+}
+function actualizarAyudaDatos(forzar) {
+  const faltan = pintarAyudaCampos(camposDatosCheckout(), 'ayudaDatos', forzar);
+  const btn = document.getElementById('btnEnviar');
+  if (btn && !btn.disabled) {
+    btn.classList.toggle('pending', faltan.length > 0);
+    btn.textContent = faltan.length ? 'Completá tus datos ✍️' : 'Enviar pedido 🚀';
+  }
+  return faltan;
 }
 
 function selMode(el, mode) {
@@ -1295,10 +1657,15 @@ function selMode(el, mode) {
   document.getElementById('addressRow').style.display = 'block';
   document.getElementById('inDir').closest('.form-row').style.display = mode === 'delivery' ? 'block' : 'none';
   document.getElementById('rowPlazo').style.display = 'block';
-  selectedEnvio = 'manana';
-  selEnvio('manana');
-  selHorario('manana');
+  // Cambió la modalidad → las opciones de día/horario cambian, se vuelven a pedir
+  selHorario(null);
+  selEnvio(null);
   actualizarHorarios(mode);
+  actualizarManos();
+  actualizarAyudaDatos();
+  // Retomar la acción que quedó esperando (ej: abrir un producto)
+  const pend = window._accionPendienteModo; window._accionPendienteModo = null;
+  if (typeof pend === 'function') setTimeout(pend, 150);
 }
 
 function renderCatalogo() {
@@ -1380,6 +1747,8 @@ function renderCatalogo() {
 }
 
 function abrirModal(prodId) {
+  if (!exigirPdv(() => abrirModal(prodId))) return;
+  if (!exigirModo(() => abrirModal(prodId))) return;
   currentProdId = prodId;
   const prod = productos.find(p => String(p.id) === String(prodId));
   const ld = listaDatos[String(prodId)];
@@ -1492,12 +1861,23 @@ function actualizarModalSubtotal() {
 function agregarAlCarrito() {
   const filtered = {};
   Object.entries(modalQtys).forEach(([gid,q]) => { if (q>0) filtered[gid]=q; });
+  const previo = Object.assign({}, cart[currentProdId] || {});
   if (!Object.keys(filtered).length) { delete cart[currentProdId]; }
   else { cart[currentProdId] = filtered; }
+  // Armar el texto de lo que cambió para el aviso del mini carrito
+  const prod = productos.find(p => String(p.id) === String(currentProdId));
+  const cambios = Object.entries(filtered).filter(([gid,q]) => q !== (previo[gid] || 0));
+  let aviso = '✓ Pedido actualizado';
+  if (cambios.length) {
+    const [gid, q] = cambios[0];
+    aviso = '✓ ' + (prod?.nombre || '') + ' – ' + getNombreGusto(gid) + ' x' + q + (cambios.length > 1 ? ' y ' + (cambios.length - 1) + ' más' : '');
+  } else if (!Object.keys(filtered).length && Object.keys(previo).length) {
+    aviso = '✓ Quitaste ' + (prod?.nombre || 'el producto');
+  }
   actualizarBadge();
   actualizarCartIndicators();
   cerrarModal();
-  toast('¡Agregado al carrito!');
+  avisarAgregadoMiniCarrito(aviso);
 }
 
 function cerrarModal() { document.getElementById('overlay').classList.remove('open'); }
@@ -1626,6 +2006,118 @@ function actualizarBadge() {
   if (badge) badge.style.display = n > 0 ? 'flex' : 'none';
   const btn = document.getElementById('cartBtn');
   if (btn) btn.classList.toggle('has-items', n > 0);
+  actualizarMiniCarrito();
+}
+
+// ═══ Mini carrito del header ═══
+function _fmtAR(n) { return '$' + (Number(n)||0).toLocaleString('es-AR'); }
+function actualizarMiniCarrito() {
+  const btn = document.getElementById('mcBtn');
+  const res = document.getElementById('mcResumen');
+  const wrap = document.getElementById('mcWrap');
+  if (!btn || !res) return;
+  // En la pantalla de éxito no tiene sentido mostrarlo
+  const enExito = document.getElementById('successScreen')?.classList.contains('visible');
+  if (wrap) wrap.style.display = enExito ? 'none' : '';
+  let n = 0;
+  Object.values(cart).forEach(gm => Object.values(gm).forEach(q => n += q));
+  btn.classList.toggle('has-items', n > 0);
+  res.textContent = n > 0 ? (n + ' · ' + _fmtAR(getCartTotal())) : 'Vacío';
+  renderMiniCarrito();
+}
+function renderMiniCarrito() {
+  const drop = document.getElementById('mcDrop');
+  const side = document.getElementById('sideCart');
+  if (!drop && !side) return;
+  const pintar = html => { if (drop) drop.innerHTML = html; if (side) side.innerHTML = html; };
+  const filas = [];
+  Object.entries(cart).forEach(([pid, gm]) => {
+    const prod = productos.find(p => String(p.id) === String(pid));
+    Object.entries(gm).forEach(([gid, q]) => {
+      if (q <= 0) return;
+      const precio = getPrecioGusto(gid);
+      const pidJs = String(pid).replace(/'/g, "\\'");
+      const gidJs = String(gid).replace(/'/g, "\\'");
+      filas.push('<div class="mc-row">' +
+        '<div class="mc-row-name">' + (prod?.nombre || '') + '<small>' + getNombreGusto(gid) + '</small></div>' +
+        '<div class="mc-qty">' +
+          '<button onclick="miniCarritoQty(\'' + pidJs + '\',\'' + gidJs + '\',-1)">−</button>' +
+          '<span>' + q + '</span>' +
+          '<button onclick="miniCarritoQty(\'' + pidJs + '\',\'' + gidJs + '\',1)">+</button>' +
+        '</div>' +
+        '<div class="mc-row-price">' + _fmtAR(precio * q) + '</div>' +
+      '</div>');
+    });
+  });
+  if (!filas.length) {
+    pintar('<div class="mc-tit">🛒 Tu pedido</div><div class="mc-empty">Todavía no agregaste productos.<br>Elegí lo que quieras del catálogo</div>');
+    return;
+  }
+  pintar('<div class="mc-tit">🛒 Tu pedido</div>' + filas.join('') +
+    '<div class="mc-total"><span>Total</span><span>' + _fmtAR(getCartTotal()) + '</span></div>' +
+    '<button class="mc-go" onclick="terminarCompraDesdeHeader()">Terminar compra →</button>');
+}
+function toggleMiniCarrito(e) {
+  if (e) e.stopPropagation();
+  const drop = document.getElementById('mcDrop');
+  if (!drop) return;
+  const abrir = !drop.classList.contains('open');
+  if (abrir) renderMiniCarrito();
+  drop.classList.toggle('open', abrir);
+  document.getElementById('mcFlash')?.classList.remove('show');
+}
+function cerrarMiniCarrito() { document.getElementById('mcDrop')?.classList.remove('open'); }
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('mcWrap');
+  if (wrap && !wrap.contains(e.target)) cerrarMiniCarrito();
+});
+function miniCarritoQty(pid, gid, delta) {
+  const key = Object.keys(cart).find(k => String(k) === String(pid));
+  if (key === undefined || !cart[key]) return;
+  const gkey = Object.keys(cart[key]).find(k => String(k) === String(gid));
+  if (gkey === undefined) return;
+  const nueva = (cart[key][gkey] || 0) + delta;
+  if (nueva <= 0) delete cart[key][gkey]; else cart[key][gkey] = nueva;
+  if (!Object.values(cart[key]).some(q => q > 0)) delete cart[key];
+  actualizarBadge();
+  actualizarCartIndicators();
+  // Mantener sincronizados los pasos 2 y 3 si están abiertos
+  if (document.getElementById('cartPanel')?.classList.contains('visible')) renderCarrito();
+  if (document.getElementById('confirmPanel')?.classList.contains('visible')) {
+    if (getCartTotal() > 0) renderConfirm(); else volverAlCatalogo();
+  }
+  renderMiniCarrito();
+}
+function terminarCompraDesdeHeader() {
+  cerrarMiniCarrito();
+  if (!getCartTotal()) { toast('El carrito está vacío'); return; }
+  if (!exigirPdv(() => terminarCompraDesdeHeader())) return;
+  if (!exigirModo(() => terminarCompraDesdeHeader())) return;
+  document.getElementById('catalogPanel').classList.add('hidden');
+  irAConfirmar();
+  try { document.getElementById('confirmPanel').scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e) {}
+}
+let _mcFlashTimer = null;
+function avisarAgregadoMiniCarrito(texto) {
+  const btn = document.getElementById('mcBtn');
+  const fl = document.getElementById('mcFlash');
+  if (btn) { btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump'); }
+  const side = document.getElementById('sideCart');
+  if (side) { side.classList.remove('bump'); void side.offsetWidth; side.classList.add('bump'); }
+  if (!fl || document.getElementById('mcDrop')?.classList.contains('open')) return;
+  fl.textContent = texto;
+  fl.classList.add('show');
+  clearTimeout(_mcFlashTimer);
+  _mcFlashTimer = setTimeout(() => fl.classList.remove('show'), 2400);
+}
+
+// ═══ Logo → reiniciar la tienda desde cero ═══
+function reiniciarDesdeCero() {
+  let n = 0;
+  Object.values(cart).forEach(gm => Object.values(gm).forEach(q => n += q));
+  if (n > 0 && !confirm('¿Vaciar el carrito y empezar de nuevo?')) return;
+  // Recarga limpia (el carrito no se persiste; sessionStorage del banner se conserva)
+  window.location.replace(window.location.pathname);
 }
 
 function actualizarCartIndicators() {
@@ -1655,7 +2147,20 @@ function renderCarrito() {
   document.getElementById('cartTotal').textContent = '$' + getCartTotal().toLocaleString('es-AR');
 }
 
-function setStep(n) { [1,2,3].forEach(i=>document.getElementById('step'+i).classList.toggle('active',i===n)); }
+function setStep(n) {
+  [1,2,3].forEach(i=>document.getElementById('step'+i).classList.toggle('active',i===n));
+  document.body.classList.toggle('en-catalogo', n === 1);
+  medirHeader();
+}
+// Alto real del header + pasos (para que el carrito lateral quede pegado debajo)
+function medirHeader() {
+  try {
+    const h = (document.querySelector('.header')?.offsetHeight || 0) + (document.querySelector('.steps')?.offsetHeight || 0);
+    if (h) document.documentElement.style.setProperty('--hdr-h', h + 'px');
+  } catch(e) {}
+}
+window.addEventListener('resize', medirHeader);
+window.addEventListener('load', medirHeader);
 
 function irAlCarrito() {
   renderCarrito();
@@ -1667,7 +2172,11 @@ function irAlCarrito() {
 
 function irAConfirmar() {
   if (!getCartTotal()) { toast('El carrito está vacío'); return; }
+  if (!exigirPdv(() => irAConfirmar())) return;
+  if (!exigirModo(() => irAConfirmar())) return;
   renderConfirm();
+  actualizarManos();
+  actualizarAyudaDatos();
   document.getElementById('cartPanel').classList.remove('visible');
   document.getElementById('confirmPanel').classList.add('visible');
   setStep(3);
@@ -1865,7 +2374,7 @@ function actualizarHorarios(mode) {
   const btnM = document.getElementById('horario-m');
   if (!diaOpts.manana.disponible) {
     btnM.style.opacity = '0.4'; btnM.style.pointerEvents = 'none';
-    if (selectedHorario === 'manana') selHorario('tarde');
+    if (selectedHorario === 'manana') selHorario(null);
   } else {
     btnM.style.opacity = '1'; btnM.style.pointerEvents = 'auto';
   }
@@ -1875,7 +2384,7 @@ function actualizarHorarios(mode) {
   const btnT = document.getElementById('horario-t');
   if (!diaOpts.tarde.disponible) {
     btnT.style.opacity = '0.4'; btnT.style.pointerEvents = 'none';
-    if (selectedHorario === 'tarde') selHorario('manana');
+    if (selectedHorario === 'tarde') selHorario(null);
   } else {
     btnT.style.opacity = '1'; btnT.style.pointerEvents = 'auto';
   }
@@ -1891,7 +2400,11 @@ function selEnvio(v) {
     r.style.background = x===v ? 'var(--primary)' : '';
     r.style.borderColor = x===v ? 'var(--primary)' : '';
   });
+  // Al cambiar de día, el horario se vuelve a elegir (la disponibilidad cambia)
+  if (v !== null) selHorario(null);
   actualizarHorarios(selectedMode);
+  actualizarManos();
+  if (typeof actualizarAyudaDatos === 'function') actualizarAyudaDatos();
 }
 
 function selHorario(v) {
@@ -1903,6 +2416,8 @@ function selHorario(v) {
     r.style.background = x===v ? 'var(--primary)' : '';
     r.style.borderColor = x===v ? 'var(--primary)' : '';
   });
+  actualizarManos();
+  if (typeof actualizarAyudaDatos === 'function') actualizarAyudaDatos();
 }
 
 function selPay(m) {
@@ -1919,14 +2434,15 @@ let telBusquedaTimeout = null;
 async function onTelInput() {
   const tel = document.getElementById('inTel').value.trim().replace(/\s/g,'');
   const banner = document.getElementById('clienteBanner');
-  clienteData = null; banner.innerHTML = '';
+  actualizarAyudaDatos();
+  clienteData = null; if (banner) banner.innerHTML = '';
   if (tel.length < 8) return;
   clearTimeout(telBusquedaTimeout);
   telBusquedaTimeout = setTimeout(async () => {
     const data = await sbGet(`clientes?empresa_id=eq.${EMPRESA_ID}&telefono=eq.${encodeURIComponent(tel)}&select=id,nombre,telefono&limit=1`);
     if (data && data.length > 0) {
       clienteData = data[0];
-      if (!document.getElementById('inNombre').value.trim() && clienteData.nombre) document.getElementById('inNombre').value = clienteData.nombre;
+      if (!document.getElementById('inNombre').value.trim() && clienteData.nombre) { document.getElementById('inNombre').value = clienteData.nombre; actualizarAyudaDatos(); }
       banner.innerHTML = `<div class="cliente-banner" style="background:var(--primary-light);border:1px solid var(--primary-border);color:var(--primary)">👋 ¡Hola, <strong>${clienteData.nombre||''}</strong>! Tus promociones activas se aplican automáticamente.</div>`;
     } else {
       banner.innerHTML = `<div class="cliente-banner" style="background:#FFF8E1;border:1px solid #FFD54F;color:#795500">🌟 ¡Bienvenido/a! Con tu próxima compra empezás a acumular beneficios.</div>`;
@@ -1938,9 +2454,12 @@ async function enviarPedido() {
   const nombre = document.getElementById('inNombre').value.trim();
   const tel    = document.getElementById('inTel').value.trim();
   const dir    = document.getElementById('inDir').value.trim();
-  if (!nombre) { toast('Ingresá tu nombre'); return; }
-  if (!tel)    { toast('Ingresá tu celular'); return; }
-  if (selectedMode === 'delivery' && !dir) { toast('Ingresá la dirección'); return; }
+  const faltanDatos = actualizarAyudaDatos(true);
+  if (faltanDatos.length) {
+    toast('Falta: ' + faltanDatos[0].label.replace(/ \(.*\)$/, '').toLowerCase());
+    if (faltanDatos[0].accion) { try { (new Function(faltanDatos[0].accion))(); } catch(e) {} } else enfocarCampoCli(faltanDatos[0].inputId);
+    return;
+  }
   const entries = Object.entries(cart).filter(([,gm])=>Object.values(gm).some(q=>q>0));
   if (!entries.length) { toast('El carrito está vacío'); return; }
 
@@ -2076,11 +2595,12 @@ async function enviarPedido() {
     document.getElementById('successWaBtn').href = `https://wa.me/${waNum}?text=${encodeURIComponent(waResumen)}`;
 
     document.getElementById('successScreen').classList.add('visible');
+    actualizarMiniCarrito();
     window.scrollTo({top:0, behavior:'smooth'});
   } catch(e) {
     console.error('Error enviarPedido:', e);
     toast('Error: ' + (e?.message || 'intentá de nuevo').slice(0,120));
-    btn.disabled = false; btn.textContent = 'Enviar pedido 🚀';
+    btn.disabled = false; btn.textContent = 'Enviar pedido 🚀'; actualizarAyudaDatos();
   }
 }
 
@@ -2092,7 +2612,7 @@ function resetApp() {
   clienteData = null;
   actualizarBadge(); actualizarCartIndicators();
   document.getElementById('successScreen').classList.remove('visible');
-  document.getElementById('mainContent').style.display = 'block';
+  document.getElementById('mainContent').style.display = '';
   document.querySelector('.steps').style.display = 'flex';
   document.getElementById('catalogPanel').classList.remove('hidden');
   document.getElementById('cartPanel').classList.remove('visible');
@@ -2109,13 +2629,18 @@ function resetApp() {
   // Rehabilitar botón enviar
   const btnEnviar = document.getElementById('btnEnviar');
   if (btnEnviar) { btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar pedido 🚀'; }
-  selectedEnvio = 'manana'; selectedHorario = 'manana';
-  selEnvio('manana'); selHorario('manana');
+  selHorario(null); selEnvio(null);
   document.getElementById('addressRow').style.display = 'block';
   document.getElementById('inDir').closest('.form-row').style.display = 'none';
   document.getElementById('rowPlazo').style.display = 'block';
   actualizarHorarios('retiro');
-  document.getElementById('clienteBanner').innerHTML = '';
+  // Modalidad sin elegir: el cliente vuelve a decidir retiro o delivery
+  selectedMode = null;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  actualizarManos();
+  ['inNombre','inTel','inDir'].forEach(id => { const e = document.getElementById(id); if (e) { e.classList.remove('campo-invalido'); delete e.dataset.tocado; } });
+  const cb = document.getElementById('clienteBanner'); if (cb) cb.innerHTML = '';
+  actualizarAyudaDatos();
   setStep(1);
 }
 
