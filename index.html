@@ -544,6 +544,7 @@
               <option value="clientes">👥 Clientes</option>
               <option value="descuentosAuto">🏷️ Descuentos automáticos</option>
               <option value="ranking">🏆 Ranking productos/sabores</option>
+              <option value="horarios">🕐 Horarios de venta</option>
               <option value="pdvMetricas">📊 Métricas por PDV</option>
               <option value="clientesDia">👥 Clientes incorporados por día</option>
               <option value="cancelaciones">⚠️ Cancelaciones</option>
@@ -5918,6 +5919,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     if (seccion==='clientes')     { await loadInformesClientes(range); return; }
     if (seccion==='descuentosAuto') { await loadInformesDescuentosAuto(); return; }
     if (seccion==='ranking')        { await loadInformesRanking(range.desde, range.hasta); return; }
+    if (seccion==='horarios')       { await loadInformesHorarios(range.desde, range.hasta); return; }
     if (seccion==='pdvMetricas')    { await loadInformesPdvMetricas(range.desde, range.hasta); return; }
     if (seccion==='clientesDia')    { await loadInformesClientesDia(range.desde, range.hasta); return; }
     if (seccion==='cancelaciones')  { await loadInformesCancelaciones(range.desde, range.hasta); return; }
@@ -17908,7 +17910,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           <div style="margin-bottom:18px;">
             <div style="font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">📊 Unidades vendidas por hora</div>
             ${horas.map(([h,v])=>{
-              const pct = maxCant>0 ? Math.round((v.monto/maxCant)*100) : 0;
+              const pct = maxCant>0 ? Math.round((v.cant/maxCant)*100) : 0;
               const rank = sorted.findIndex(([hh])=>hh===h);
               const barColor = rank===0?'#ffd700':rank===1?'#c0c0c0':rank===2?'#cd7f32':'var(--accent)';
               return `<div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
@@ -18095,6 +18097,194 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       window._rankingRender();
 
     } catch(e) { body.innerHTML=`<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`; }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🕐 HORARIOS DE VENTA — mapa de calor día × hora por local
+  // ═══════════════════════════════════════════════════════════════
+  async function loadInformesHorarios(desde, hasta) {
+    const body = document.getElementById('inf-body');
+    if (!body) return;
+    body.innerHTML = `<div class="empty-state"><span class="spin"></span><p style="margin-top:12px">Analizando horarios...</p></div>`;
+    try {
+      const [ventas, pdvs] = await Promise.all([
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}&fecha=lte.${hasta}&select=pdv_id,ticket_id,precio,cantidad,created_at&limit=200000`) || [],
+        getPdv()
+      ]);
+      if (!ventas.length) { body.innerHTML = `<div class="empty-state">🕐<p>No hay ventas en ese período.</p></div>`; return; }
+
+      // created_at llega en UTC sin zona → normalizar y pasar a hora Argentina
+      const normTS = t => {
+        if (!t) return null;
+        let x = String(t).trim().replace(' ', 'T');
+        x = x.replace(/([+-]\d{2})$/, '$1:00');
+        if (!(x.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(x))) x += 'Z';
+        return x;
+      };
+      const fmtAR = new Intl.DateTimeFormat('en-CA', { timeZone:'America/Argentina/Buenos_Aires', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', hour12:false, weekday:'short' });
+      const DOW = { Mon:0, Tue:1, Wed:2, Thu:3, Fri:4, Sat:5, Sun:6 };
+
+      // agg[pdv][dow][hora] = { monto, tickets:Set } ; dias[pdv][dow] = Set(fechas)
+      const agg = { todos:{} }, dias = { todos:{} };
+      const pdvNombre = {};
+      pdvs.forEach(p => { const id = String(p.id); pdvNombre[id] = p.nombre || p.name || id; agg[id] = {}; dias[id] = {}; });
+      let sinHora = 0;
+      ventas.forEach((v, i) => {
+        const iso = normTS(v.created_at);
+        const d = iso ? new Date(iso) : null;
+        if (!d || isNaN(d)) { sinHora++; return; }
+        const parts = {}; fmtAR.formatToParts(d).forEach(pt => parts[pt.type] = pt.value);
+        const dow = DOW[parts.weekday]; let hora = parseInt(parts.hour, 10); if (hora === 24) hora = 0;
+        if (dow === undefined || isNaN(hora)) { sinHora++; return; }
+        const fecha = parts.year + '-' + parts.month + '-' + parts.day;
+        const monto = (parseFloat(v.precio) || 0) * (parseFloat(v.cantidad) || 1);
+        const tk = v.ticket_id ? String(v.ticket_id) : ('_r' + i);
+        const pid = String(v.pdv_id || '');
+        [ 'todos', pid ].forEach(k => {
+          if (!k || !agg[k]) { if (k) { agg[k] = {}; dias[k] = {}; pdvNombre[k] = pdvNombre[k] || ('PDV ' + k); } else return; }
+          const a = (agg[k][dow] = agg[k][dow] || {});
+          const c = (a[hora] = a[hora] || { monto:0, tickets:new Set() });
+          c.monto += monto; c.tickets.add(pid + '|' + tk);
+          (dias[k][dow] = dias[k][dow] || new Set()).add(fecha);
+        });
+      });
+
+      const fmt$ = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
+      const NOMBRES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+      const CORTO = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+      // Celda promedio por día real (días en que ese local vendió algo ese día de semana)
+      function celda(k, dow, h) {
+        const c = agg[k]?.[dow]?.[h]; const n = dias[k]?.[dow]?.size || 0;
+        if (!c || !n) return null;
+        return { venta: c.monto / n, tickets: c.tickets.size / n, medio: c.tickets.size ? c.monto / c.tickets.size : 0, total: c.monto, tk: c.tickets.size, n };
+      }
+      function rangoHoras(k) {
+        let min = 24, max = -1;
+        Object.values(agg[k] || {}).forEach(hs => Object.keys(hs).forEach(h => { h = +h; if (h < min) min = h; if (h > max) max = h; }));
+        return max < 0 ? [] : Array.from({ length: max - min + 1 }, (_, i) => min + i);
+      }
+      // Resumen de un local
+      function resumen(k) {
+        const horas = rangoHoras(k); if (!horas.length) return null;
+        const celdas = [];
+        for (let d = 0; d < 7; d++) horas.forEach(h => { const c = celda(k, d, h); if (c) celdas.push({ d, h, ...c }); });
+        if (!celdas.length) return null;
+        const pico = celdas.reduce((a, b) => b.venta > a.venta ? b : a);
+        const flojas = [...celdas].filter(c => c !== pico).sort((a, b) => a.venta - b.venta).slice(0, 3);
+        if (!flojas.length) flojas.push(pico);
+        const porDia = [0,1,2,3,4,5,6].map(d => { const n = dias[k]?.[d]?.size || 0; let t = 0; horas.forEach(h => { const c = agg[k]?.[d]?.[h]; if (c) t += c.monto; }); return { d, prom: n ? t / n : 0, n }; });
+        const diaPico = porDia.reduce((a, b) => b.prom > a.prom ? b : a);
+        // Mejor ventana de 3 horas del día pico
+        let mejor = null;
+        horas.forEach(h => { let t = 0; for (let j = 0; j < 3; j++) { const c = agg[k]?.[diaPico.d]?.[h + j]; if (c) t += c.monto; } if (!mejor || t > mejor.t) mejor = { h, t }; });
+        let totDiaPico = 0; horas.forEach(h => { const c = agg[k]?.[diaPico.d]?.[h]; if (c) totDiaPico += c.monto; });
+        let man = 0, tar = 0; celdas.forEach(c => { if (c.h < 14) man += c.total; else tar += c.total; });
+        const tot = man + tar;
+        const diasConVenta = porDia.filter(x => x.n > 0);
+        const promDiario = diasConVenta.length ? diasConVenta.reduce((s, x) => s + x.prom, 0) / diasConVenta.length : 0;
+        return { pico, flojas, diaPico, ventana: mejor, pctVentana: totDiaPico ? Math.round(100 * mejor.t / totDiaPico) : 0,
+                 pctMan: tot ? Math.round(100 * man / tot) : 0, pctTar: tot ? Math.round(100 * tar / tot) : 0, promDiario };
+      }
+      const franja = (d, h) => CORTO[d] + ' ' + String(h).padStart(2,'0') + '–' + String(h + 1).padStart(2,'0') + ' hs';
+
+      window._horState = window._horState || { pdv:'todos', metrica:'venta' };
+      if (!agg[window._horState.pdv]) window._horState.pdv = 'todos';
+      const pdvKeys = ['todos', ...Object.keys(agg).filter(k => k !== 'todos' && Object.keys(agg[k]).length)];
+
+      window._horRender = function() {
+        const k = window._horState.pdv, met = window._horState.metrica;
+        const horas = rangoHoras(k);
+        const valor = c => !c ? 0 : met === 'venta' ? c.venta : met === 'tickets' ? c.tickets : c.medio;
+        const fmtV = v => met === 'tickets' ? v.toLocaleString('es-AR', { maximumFractionDigits:1 }) : fmt$(v);
+        let max = 0;
+        for (let d = 0; d < 7; d++) horas.forEach(h => { const v = valor(celda(k, d, h)); if (v > max) max = v; });
+
+        const btn = (on, txt, fn) => `<button onclick="${fn}" style="padding:6px 12px;border-radius:7px;border:1px solid ${on?'var(--accent)':'var(--border)'};background:${on?'var(--accent)':'var(--surface2)'};color:${on?'#fff':'var(--text)'};font-size:12px;font-weight:700;cursor:pointer;">${txt}</button>`;
+        const filtros = `
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+            ${pdvKeys.map(id => btn(id === k, id === 'todos' ? '🏪 Todos' : pdvNombre[id], `window._horSet('pdv','${id}')`)).join('')}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+            ${btn(met==='venta','💰 $ promedio',"window._horSet('metrica','venta')")}
+            ${btn(met==='tickets','🧾 Tickets promedio',"window._horSet('metrica','tickets')")}
+            ${btn(met==='medio','🎯 Ticket medio',"window._horSet('metrica','medio')")}
+          </div>`;
+
+        // Mapa de calor
+        const th = 'padding:5px 4px;font-size:11px;font-family:var(--mono);color:var(--text-muted);font-weight:700;text-align:center;white-space:nowrap;';
+        const totDia = d => { const n = dias[k]?.[d]?.size || 0; if (!n) return null;
+          let m = 0; const tks = new Set(); horas.forEach(h => { const c = agg[k]?.[d]?.[h]; if (c) { m += c.monto; c.tickets.forEach(t => tks.add(t)); } });
+          return met === 'venta' ? m / n : met === 'tickets' ? tks.size / n : (tks.size ? m / tks.size : 0); };
+        const totHora = h => { let m = 0, n = 0; const tks = new Set();
+          for (let d = 0; d < 7; d++) { const c = agg[k]?.[d]?.[h]; n += (dias[k]?.[d]?.size || 0) && c ? (dias[k][d].size) : 0; if (c) { m += c.monto; c.tickets.forEach(t => tks.add(t)); } }
+          if (!m) return null;
+          return met === 'venta' ? m / Math.max(n,1) : met === 'tickets' ? tks.size / Math.max(n,1) : (tks.size ? m / tks.size : 0); };
+        const filas = [0,1,2,3,4,5,6].map(d => {
+          const td = totDia(d);
+          return `<tr>
+            <td style="${th}text-align:left;padding-right:8px;">${CORTO[d]} <span style="opacity:.6">(${dias[k]?.[d]?.size||0})</span></td>
+            ${horas.map(h => { const c = celda(k, d, h); const v = valor(c); const a = max ? v / max : 0;
+              const bg = c ? `rgba(255,107,0,${(0.08 + a * 0.85).toFixed(2)})` : 'var(--surface2)';
+              const col = a > 0.55 ? '#fff' : 'var(--text)';
+              const tip = c ? `${NOMBRES[d]} ${h}:00–${h+1}:00 · ${fmt$(c.venta)} prom/día · ${c.tickets.toFixed(1)} tickets/día · ticket medio ${fmt$(c.medio)} · ${c.n} día(s)` : 'Sin ventas';
+              return `<td title="${tip}" style="background:${bg};color:${col};padding:6px 3px;font-size:10.5px;font-family:var(--mono);text-align:center;border-radius:4px;min-width:46px;">${c ? fmtV(v) : ''}</td>`; }).join('')}
+            <td style="${th}padding-left:8px;color:var(--text);">${td != null ? fmtV(td) : '—'}</td>
+          </tr>`; }).join('');
+        const filaTot = `<tr><td style="${th}text-align:left;">Prom.</td>${horas.map(h => { const t = totHora(h); return `<td style="${th}color:var(--text);">${t != null ? fmtV(t) : ''}</td>`; }).join('')}<td></td></tr>`;
+        const mapa = horas.length ? `
+          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--surface);">
+            <table style="border-collapse:separate;border-spacing:3px;min-width:100%;">
+              <thead><tr><th style="${th}"></th>${horas.map(h => `<th style="${th}">${String(h).padStart(2,'0')}h</th>`).join('')}<th style="${th}">${met==='venta'?'Día':met==='tickets'?'Día':'Medio'}</th></tr></thead>
+              <tbody>${filas}${filaTot}</tbody>
+            </table>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin:6px 2px 16px;">Promedio por día real: cada celda divide por la cantidad de ese día de la semana con ventas en el período (número entre paréntesis). Pasá el mouse por una celda para ver el detalle.</div>` : `<div class="empty-state"><p>Sin datos de horario.</p></div>`;
+
+        // Resumen en texto
+        const r = resumen(k);
+        const nom = k === 'todos' ? 'Todos los locales' : pdvNombre[k];
+        const resumenHtml = r ? `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;background:var(--surface2);font-size:13px;line-height:1.6;">
+            <div style="font-weight:800;margin-bottom:6px;">📝 ${nom}</div>
+            • <b>Franja pico:</b> ${franja(r.pico.d, r.pico.h)} — ${fmt$(r.pico.venta)} promedio por día.<br>
+            • <b>Mejor día:</b> ${NOMBRES[r.diaPico.d]} (${fmt$(r.diaPico.prom)} promedio). El <b>${r.pctVentana}%</b> de su venta entra entre las ${String(r.ventana.h).padStart(2,'0')} y las ${String(r.ventana.h+3).padStart(2,'0')} hs.<br>
+            • <b>Franjas más flojas:</b> ${r.flojas.map(f => `${franja(f.d, f.h)} (${fmt$(f.venta)})`).join(', ')}.<br>
+            • <b>Mañana vs tarde:</b> ${r.pctMan}% antes de las 14 hs · ${r.pctTar}% desde las 14 hs.
+          </div>` : '';
+
+        // Comparativa entre locales
+        const comp = pdvKeys.filter(id => id !== 'todos').map(id => ({ id, r: resumen(id) })).filter(x => x.r).sort((a, b) => b.r.promDiario - a.r.promDiario);
+        const tdc = 'padding:7px 9px;border-bottom:1px solid var(--border);font-size:12.5px;';
+        const compHtml = comp.length > 1 ? `
+          <div style="font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">🏪 Comparativa entre locales</div>
+          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;">
+            <table style="width:100%;border-collapse:collapse;">
+              <thead><tr style="background:var(--surface2);">
+                <th style="${tdc}text-align:left;">Local</th><th style="${tdc}text-align:right;">Venta prom./día</th>
+                <th style="${tdc}text-align:left;">Franja pico</th><th style="${tdc}text-align:left;">Mejor día</th>
+                <th style="${tdc}text-align:left;">Franja más floja</th><th style="${tdc}text-align:right;">Mañana / Tarde</th>
+              </tr></thead>
+              <tbody>${comp.map(({ id, r }, i) => `<tr style="cursor:pointer" onclick="window._horSet('pdv','${id}')">
+                <td style="${tdc}font-weight:700;">${i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''}${pdvNombre[id]}</td>
+                <td style="${tdc}text-align:right;font-family:var(--mono);">${fmt$(r.promDiario)}</td>
+                <td style="${tdc}">${franja(r.pico.d, r.pico.h)}</td>
+                <td style="${tdc}">${NOMBRES[r.diaPico.d]}</td>
+                <td style="${tdc}">${franja(r.flojas[0].d, r.flojas[0].h)}</td>
+                <td style="${tdc}text-align:right;font-family:var(--mono);">${r.pctMan}% / ${r.pctTar}%</td>
+              </tr>`).join('')}</tbody>
+            </table>
+          </div>` : '';
+
+        body.innerHTML = filtros + mapa + resumenHtml + compHtml +
+          (sinHora ? `<div style="font-size:11px;color:var(--text-muted);margin-top:10px;">⚠️ ${sinHora} renglón(es) sin hora registrada no se incluyeron.</div>` : '');
+      };
+      window._horSet = function(campo, val) { window._horState[campo] = val; window._horRender(); };
+      window._horRender();
+    } catch(e) {
+      body.innerHTML = `<div class="empty-state">⚠️<p>Error: ${e.message}</p></div>`;
+      console.error('[Horarios]', e);
+    }
   }
 
   async function loadInformesDescuentosAuto() {
