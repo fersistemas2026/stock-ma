@@ -9602,11 +9602,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           document.getElementById('ventas-cliente-email').value = '';
         } catch(ec) { console.warn('Error guardando cliente:', ec); }
       }
-      const grandT = _ventasItems.reduce((s,i)=>s+parsePrecioAR(i.precio)*i.cant,0);
+      // Total cobrado = precios finales ya con descuento (los mismos que se guardaron en `ventas`)
+      const brutoT = _ventasItems.reduce((s,i)=>s+parsePrecioAR(i.precio)*i.cant,0);
+      const grandT = rows.reduce((s,r)=>s+(parseFloat(r.precio)||0)*(parseFloat(r.cantidad)||0),0);
+      const descT = Math.max(brutoT - grandT, 0);
+      const fmtU = n => n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
       const listaLabel2 = document.getElementById('ventas-lista-sel').options[document.getElementById('ventas-lista-sel').selectedIndex]?.text||'';
       const metodoPagoLabel = metodoPago === 'tarjeta' ? '💳 Tarjeta' : metodoPago === 'mixto' ? '💵+💳 Mixto' : '💵 Efectivo';
-      document.getElementById('ventas-ultima-monto').textContent = '$ '+grandT.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-      document.getElementById('ventas-ultima-info').textContent = metodoPagoLabel + ' · ' + listaLabel2 + ' · ' + horaAR();
+      document.getElementById('ventas-ultima-monto').textContent = '$ '+fmtU(grandT);
+      document.getElementById('ventas-ultima-info').textContent = metodoPagoLabel + ' · ' + listaLabel2 + ' · ' + horaAR()
+        + (descT >= 0.01 ? ` · 🏷️ desc. -$ ${fmtU(descT)} (antes $ ${fmtU(brutoT)})${descMotivo ? ' · ' + descMotivo : ''}` : '');
       // Marcar voucher como usado
       if (window._ventasVoucherCodigo) {
         (async () => {
