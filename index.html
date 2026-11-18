@@ -758,6 +758,15 @@
             <option value="">— PDV —</option>
           </select>
 
+        <!-- 🔍 Búsqueda rápida producto + sabor -->
+        <div id="vq-wrap" style="position:relative;margin-bottom:10px;">
+          <input type="text" id="vq-input" placeholder="🔍 Búsqueda rápida: escribí producto y sabor (ej: rav ver)  ·  F2 o / para volver acá" autocomplete="off"
+            oninput="vqBuscar()" onkeydown="vqTecla(event)" onfocus="vqBuscar()" onblur="setTimeout(vqCerrar,180)"
+            style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid #ffd700;border-radius:10px;padding:13px 16px;font-size:18px;font-weight:700;color:#fff;outline:none;">
+          <div id="vq-results" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:300;background:var(--surface);border:2px solid #ffd700;border-radius:10px;max-height:360px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.45);"></div>
+          <div id="vq-top" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+        </div>
+
         <!-- Fila agregar -->
         <div style="background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
           <div style="display:flex;flex-direction:column;gap:6px;flex:2;min-width:160px;">
@@ -8910,6 +8919,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     sel.options[2].text = `Lista 3 (${_ventasConfig.pct3>=0?'+':''}${_ventasConfig.pct3}%)`;
     sel.options[3].text = `Final c/imp (${_ventasConfig.pct4>=0?'+':''}${_ventasConfig.pct4||0}%)`;
 
+    setTimeout(() => { try { vqCargarTop(); } catch(e) {} }, 800);
+
     // Cargar datalist de productos
     const prodList = document.getElementById('ventas-prod-list');
     prodList.innerHTML = prods.map(p => `<option value="${p.nombre||p.name}" data-id="${p.id}">`).join('');
@@ -9708,12 +9719,16 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     ventasRenderTabla();
   }
 
+  function vqNorm(t) { return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+
   function ventasGetProdByNombre(nombre) {
-    return _ventasProds?.find(p => (p.nombre||p.name) === nombre) || null;
+    return _ventasProds?.find(p => (p.nombre||p.name) === nombre)
+        || _ventasProds?.find(p => vqNorm(p.nombre||p.name) === vqNorm(nombre)) || null;
   }
 
   function ventasGetGustoByNombre(prod, nombre) {
-    return prod?.gustos?.find(g => (g.nombre||g.name) === nombre) || null;
+    return prod?.gustos?.find(g => (g.nombre||g.name) === nombre)
+        || prod?.gustos?.find(g => vqNorm(g.nombre||g.name) === vqNorm(nombre)) || null;
   }
 
   function ventasOnProdInput() {
@@ -9823,11 +9838,115 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const cantInputR = document.getElementById('ventas-cant');
     if (cantInputR) { cantInputR.step = '1'; cantInputR.min = '1'; cantInputR.value = '1'; }
     document.getElementById('ventas-precio').value = '';
-    // Foco en el campo producto para agilizar la carga
-    document.getElementById('ventas-prod-input').focus();
+    // Foco en la búsqueda rápida (o en producto si no existe) para agilizar la carga
+    const vqIn = document.getElementById('vq-input');
+    if (vqIn) { vqIn.value = ''; vqIn.focus(); } else document.getElementById('ventas-prod-input').focus();
 
     ventasRenderTabla();
   }
+
+  // ═══ 🔍 Búsqueda rápida en Ventas (producto + sabor en una sola búsqueda) ═══
+  let _vqSel = 0, _vqRes = [], _vqTopCache = { key:'', ts:0, lista:[] };
+  function vqCombos() {
+    const out = [];
+    (_ventasProds || []).forEach(p => (p.gustos || []).forEach(g => {
+      const pn = p.nombre || p.name || '', gn = g.nombre || g.name || '';
+      out.push({ prod:p, gusto:g, pn, gn, txt: vqNorm(pn + ' ' + gn), pnN: vqNorm(pn), gnN: vqNorm(gn) });
+    }));
+    return out;
+  }
+  function vqBuscar() {
+    const q = vqNorm(document.getElementById('vq-input')?.value);
+    const box = document.getElementById('vq-results');
+    if (!box) return;
+    if (!q) { box.style.display = 'none'; _vqRes = []; vqCargarTop(); return; }
+    const toks = q.split(' ').filter(Boolean);
+    const res = vqCombos().filter(c => toks.every(t => c.txt.includes(t)));
+    // Prioridad: producto que empieza con la 1ª palabra, después sabor que empieza con la 2ª
+    const score = c => (c.pnN.startsWith(toks[0]) ? 0 : 2) + (toks[1] && c.gnN.startsWith(toks[1]) ? 0 : 1);
+    res.sort((a, b) => score(a) - score(b) || a.pn.localeCompare(b.pn) || a.gn.localeCompare(b.gn));
+    _vqRes = res.slice(0, 12); _vqSel = 0;
+    vqPintar();
+  }
+  function vqPintar() {
+    const box = document.getElementById('vq-results');
+    if (!_vqRes.length) {
+      box.innerHTML = '<div style="padding:12px 14px;color:var(--text-muted);font-size:14px;">Sin coincidencias</div>';
+      box.style.display = 'block'; return;
+    }
+    box.innerHTML = _vqRes.map((c, i) => {
+      const pr = ventasGetPrecio(c.prod.id, c.gusto.id);
+      return `<div onmousedown="event.preventDefault();vqElegir(${i})" onmousemove="if(_vqSel!==${i}){_vqSel=${i};vqPintar();}"
+        style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;font-size:16px;${i===_vqSel?'background:rgba(255,215,0,.16);border-left:4px solid #ffd700;':'border-left:4px solid transparent;'}">
+        <span><b style="color:#fff;">${c.pn}</b> <span style="color:#ffd700;">· ${c.gn}</span></span>
+        <span style="font-family:var(--mono);font-weight:800;color:${pr?'#6ee7b7':'var(--text-muted)'};white-space:nowrap;">${pr ? '$' + pr : 'sin precio'}</span>
+      </div>`;
+    }).join('');
+    box.style.display = 'block';
+    const act = box.children[_vqSel]; if (act && act.scrollIntoView) act.scrollIntoView({ block:'nearest' });
+  }
+  function vqCerrar() { const b = document.getElementById('vq-results'); if (b) b.style.display = 'none'; }
+  function vqTecla(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (_vqRes.length) { _vqSel = (_vqSel + 1) % _vqRes.length; vqPintar(); } }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); if (_vqRes.length) { _vqSel = (_vqSel - 1 + _vqRes.length) % _vqRes.length; vqPintar(); } }
+    else if (e.key === 'Enter') { e.preventDefault(); if (_vqRes.length) vqElegir(_vqSel); }
+    else if (e.key === 'Escape') { e.target.value = ''; vqCerrar(); vqCargarTop(); }
+  }
+  // Carga producto + sabor en los campos de siempre (precio y unidad se setean solos) y pasa a Cantidad
+  function vqCargar(prod, gusto) {
+    const pi = document.getElementById('ventas-prod-input'), gi = document.getElementById('ventas-gusto-input');
+    pi.value = prod.nombre || prod.name || '';
+    ventasOnProdChange();
+    gi.value = gusto.nombre || gusto.name || '';
+    ventasOnGustoInput();
+    const vq = document.getElementById('vq-input'); if (vq) vq.value = (prod.nombre||prod.name) + ' · ' + (gusto.nombre||gusto.name);
+    vqCerrar();
+    const cant = document.getElementById('ventas-cant');
+    if (cant) { cant.focus(); try { cant.select(); } catch(e) {} }
+    if (!document.getElementById('ventas-precio').value) toast('Ese sabor no tiene precio cargado en esta lista','error');
+  }
+  function vqElegir(i) { const c = _vqRes[i]; if (c) vqCargar(c.prod, c.gusto); }
+  function vqElegirTop(pid, gid) {
+    const prod = (_ventasProds || []).find(p => String(p.id) === String(pid));
+    const gusto = prod?.gustos?.find(g => String(g.id) === String(gid));
+    if (prod && gusto) vqCargar(prod, gusto);
+  }
+  // Más vendidos del local (últimos 30 días), en caché 10 min
+  async function vqCargarTop() {
+    const cont = document.getElementById('vq-top');
+    if (!cont || !_ventasProds) return;
+    const pdv = document.getElementById('ventas-pdv-sel')?.value || '';
+    const key = empresaActual + '|' + pdv;
+    if (_vqTopCache.key !== key || Date.now() - _vqTopCache.ts > 600000) {
+      _vqTopCache = { key, ts: Date.now(), lista: [] };
+      try {
+        const d = new Date(); d.setDate(d.getDate() - 30);
+        const desde = d.toISOString().slice(0, 10);
+        const rows = await sbApi(`ventas?empresa_id=eq.${empresaActual}&fecha=gte.${desde}${pdv ? `&pdv_id=eq.${pdv}` : ''}&select=prod_id,gusto_id,cantidad&limit=50000`) || [];
+        const cnt = {};
+        rows.forEach(r => { if (!r.prod_id || !r.gusto_id) return; const k = r.prod_id + '|' + r.gusto_id; cnt[k] = (cnt[k] || 0) + (parseFloat(r.cantidad) || 1); });
+        _vqTopCache.lista = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k]) => k.split('|'))
+          .filter(([pid, gid]) => (_ventasProds || []).some(p => String(p.id) === String(pid) && (p.gustos || []).some(g => String(g.id) === String(gid))))
+          .slice(0, 10);
+      } catch(e) { _vqTopCache.lista = []; }
+    }
+    if (document.getElementById('vq-input')?.value) return;
+    cont.innerHTML = _vqTopCache.lista.length
+      ? '<span style="font-size:12px;color:var(--text-muted);align-self:center;margin-right:2px;">⭐ Más vendidos:</span>' +
+        _vqTopCache.lista.map(([pid, gid]) => {
+          const p = _ventasProds.find(x => String(x.id) === String(pid)); const g = p?.gustos?.find(x => String(x.id) === String(gid));
+          return `<button onclick="vqElegirTop('${String(pid).replace(/'/g,"\\'")}','${String(gid).replace(/'/g,"\\'")}')" style="padding:7px 12px;border-radius:999px;border:1px solid #ffd700;background:rgba(255,215,0,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">${p.nombre||p.name} <span style="color:#ffd700;">· ${g.nombre||g.name}</span></button>`;
+        }).join('')
+      : '';
+  }
+  // Enter en Cantidad = Agregar ; F2 o "/" = ir a la búsqueda rápida
+  document.addEventListener('keydown', function(e) {
+    const vq = document.getElementById('vq-input');
+    if (!vq || !vq.offsetParent) return;           // solo con la pantalla de Ventas visible
+    if (e.target && e.target.id === 'ventas-cant' && e.key === 'Enter') { e.preventDefault(); ventasAgregarItem(); return; }
+    const enCampo = e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+    if (e.key === 'F2' || (e.key === '/' && !enCampo)) { e.preventDefault(); vq.focus(); vq.select(); }
+  });
 
   function ventasEliminarItem(idx) {
     _ventasItems.splice(idx, 1);
