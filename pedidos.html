@@ -1069,7 +1069,7 @@ window.selFechaEsp = function(idx) {
     const pedido = {
       empresa_id: EMPRESA_ID,
       cliente_nombre: nombre,
-      cliente_tel: tel,
+      cliente_tel: normTelAR(tel),
       pdv_id: String(_prpPdvSeleccionado.id || ''),
       pdv_nombre: _prpPdvSeleccionado.nombre || '',
       modalidad: _prpModo,
@@ -1377,7 +1377,7 @@ async function enviarBannerBienvenida() {
   const btn = document.getElementById('welBtnEnviar');
   btn.disabled = true; btn.textContent = 'Generando...';
 
-  const telLimpio = tel.replace(/\s/g,'');
+  const telLimpio = normTelAR(tel);
   const codigo = 'BIENV10-' + Math.random().toString(36).substring(2,6).toUpperCase();
   const hoy = new Date();
   const vence = new Date(hoy); vence.setDate(vence.getDate() + 5);
@@ -1404,7 +1404,7 @@ async function enviarBannerBienvenida() {
     // Crear (o marcar) el cliente en Supabase como venido de la tienda online,
     // aunque después no llegue a confirmar el pedido
     try {
-      const existente = await sbGet(`clientes?empresa_id=eq.${EMPRESA_ID}&telefono=eq.${encodeURIComponent(telLimpio)}&select=id,nombre,notas&limit=1`);
+      const existente = await sbGet(`clientes?empresa_id=eq.${EMPRESA_ID}&${telInFilter('telefono', tel)}&select=id,nombre,notas&limit=1`);
       if (existente && existente.length) {
         clienteData = existente[0];
         const notasPrev = existente[0].notas || '';
@@ -1569,6 +1569,33 @@ function exigirPdv(accion) {
   return false;
 }
 
+// ═══ Criterio único de teléfono (Argentina): se guarda como 10 dígitos, sin 0, sin 15, sin 54 ni 9 ═══
+function normTelAR(t) {
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.startsWith('54')) d = d.slice(2);
+  if (d.length === 11 && d.startsWith('9')) d = d.slice(1);
+  if (d.startsWith('0')) d = d.slice(1);
+  return d; // si quedan ≠ 10 dígitos se guarda igual y telInfoAR avisa
+}
+function telInfoAR(t) {
+  const n = normTelAR(t);
+  if (!n) return { norm: '', ok: false, nivel: 'vacio', msg: '' };
+  if (n.length < 10) return { norm: n, ok: false, nivel: 'warn', msg: '⚠️ Falta el código de área: deben ser 10 números (ej: 11 1234-5678 o 351 456-7890). Van ' + n.length + '.' };
+  if (n.length > 10) return { norm: n, ok: false, nivel: 'warn', msg: '⚠️ Sobran números (' + n.length + '). Si pusiste el 15, sacalo: código de área + número, sin 0 ni 15.' };
+  return { norm: n, ok: true, nivel: 'ok', msg: '✓ Se guardará como ' + n };
+}
+// Variantes para encontrar también clientes cargados antes del criterio (con 54, 549, +549, 0…)
+function telVariantesAR(t) {
+  const n = normTelAR(t);
+  const crudo = String(t || '').trim();
+  const dig = crudo.replace(/\D/g, '');
+  return [...new Set([n, '54' + n, '549' + n, '+54' + n, '+549' + n, '0' + n, dig, crudo.replace(/\s/g, '')].filter(Boolean))];
+}
+// Filtro PostgREST: col=in.(v1,v2,...)
+function telInFilter(col, t) {
+  return col + '=in.(' + telVariantesAR(t).map(v => encodeURIComponent(v)).join(',') + ')';
+}
+
 // ═══ Ayuda en vivo / validación de datos del cliente (checkout y pre-pedido) ═══
 function validarNombreCli(v) {
   v = (v || '').trim();
@@ -1578,9 +1605,10 @@ function validarNombreCli(v) {
   return { ok:true, msg:'✓ Perfecto' };
 }
 function validarTelCli(v) {
-  const dig = (v || '').replace(/\D/g, '');
-  if (!dig) return { ok:false, msg:'Código de área + número, ej: 11 1234-5678' };
-  if (dig.length < 8) return { ok:false, warn:true, msg:'Faltan números (' + dig.length + ' de al menos 8)' };
+  const r = telInfoAR(v);
+  if (r.nivel === 'vacio') return { ok:false, msg:'Código de área + número, sin 0 ni 15. Ej: 11 1234-5678' };
+  if (r.norm.length < 10) return { ok:false, warn:true, msg:'Falta el código de área: son 10 números (van ' + r.norm.length + ')' };
+  if (r.norm.length > 10) return { ok:false, warn:true, msg:'Sobran números: si pusiste el 15, sacalo' };
   return { ok:true, msg:'✓ Listo' };
 }
 function validarDirCli(v) {
@@ -2474,14 +2502,15 @@ function selPay(m) {
 
 let telBusquedaTimeout = null;
 async function onTelInput() {
-  const tel = document.getElementById('inTel').value.trim().replace(/\s/g,'');
+  const telCrudo = document.getElementById('inTel').value.trim();
+  const tel = normTelAR(telCrudo);
   const banner = document.getElementById('clienteBanner');
   actualizarAyudaDatos();
   clienteData = null; if (banner) banner.innerHTML = '';
   if (tel.length < 8) return;
   clearTimeout(telBusquedaTimeout);
   telBusquedaTimeout = setTimeout(async () => {
-    const data = await sbGet(`clientes?empresa_id=eq.${EMPRESA_ID}&telefono=eq.${encodeURIComponent(tel)}&select=id,nombre,telefono&limit=1`);
+    const data = await sbGet(`clientes?empresa_id=eq.${EMPRESA_ID}&${telInFilter('telefono', telCrudo)}&select=id,nombre,telefono&limit=1`);
     if (data && data.length > 0) {
       clienteData = data[0];
       if (!document.getElementById('inNombre').value.trim() && clienteData.nombre) { document.getElementById('inNombre').value = clienteData.nombre; actualizarAyudaDatos(); }
@@ -2521,7 +2550,7 @@ async function enviarPedido() {
   const optsEntrega = calcularOpciones(selectedMode);
   const fechaEntregaISO = selectedFechaEsp ? selectedFechaEsp.fecha : (selectedEnvio === 'pasado' ? optsEntrega.fecha2ISO : optsEntrega.fecha1ISO);
   const pedido = {
-    empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: tel,
+    empresa_id: EMPRESA_ID, cliente_nombre: nombre, cliente_tel: normTelAR(tel),
     pdv_id: String(selectedPdv?.id||''), pdv_nombre: selectedPdv?.nombre||'',
     modalidad: selectedMode, direccion: dir||null,
     envio_plazo: selectedFechaEsp ? ('fecha-especial:' + selectedFechaEsp.fecha) : (selectedEnvio==='manana'?(selectedMode==='retiro'?'hoy':'mañana'):(selectedMode==='retiro'?'mañana':'2-dias')),
@@ -2559,7 +2588,7 @@ async function enviarPedido() {
     if (!clienteData) {
       await fetch(`${SUPABASE_URL}/rest/v1/clientes`, {
         method:'POST', headers:{...H,'Prefer':'return=minimal'},
-        body: JSON.stringify({ empresa_id:EMPRESA_ID, nombre, telefono:tel.replace(/\s/g,''), pdv_nombre:selectedPdv?.nombre||'', notas:'[ONLINE]' })
+        body: JSON.stringify({ empresa_id:EMPRESA_ID, nombre, telefono:normTelAR(tel), pdv_nombre:selectedPdv?.nombre||'', notas:'[ONLINE]' })
       });
     }
 

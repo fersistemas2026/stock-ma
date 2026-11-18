@@ -738,9 +738,10 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px;">
               <label style="font-size:15px;font-weight:900;color:#25D366;letter-spacing:.04em;">📱 Número cliente</label>
-              <input type="tel" id="ventas-cliente-tel" placeholder="+54 9..." autocomplete="off" oninput="verificarClienteExistente()"
+              <input type="tel" id="ventas-cliente-tel" placeholder="Ej: 11 1234-5678" autocomplete="off" oninput="telAyudaVentas();verificarClienteExistente()"
                 style="background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:12px 14px;font-size:17px;color:#fff;font-weight:600;font-family:var(--mono);outline:none;width:100%;box-sizing:border-box;transition:border .2s;"
-                onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='var(--border)'">
+                onfocus="telAyudaVentas()" onblur="telAyudaVentas()">
+              <div id="ventas-cliente-tel-ayuda" style="font-size:12px;line-height:1.4;margin-top:3px;color:var(--text-muted);">📱 <b>Código de área + número</b>, sin 0 ni 15. Ej: <b>11 1234-5678</b> · <b>351 456-7890</b>. Si lo pasan con +54 9 se corrige solo.</div>
               <div id="ventas-cliente-msg-tel" style="font-size:12px;color:var(--accent);margin-top:2px;display:none;"></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px;">
@@ -7444,7 +7445,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
 
     try {
       const ventas = telNorm
-        ? (await sbApi(`ventas?empresa_id=eq.${empresaActual}&cliente_tel=eq.${telNorm}&select=*&order=fecha.desc,created_at.desc`) || [])
+        ? (await sbApi(`ventas?empresa_id=eq.${empresaActual}&${telInFilter('cliente_tel', c.telefono || telNorm)}&select=*&order=fecha.desc,created_at.desc`) || [])
         : [];
       const pdvs = await getPdv();
       const pdvMap = {};
@@ -9509,7 +9510,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }));
 
     const pdvs = await getPdv();
-    const clienteTelVenta = window._ventasClienteTelGuardar || (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
+    const clienteTelVenta = normTelAR(window._ventasClienteTelGuardar || document.getElementById('ventas-cliente-tel')?.value?.trim() || '');
     const clienteNombreVenta = window._ventasClienteNombreGuardar || document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
     const ticketId = `${fecha}_${pdvId}_${Date.now()}`;
 
@@ -9570,11 +9571,11 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const pdvNombreCliente = pdvs?.find?.(p=>String(p.id)===String(pdvId))?.nombre || pdvId;
       if (clienteNombre || clienteTel || clienteEmail) {
         try {
-          const telNormCliente = clienteTel.replace(/[^0-9]/g,'');
-          // Buscar si ya existe por teléfono o email
+          const telNormCliente = normTelAR(clienteTel);
+          // Buscar si ya existe por teléfono (con variantes viejas) o email
           let clienteExistente = null;
           if (telNormCliente) {
-            const resB = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&telefono=eq.${telNormCliente}&select=id`, { headers: H });
+            const resB = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&${telInFilter('telefono', clienteTel)}&select=id`, { headers: H });
             const dataB = await resB.json();
             if (dataB?.length) clienteExistente = dataB[0];
           }
@@ -10332,7 +10333,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   async function generarPresupuesto() {
     if (!_ventasItems.length) { toast('No hay ítems para presupuestar','error'); return; }
     const clienteNombre = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
-    const clienteTel = (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
+    const clienteTel = normTelAR(document.getElementById('ventas-cliente-tel')?.value?.trim() || '');
     const clienteEmail = document.getElementById('ventas-cliente-email')?.value?.trim() || '';
     const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
     const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
@@ -10347,7 +10348,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
         let clienteExistente = null;
         if (clienteTel) {
-          const rb = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&telefono=eq.${clienteTel}&select=id,notas`, { headers: H });
+          const rb = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&${telInFilter('telefono', clienteTel)}&select=id,notas`, { headers: H });
           const db = await rb.json();
           if (db?.length) clienteExistente = db[0];
         }
@@ -10372,7 +10373,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   async function generarRecibo() {
     if (!_ventasItems.length) { toast('No hay ítems para el recibo','error'); return; }
     const clienteNombre = document.getElementById('ventas-cliente-nombre')?.value?.trim() || '';
-    const clienteTel = (document.getElementById('ventas-cliente-tel')?.value?.trim() || '').replace(/[^0-9]/g,'');
+    const clienteTel = normTelAR(document.getElementById('ventas-cliente-tel')?.value?.trim() || '');
     const clienteEmail = document.getElementById('ventas-cliente-email')?.value?.trim() || '';
     const pdvId = document.getElementById('ventas-pdv-sel')?.value || '';
     const fecha = document.getElementById('ventas-fecha')?.value || fechaHoyAR();
@@ -10385,7 +10386,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
         let clienteExistente = null;
         if (clienteTel) {
-          const rb = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&telefono=eq.${clienteTel}&select=id,notas`, { headers: H });
+          const rb = await fetch(`${SUPABASE_URL}/rest/v1/clientes?empresa_id=eq.${empresaActual}&${telInFilter('telefono', clienteTel)}&select=id,notas`, { headers: H });
           const db = await rb.json();
           if (db?.length) clienteExistente = db[0];
         }
@@ -12204,6 +12205,50 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   let _verificarTimeout = null;
   window._verificarClientePendiente = false;
   window._verificarClientePromise = Promise.resolve();
+
+  // ═══ Criterio único de teléfono (Argentina): se guarda como 10 dígitos, sin 0, sin 15, sin 54 ni 9 ═══
+  function normTelAR(t) {
+    let d = String(t || '').replace(/\D/g, '');
+    if (d.startsWith('54')) d = d.slice(2);
+    if (d.length === 11 && d.startsWith('9')) d = d.slice(1);
+    if (d.startsWith('0')) d = d.slice(1);
+    return d; // si quedan ≠ 10 dígitos se guarda igual y telInfoAR avisa
+  }
+  function telInfoAR(t) {
+    const n = normTelAR(t);
+    if (!n) return { norm: '', ok: false, nivel: 'vacio', msg: '' };
+    if (n.length < 10) return { norm: n, ok: false, nivel: 'warn', msg: '⚠️ Falta el código de área: deben ser 10 números (ej: 11 1234-5678 o 351 456-7890). Van ' + n.length + '.' };
+    if (n.length > 10) return { norm: n, ok: false, nivel: 'warn', msg: '⚠️ Sobran números (' + n.length + '). Si pusiste el 15, sacalo: código de área + número, sin 0 ni 15.' };
+    return { norm: n, ok: true, nivel: 'ok', msg: '✓ Se guardará como ' + n };
+  }
+  // Variantes para encontrar también clientes cargados antes del criterio (con 54, 549, +549, 0…)
+  function telVariantesAR(t) {
+    const n = normTelAR(t);
+    const crudo = String(t || '').trim();
+    const dig = crudo.replace(/\D/g, '');
+    return [...new Set([n, '54' + n, '549' + n, '+54' + n, '+549' + n, '0' + n, dig, crudo.replace(/\s/g, '')].filter(Boolean))];
+  }
+  // Filtro PostgREST: col=in.(v1,v2,...)
+  function telInFilter(col, t) {
+    return col + '=in.(' + telVariantesAR(t).map(v => encodeURIComponent(v)).join(',') + ')';
+  }
+
+  // Ayuda en vivo al vendedor en el campo teléfono de Ventas
+  function telAyudaVentas() {
+    const el = document.getElementById('ventas-cliente-tel-ayuda');
+    const inp = document.getElementById('ventas-cliente-tel');
+    if (!el || !inp) return;
+    const r = telInfoAR(inp.value);
+    if (r.nivel === 'vacio') {
+      el.innerHTML = '📱 <b>Código de área + número</b>, sin 0 ni 15. Ej: <b>11 1234-5678</b> · <b>351 456-7890</b>. Si lo pasan con +54 9 se corrige solo.';
+      el.style.color = 'var(--text-muted)'; inp.style.borderColor = 'var(--border)';
+    } else if (r.ok) {
+      el.textContent = r.msg; el.style.color = '#25D366'; inp.style.borderColor = '#25D366';
+    } else {
+      el.textContent = r.msg; el.style.color = '#fbbf24'; inp.style.borderColor = '#fbbf24';
+    }
+  }
+
   async function verificarClienteExistente() {
     clearTimeout(_verificarTimeout);
     window._verificarClientePendiente = true;
@@ -12230,8 +12275,8 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
       let clienteEncontrado = false;
 
-      if (tel && tel.length >= 8) {
-        const found = await sbApi(`clientes?empresa_id=eq.${empresaActual}&telefono=eq.${encodeURIComponent(tel)}&select=nombre,email,pdv_nombre&limit=1`);
+      if (tel && normTelAR(tel).length >= 8) {
+        const found = await sbApi(`clientes?empresa_id=eq.${empresaActual}&${telInFilter('telefono', tel)}&select=nombre,email,pdv_nombre&limit=1`);
         if (found?.length) {
           const c = found[0];
           clienteEncontrado = true;
@@ -12519,7 +12564,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           pct: tipo==='pct' ? parseInt(pct) : 0,
           monto_fijo: tipo==='monto' ? parseFloat(monto) : null,
           regalo_desc: tipo==='regalo' ? regaloDesc : null,
-          cliente_nombre: c.nombre||'', cliente_tel: tel,
+          cliente_nombre: c.nombre||'', cliente_tel: normTelAR(tel) || tel,
           descripcion: desc, vence: vence||null, usado: false
         })
       });
@@ -12554,7 +12599,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
 
     try {
       // Intentar con el número normalizado y también con el formato original
-      const ventasNorm = await sbApi(`ventas?empresa_id=eq.${empresaActual}&cliente_tel=eq.${telNorm}&select=*&order=fecha.desc,created_at.desc`) || [];
+      const ventasNorm = await sbApi(`ventas?empresa_id=eq.${empresaActual}&${telInFilter('cliente_tel', c.telefono || telNorm)}&select=*&order=fecha.desc,created_at.desc`) || [];
       const ventasOrig = c.telefono !== telNorm
         ? (await sbApi(`ventas?empresa_id=eq.${empresaActual}&cliente_tel=eq.${encodeURIComponent(c.telefono)}&select=*&order=fecha.desc,created_at.desc`) || [])
         : [];
@@ -19283,9 +19328,9 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     try {
       // Cargar usos de promos y vouchers en paralelo
       const [promoUsos, vouchers, ventas, descuentos] = await Promise.all([
-        sbApi(`promo_usos?empresa_id=eq.${empresaActual}&cliente_tel=eq.${tel}&order=fecha.desc&limit=50`) || [],
-        sbApi(`vouchers?empresa_id=eq.${empresaActual}&cliente_tel=eq.${tel}&order=created_at.desc&limit=50`) || [],
-        sbApi(`ventas?empresa_id=eq.${empresaActual}&cliente_tel=eq.${tel}&order=fecha.desc&limit=100&select=fecha,total,descuento_pct,descuento_monto,items`) || [],
+        sbApi(`promo_usos?empresa_id=eq.${empresaActual}&${telInFilter('cliente_tel', tel)}&order=fecha.desc&limit=50`) || [],
+        sbApi(`vouchers?empresa_id=eq.${empresaActual}&${telInFilter('cliente_tel', tel)}&order=created_at.desc&limit=50`) || [],
+        sbApi(`ventas?empresa_id=eq.${empresaActual}&${telInFilter('cliente_tel', tel)}&order=fecha.desc&limit=100&select=fecha,total,descuento_pct,descuento_monto,items`) || [],
         sbApi(`descuentos_automaticos?empresa_id=eq.${empresaActual}&select=id,nombre,pct,tipo_promo,promo_pct_segunda`) || []
       ]);
 
@@ -19639,7 +19684,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       gusto_id:it.gusto_id||'',gusto_nombre:it.gusto_nombre||'',cantidad:it.cantidad||1,
       precio:(it.precio||0)*factor,lista:'Lista 1',
       metodo_pago:pedido.metodo_pago==='transfe'?'transferencia':'efectivo',
-      username:'online',cliente_tel:pedido.cliente_tel||null,cliente_nombre:pedido.cliente_nombre||null,origen:'online'
+      username:'online',cliente_tel:normTelAR(pedido.cliente_tel)||null,cliente_nombre:pedido.cliente_nombre||null,origen:'online'
     }));
     await fetch(`${SUPABASE_URL}/rest/v1/ventas`,{method:'POST',headers:H2,body:JSON.stringify(rows)});
   }
