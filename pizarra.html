@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pizarra · Stock MA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#080c10; --surface:#111518; --surface2:#181d22; --border:#232a32;
+    --accent:#c8f04a; --text:#eef2f6; --text-muted:#7a8899; --text-dim:#3d4d5c;
+    --danger:#ff5a5a; --radius:12px; --font:'DM Sans',sans-serif; --mono:'DM Mono',monospace;
+    --nec-bg:#33250e; --nec-bd:#EF9F27; --nec-tx:#FAC775;
+    --ten-bg:#1c2e10; --ten-bd:#97C459; --ten-tx:#C0DD97;
+    --avi-bg:#24214a; --avi-bd:#AFA9EC; --avi-tx:#CECBF6;
+    --stk-bg:#0e2640; --stk-bd:#378ADD; --stk-tx:#B5D4F4;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font); font-size:14px; min-height:100vh; }
+  button { font-family:var(--font); cursor:pointer; }
+  input, select, textarea { font-family:var(--font); }
+  header { display:flex; align-items:center; gap:14px; padding:0 24px; height:58px; border-bottom:1px solid var(--border); background:var(--surface); position:sticky; top:0; z-index:50; flex-wrap:wrap; }
+  .logo { font-family:var(--mono); color:var(--text-muted); font-size:15px; }
+  .logo b { color:var(--accent); font-weight:500; }
+  .tabs { display:flex; gap:4px; }
+  .tab { background:none; border:1px solid transparent; color:var(--text-muted); padding:7px 14px; border-radius:8px; font-size:13px; }
+  .tab.active { border-color:var(--border); background:var(--surface2); color:var(--text); font-weight:500; }
+  .hdr-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .user-badge { font-size:13px; color:var(--text-muted); }
+  .user-badge b { color:var(--text); }
+  .btn { background:none; border:1px solid var(--border); color:var(--text); padding:7px 14px; border-radius:8px; font-size:13px; transition:all .15s; }
+  .btn:hover { border-color:var(--text-muted); }
+  .btn-acc { background:var(--accent); border-color:var(--accent); color:#0b0f12; font-weight:700; }
+  .btn-acc:hover { background:#a8cc30; }
+  .btn-sm { padding:4px 10px; font-size:12px; }
+  .sel, .inp { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:13px; color:var(--text); outline:none; }
+  .inp:focus, .sel:focus { border-color:var(--text-muted); }
+  main { padding:18px 24px 60px; }
+  .empty { color:var(--text-muted); text-align:center; padding:40px; font-size:13px; }
+  .pill { display:inline-block; font-size:11px; padding:2px 8px; border-radius:6px; font-family:var(--mono); white-space:nowrap; }
+  .f-hoy { background:#0c447c; color:#cfe4fa; }
+  .f-ayer { background:#7a4a0a; color:#fde3b8; }
+  .f-vie { background:#7b1f1f; color:#ffd2d2; }
+  .fresh-ok { background:#1f3d10; color:#C0DD97; }
+  .fresh-mid { background:#5c3c08; color:#FAC775; }
+  .fresh-bad { background:#5e1717; color:#F7C1C1; }
+  .st-nueva { background:#3a3f10; color:var(--accent); }
+  .st-vista { background:#232a32; color:var(--text); }
+  .st-en_camino { background:#0c447c; color:#cfe4fa; }
+  .st-resuelta, .st-recibida { background:#1f3d10; color:#C0DD97; }
+  .t-nec { background:var(--nec-bg); border-color:var(--nec-bd); color:var(--nec-tx); }
+  .t-ten { background:var(--ten-bg); border-color:var(--ten-bd); color:var(--ten-tx); }
+  .t-avi { background:var(--avi-bg); border-color:var(--avi-bd); color:var(--avi-tx); }
+  .t-stk { background:var(--stk-bg); border-color:var(--stk-bd); color:var(--stk-tx); }
+  .legend { display:flex; gap:12px; font-size:12px; color:var(--text-muted); align-items:center; flex-wrap:wrap; }
+  .lg { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
+
+  /* ── Sucursal ── */
+  .suc-top { display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .suc-top h2 { font-size:18px; font-weight:500; }
+  .suc-grid { display:grid; grid-template-columns:190px minmax(0,1fr); gap:12px; }
+  .mazo { display:flex; flex-direction:column; gap:6px; }
+  .mazo-it { display:flex; justify-content:space-between; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:13px; cursor:pointer; user-select:none; }
+  .mazo-it:hover { border-color:var(--text-muted); }
+  .mazo-it .cnt { font-size:11px; color:var(--accent); font-family:var(--mono); }
+  .mazo-it.nota { border-style:dashed; color:var(--text-muted); }
+  .sboard { position:relative; min-height:540px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:auto; }
+  .sboard .empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .card { position:absolute; width:238px; border:1px solid; border-radius:10px; padding-bottom:8px; }
+  .card .hd { display:flex; align-items:center; gap:6px; padding:8px 10px; cursor:grab; user-select:none; touch-action:none; font-weight:700; font-size:14px; }
+  .card .hd .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card .hd select { background:transparent; border:1px solid currentColor; color:inherit; border-radius:6px; font-size:12px; padding:2px 4px; }
+  .card .hd select option { background:var(--surface2); color:var(--text); }
+  .card .hd .x { background:none; border:1px solid currentColor; color:inherit; border-radius:6px; padding:0 6px; height:22px; }
+  .card .rw { display:flex; align-items:center; gap:6px; padding:3px 10px; font-size:13px; }
+  .card .rw .g { flex:1; }
+  .card .rw input { width:62px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--text); padding:4px 6px; font-family:var(--mono); font-size:13px; outline:none; }
+  .card .rw .hint { font-size:11px; font-family:var(--mono); min-width:46px; text-align:right; opacity:.85; }
+  .card .rw .sug { cursor:pointer; text-decoration:underline dotted; }
+  .card .ft { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 10px 0; font-size:11px; opacity:.9; }
+  .card .ft button { background:none; border:1px solid currentColor; color:inherit; border-radius:6px; padding:2px 8px; font-size:11px; }
+  .card textarea { width:calc(100% - 20px); margin:0 10px; min-height:80px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--text); padding:6px 8px; font-size:13px; resize:vertical; outline:none; }
+  .suc-actions { display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
+  .sec-title { font-size:15px; font-weight:500; margin:26px 0 10px; display:flex; align-items:center; gap:10px; }
+  .mn { border:1px solid; border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .mn .top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; margin-bottom:6px; }
+  .mn .it { font-size:13px; line-height:1.6; }
+  .mn .resp { margin-top:6px; font-size:13px; padding:6px 8px; background:rgba(0,0,0,.3); border-radius:6px; }
+  .mn table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  .mn th { text-align:left; font-weight:500; opacity:.8; padding:3px 4px; }
+  .mn td { padding:3px 4px; border-top:1px solid rgba(255,255,255,.08); }
+  .nuevo-tag { background:var(--accent); color:#0b0f12; font-size:11px; font-weight:700; padding:1px 7px; border-radius:6px; }
+
+  /* ── Central ── */
+  .c-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .fresh-strip { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .fresh-strip .fs { font-size:12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:4px 8px; display:flex; gap:6px; align-items:center; }
+  .cboard { position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:auto; min-height:560px; }
+  .pit { position:absolute; width:240px; border:1px solid; border-radius:10px; padding:9px 11px; cursor:grab; user-select:none; touch-action:none; }
+  .pit.nueva { border-width:3px; }
+  .pit .top { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:13px; margin-bottom:6px; }
+  .pit .it { font-size:12.5px; line-height:1.55; }
+  .pit .tx { font-size:12.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+  .pit .ft { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:6px; }
+  .pit .ft button { background:none; border:1px solid currentColor; color:inherit; border-radius:6px; padding:2px 9px; font-size:12px; }
+  .pit .resp { margin-top:6px; font-size:12px; opacity:.85; font-style:italic; }
+
+  /* ── Resumen / config ── */
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:14px; }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+  .panel h3 { font-size:14px; font-weight:500; margin-bottom:10px; }
+  .tbl { width:100%; border-collapse:collapse; font-size:13px; }
+  .tbl th { text-align:left; color:var(--text-muted); font-weight:500; font-size:12px; padding:6px 4px; border-bottom:1px solid var(--border); }
+  .tbl td { padding:6px 4px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .num { font-family:var(--mono); }
+
+  /* ── Modal / toast ── */
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:flex-start; justify-content:center; padding:50px 16px; z-index:100; overflow:auto; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:14px; width:100%; max-width:560px; padding:18px 20px; }
+  .modal h3 { font-size:16px; font-weight:500; margin-bottom:4px; }
+  .modal .sub { font-size:12px; color:var(--text-muted); margin-bottom:12px; }
+  .modal table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0; }
+  .modal th { text-align:left; color:var(--text-muted); font-weight:500; font-size:12px; padding:5px 4px; border-bottom:1px solid var(--border); }
+  .modal td { padding:5px 4px; border-bottom:1px solid var(--border); }
+  .modal td input { width:70px; }
+  .modal textarea { width:100%; min-height:64px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:8px 10px; font-size:13px; resize:vertical; outline:none; margin-top:6px; }
+  .modal .acts { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap; }
+  .dif { color:#F09595; font-family:var(--mono); font-size:12px; }
+  .ok { color:#97C459; font-family:var(--mono); font-size:12px; }
+  #toasts { position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:8px; z-index:200; }
+  .toast { background:var(--surface2); border:1px solid var(--border); border-left:4px solid var(--accent); padding:10px 14px; border-radius:8px; font-size:13px; max-width:340px; }
+  .toast.error { border-left-color:var(--danger); }
+  .blocker { position:fixed; inset:0; background:rgba(8,12,16,.94); display:flex; align-items:center; justify-content:center; z-index:300; text-align:center; padding:20px; }
+  .blocker .box { max-width:380px; }
+  .blocker h2 { font-size:18px; font-weight:500; margin-bottom:8px; }
+  .blocker p { color:var(--text-muted); font-size:13px; margin-bottom:16px; }
+  @media (max-width:760px) { .suc-grid { grid-template-columns:1fr; } .mazo { flex-direction:row; flex-wrap:wrap; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">stock<b>MA</b> · pizarra</div>
+  <div class="tabs" id="tabs"></div>
+  <div class="hdr-right">
+    <button class="btn btn-sm" id="btn-sonido" onclick="toggleSonido()" title="Sonido de avisos en el panel principal"></button>
+    <span class="user-badge" id="user-badge"></span>
+  </div>
+</header>
+<main id="app"><div class="empty">Cargando…</div></main>
+<div id="modal-root"></div>
+<div id="toasts"></div>
+
+<script>
+  // ── CONEXIÓN (igual que index.html) ─────────────────────────────────
+  const SUPABASE_URL = 'https://brcnctdfbdffxmdypnrh.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyY25jdGRmYmRmZnhtZHlwbnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3OTYzMzIsImV4cCI6MjA5NDM3MjMzMn0.t8Ot0v465qdHshX-Ridce42iPpytYjoMoHxR_mBytZQ';
+  const DIA_KEYS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  const SES_KEY = 'ma_pizarra_sesion';
+  const SONIDO_KEY = 'pizarra_sonido';
+  const POLL_MS = 20000;
+  const TIPOS = { necesito:{cls:'t-nec',label:'Necesito'}, tengo:{cls:'t-ten',label:'Tengo'}, aviso:{cls:'t-avi',label:'Aviso'}, stock:{cls:'t-stk',label:'Stock'} };
+  const ESTADOS = { nueva:'Nueva', vista:'Vista', en_camino:'En camino', resuelta:'Resuelta', recibida:'Recibida' };
+  const ABIERTOS = ['nueva','vista','en_camino'];
+
+  async function sbApi(path, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+    if (method === 'GET') {
+      headers['Prefer'] = 'count=none';
+      headers['Range-Unit'] = 'items';
+      const PAGE = 1000;
+      let offset = 0, all = [];
+      while (true) {
+        headers['Range'] = `${offset}-${offset + PAGE - 1}`;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers });
+        if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `Error ${res.status}`); }
+        const t = await res.text();
+        const page = t ? JSON.parse(t) : [];
+        if (!Array.isArray(page)) return page;
+        all = all.concat(page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
+      }
+      return all;
+    }
+    if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers, body: options.body || undefined });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `Error ${res.status}`); }
+    const t = await res.text();
+    return t ? JSON.parse(t) : null;
+  }
+
+  // ── UTILIDADES ──────────────────────────────────────────────────────
+  function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fechaHoyAR() {
+    return new Date().toLocaleDateString('es-AR', { timeZone:'America/Argentina/Buenos_Aires', year:'numeric', month:'2-digit', day:'2-digit' }).split('/').reverse().join('-');
+  }
+  function horaAR() { return new Date().toLocaleTimeString('es-AR', { timeZone:'America/Argentina/Buenos_Aires', hour:'2-digit', minute:'2-digit' }); }
+  // Supabase puede devolver "2026-11-18 23:46:17.842" sin zona → se toma como UTC
+  function parseTs(s) {
+    if (!s) return null;
+    let t = String(s).trim().replace(' ', 'T');
+    if (!/[zZ]$|[+-]\d\d:?\d\d$/.test(t)) t += 'Z';
+    const d = new Date(t);
+    return isNaN(d) ? null : d;
+  }
+  function fechaAR(d) { return d.toLocaleDateString('es-AR', { timeZone:'America/Argentina/Buenos_Aires', year:'numeric', month:'2-digit', day:'2-digit' }).split('/').reverse().join('-'); }
+  function diasAtras(ts) {
+    const d = parseTs(ts); if (!d) return 99;
+    const a = new Date(fechaAR(d) + 'T00:00:00Z'), b = new Date(fechaHoyAR() + 'T00:00:00Z');
+    return Math.round((b - a) / 86400000);
+  }
+  function etiquetaFecha(ts) {
+    const d = parseTs(ts); if (!d) return '';
+    const n = diasAtras(ts);
+    const hora = d.toLocaleTimeString('es-AR', { timeZone:'America/Argentina/Buenos_Aires', hour:'2-digit', minute:'2-digit', hour12:false });
+    if (n <= 0) return `<span class="pill f-hoy">Hoy ${hora}</span>`;
+    if (n === 1) return `<span class="pill f-ayer">Ayer ${hora}</span>`;
+    const f = d.toLocaleDateString('es-AR', { timeZone:'America/Argentina/Buenos_Aires', day:'2-digit', month:'2-digit' });
+    return `<span class="pill f-vie">${f} ${hora}</span>`;
+  }
+  function haceTxt(ts) {
+    const d = parseTs(ts); if (!d) return 'sin carga';
+    const min = Math.round((Date.now() - d.getTime()) / 60000);
+    if (min < 60) return `hace ${Math.max(1, min)} min`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `hace ${h} h`;
+    const dd = Math.round(h / 24);
+    return `hace ${dd} ${dd === 1 ? 'día' : 'días'}`;
+  }
+  function frescuraPill(ts) {
+    const d = parseTs(ts);
+    if (!d) return '<span class="pill fresh-bad">Stock sin cargar</span>';
+    const h = (Date.now() - d.getTime()) / 3600000;
+    const cls = h < 12 ? 'fresh-ok' : h < 48 ? 'fresh-mid' : 'fresh-bad';
+    return `<span class="pill ${cls}">Stock ${haceTxt(ts)}</span>`;
+  }
+  function hace7dias() { return new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 19) + 'Z'; }
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'error' ? ' error' : '');
+    el.textContent = msg;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+  function parseDatos(n) {
+    if (!n.datos) return {};
+    if (typeof n.datos === 'object') return n.datos;
+    try { return JSON.parse(n.datos); } catch (e) { return {}; }
+  }
+  function todayKey() { const d = new Date().getDay(); return DIA_KEYS[d === 0 ? 6 : d - 1]; }
+  const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('pizarra_ma') : null;
+  function avisarCambio() { try { bc && bc.postMessage({ tipo:'update' }); } catch (e) {} }
+
+  // ── ESTADO ──────────────────────────────────────────────────────────
+  let empresaActual = '1';
+  let user = null, esAdmin = false, esCentral = false;
+  let pdvs = [], prods = [], asigs = [], misPdvs = [];
+  let pdvActual = null, tabActual = null;
+  let modalAbierto = false, arrastrando = false, pollTimer = null;
+  // sucursal
+  let sCards = [], sZ = 10, sSeq = 0, stockMap = {}, refMap = {};
+  // central
+  let cNotas = [], cEnvios = {}, cFiltro = { tipo:'', pdv:'', cerradas:false }, frescura = {};
+
+  function pdvNombre(id) { const p = pdvs.find(x => String(x.id) === String(id)); return p ? (p.nombre || p.name || id) : id; }
+  function prodsDePdv(pdvId) {
+    const ids = asigs.filter(a => String(a.pdv_id) === String(pdvId)).map(a => String(a.producto_id));
+    const base = ids.length ? prods.filter(p => ids.includes(String(p.id))) : prods;
+    return base.filter(p => p.gustos.length);
+  }
+
+  // ── INICIO ──────────────────────────────────────────────────────────
+  // index.html renueva la sesión cada 20 s; si pasan 10 min sin renovar, el panel está cerrado
+  const SES_VENCE_MS = 10 * 60 * 1000;
+  function leerSesion() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SES_KEY) || 'null');
+      if (!s || !s.username || !s.ts || Date.now() - s.ts > SES_VENCE_MS) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+  function bloquear(titulo, texto) {
+    clearInterval(pollTimer);
+    document.getElementById('modal-root').innerHTML = '';
+    if (document.querySelector('.blocker')) return;
+    const b = document.createElement('div');
+    b.className = 'blocker';
+    b.innerHTML = `<div class="box"><h2>${esc(titulo)}</h2><p>${esc(texto)}</p><button class="btn btn-acc" onclick="window.location.href='index.html'">Ir al sistema</button></div>`;
+    document.body.appendChild(b);
+  }
+
+  async function init() {
+    const ses = leerSesion();
+    if (!ses || !ses.username) { bloquear('Sesión no iniciada', 'Ingresá al sistema y abrí la pizarra desde el botón del panel.'); return; }
+    empresaActual = String(ses.empresa || '1');
+    try {
+      const r = await sbApi(`usuarios?username=eq.${encodeURIComponent(ses.username)}&select=username,role,display_name,perms,pdvs`);
+      if (!r || !r.length) { bloquear('Usuario no encontrado', 'Volvé a ingresar al sistema.'); return; }
+      const u = r[0];
+      user = {
+        username: u.username, role: u.role, displayName: u.display_name || u.username,
+        perms: typeof u.perms === 'string' ? JSON.parse(u.perms || '{}') : (u.perms || {}),
+        pdvs: typeof u.pdvs === 'string' ? JSON.parse(u.pdvs || '[]') : (u.pdvs || [])
+      };
+      const [pd, pr, gs, as] = await Promise.all([
+        sbApi(`pdvs?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`),
+        sbApi(`productos?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`),
+        sbApi(`gustos?select=id,producto_id,nombre,orden&order=orden.asc&limit=1000`),
+        sbApi(`asignaciones?empresa_id=eq.${empresaActual}&select=*`)
+      ]);
+      pdvs = pd || []; asigs = as || [];
+      prods = (pr || []).map(p => ({ ...p, nombre: p.nombre || p.name || '',
+        gustos: (gs || []).filter(g => String(g.producto_id) === String(p.id)).map(g => ({ id: g.id, nombre: g.nombre || g.name || '' })) }));
+    } catch (e) { bloquear('No se pudo conectar', e.message); return; }
+
+    esAdmin = user.role === 'admin';
+    misPdvs = (user.pdvs || []).map(String).filter(id => pdvs.some(p => String(p.id) === id));
+    esCentral = esAdmin || misPdvs.some(id => pdvs.find(p => String(p.id) === id)?.pizarra_ve_todas);
+    if (!misPdvs.length && !esCentral) { bloquear('Sin acceso a la pizarra', 'Tu usuario no tiene un punto de venta asignado.'); return; }
+    pdvActual = misPdvs[0] || null;
+
+    document.getElementById('user-badge').innerHTML = `<b>${esc(user.displayName)}</b>${pdvActual ? ' · ' + esc(pdvNombre(pdvActual)) : ''}`;
+    pintarSonido();
+    const tabs = [];
+    if (esCentral) tabs.push(['central', 'Pizarra central'], ['resumen', 'Resumen y cruce']);
+    if (misPdvs.length) tabs.push(['sucursal', esCentral ? 'Mi sucursal' : 'Mi pizarra']);
+    if (esAdmin) tabs.push(['config', 'Configuración']);
+    document.getElementById('tabs').innerHTML = tabs.map(([k, l]) => `<button class="tab" id="tab-${k}" onclick="irTab('${k}')">${l}</button>`).join('');
+    irTab(tabs[0][0]);
+    pollTimer = setInterval(poll, POLL_MS);
+    window.addEventListener('storage', e => { if (e.key === SES_KEY) chequearSesion(); });
+  }
+
+  function chequearSesion() {
+    const s = leerSesion();
+    if (!s || s.username !== user.username || String(s.empresa || '1') !== empresaActual) {
+      bloquear('Sesión cerrada', 'Se cerró o cambió la sesión en el sistema. Volvé a abrir la pizarra desde el panel.'); return false;
+    }
+    return true;
+  }
+
+  async function poll() {
+    if (!chequearSesion()) return;
+    if (modalAbierto || arrastrando) return;
+    try {
+      if (tabActual === 'central') await cargarCentral(true);
+      else if (tabActual === 'resumen') await cargarResumen();
+      else if (tabActual === 'sucursal') await cargarMisNotas();
+    } catch (e) { console.error('poll', e); }
+  }
+
+  function irTab(k) {
+    tabActual = k;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + k));
+    if (k === 'sucursal') renderSucursal();
+    if (k === 'central') cargarCentral();
+    if (k === 'resumen') cargarResumen();
+    if (k === 'config') renderConfig();
+  }
+
+  function pintarSonido() {
+    const on = localStorage.getItem(SONIDO_KEY) !== 'off';
+    document.getElementById('btn-sonido').textContent = on ? '🔔 Sonido' : '🔕 Silencio';
+  }
+  function toggleSonido() {
+    const on = localStorage.getItem(SONIDO_KEY) !== 'off';
+    localStorage.setItem(SONIDO_KEY, on ? 'off' : 'on');
+    pintarSonido();
+    toast(on ? 'Avisos sin sonido' : 'Avisos con sonido');
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  SUCURSAL
+  // ══════════════════════════════════════════════════════════════════
+  async function renderSucursal() {
+    const app = document.getElementById('app');
+    if (!pdvActual) { app.innerHTML = '<div class="empty">No tenés un punto de venta asignado.</div>'; return; }
+    sCards = [];
+    const selPdv = misPdvs.length > 1
+      ? `<select class="sel" onchange="cambiarPdv(this.value)">${misPdvs.map(id => `<option value="${esc(id)}" ${id === String(pdvActual) ? 'selected' : ''}>${esc(pdvNombre(id))}</option>`).join('')}</select>` : '';
+    const lista = prodsDePdv(pdvActual);
+    app.innerHTML = `
+      <div class="suc-top">
+        <h2>${esc(pdvNombre(pdvActual))}</h2>${selPdv}
+        <span id="suc-fresh"></span>
+        <div class="legend" style="margin-left:auto">
+          <span><span class="lg" style="background:var(--nec-bd)"></span>Necesito</span>
+          <span><span class="lg" style="background:var(--ten-bd)"></span>Tengo</span>
+          <span><span class="lg" style="background:var(--stk-bd)"></span>Stock</span>
+          <span><span class="lg" style="background:var(--avi-bd)"></span>Aviso</span>
+        </div>
+      </div>
+      <div class="suc-grid">
+        <aside class="mazo" id="mazo">
+          ${lista.map(p => `<div class="mazo-it" onclick="abrirTarjeta('${esc(p.id)}')"><span>${esc(p.nombre)}</span><span class="cnt" id="mz-${esc(p.id)}"></span></div>`).join('') || '<div class="empty" style="padding:10px">Sin productos asignados</div>'}
+          <div class="mazo-it nota" onclick="abrirNota()"><span>+ Nota libre</span><span>✎</span></div>
+        </aside>
+        <section class="sboard" id="sboard"><div class="empty" id="s-empty">Elegí una tarjeta de la izquierda</div></section>
+      </div>
+      <div class="suc-actions">
+        <span id="s-res" style="font-size:13px;color:var(--text-muted)"></span>
+        <button class="btn btn-acc" style="margin-left:auto" onclick="enviarPizarra(this)">Enviar pizarra</button>
+      </div>
+      <div class="sec-title">Mis notas <span style="font-size:12px;color:var(--text-muted);font-weight:400">abiertas y de los últimos 7 días</span></div>
+      <div id="misnotas"><div class="empty">Cargando…</div></div>`;
+    await Promise.all([cargarStockPdv(), cargarMisNotas()]);
+    resumenSucursal();
+  }
+
+  function cambiarPdv(id) {
+    if (sCards.length && !confirm('Tenés tarjetas abiertas sin enviar. ¿Cambiar de sucursal igual?')) { renderSucursal(); return; }
+    pdvActual = id;
+    document.getElementById('user-badge').innerHTML = `<b>${esc(user.displayName)}</b> · ${esc(pdvNombre(pdvActual))}`;
+    renderSucursal();
+  }
+
+  async function cargarStockPdv() {
+    stockMap = {}; refMap = {};
+    const [st, cfg] = await Promise.all([
+      sbApi(`stock?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&select=prod_id,gusto_id,cantidad,updated_at`).catch(() => []),
+      sbApi(`stock_config?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&dia=eq.${todayKey()}&select=prod_id,gusto_id,referencia`).catch(() => [])
+    ]);
+    let ult = null;
+    (st || []).forEach(r => {
+      stockMap[`${r.prod_id}_${r.gusto_id}`] = { cant: parseInt(r.cantidad) || 0, ts: r.updated_at };
+      const d = parseTs(r.updated_at); if (d && (!ult || d > ult)) ult = d;
+    });
+    (cfg || []).forEach(r => { if (r.referencia != null) refMap[`${r.prod_id}_${r.gusto_id}`] = parseInt(r.referencia) || 0; });
+    const f = document.getElementById('suc-fresh');
+    if (f) f.innerHTML = frescuraPill(ult ? ult.toISOString() : null);
+  }
+
+  function sugerido(tipo, prodId, gustoId) {
+    const k = `${prodId}_${gustoId}`;
+    if (!(k in refMap)) return null;
+    const actual = stockMap[k]?.cant ?? 0;
+    const v = tipo === 'necesito' ? refMap[k] - actual : actual - refMap[k];
+    return v > 0 ? v : null;
+  }
+
+  function posLibre() {
+    const n = sCards.length;
+    const board = document.getElementById('sboard');
+    const cols = Math.max(1, Math.floor((board.clientWidth - 12) / 250));
+    return [12 + (n % cols) * 250, 12 + Math.floor(n / cols) * 250];
+  }
+
+  function crearCardEl(clsTipo, inner) {
+    document.getElementById('s-empty')?.remove();
+    const el = document.createElement('div');
+    el.className = 'card ' + clsTipo;
+    const [x, y] = posLibre();
+    el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.zIndex = ++sZ;
+    el.innerHTML = inner;
+    document.getElementById('sboard').appendChild(el);
+    arrastrable(el, el.querySelector('.hd'), document.getElementById('sboard'));
+    return el;
+  }
+
+  function tipoLibre(prodId) {
+    for (const t of ['necesito', 'tengo', 'stock']) if (!sCards.some(c => c.kind === 'prod' && c.prodId === prodId && c.tipo === t)) return t;
+    return null;
+  }
+
+  function abrirTarjeta(prodId) {
+    const prod = prods.find(p => String(p.id) === String(prodId)); if (!prod) return;
+    const tipo = tipoLibre(String(prodId));
+    if (!tipo) { toast('Esa tarjeta ya está abierta en los tres tipos', 'error'); return; }
+    const id = 'c' + (++sSeq);
+    const el = crearCardEl(TIPOS[tipo].cls, `
+      <div class="hd"><span class="nm" title="${esc(prod.nombre)}">${esc(prod.nombre)}</span>
+        <select aria-label="Tipo de tarjeta">${['necesito', 'tengo', 'stock'].map(t => `<option value="${t}" ${t === tipo ? 'selected' : ''}>${TIPOS[t].label}</option>`).join('')}</select>
+        <button class="x" title="Cerrar" aria-label="Cerrar">✕</button></div>
+      <div class="rows"></div><div class="ft"></div>`);
+    const card = { id, kind: 'prod', prodId: String(prodId), tipo, el };
+    sCards.push(card);
+    const sel = el.querySelector('select');
+    sel.onchange = () => {
+      const nuevo = sel.value;
+      if (sCards.some(c => c !== card && c.kind === 'prod' && c.prodId === card.prodId && c.tipo === nuevo)) {
+        toast(`Ya tenés abierta ${prod.nombre} como ${TIPOS[nuevo].label}`, 'error'); sel.value = card.tipo; return;
+      }
+      card.tipo = nuevo; el.className = 'card ' + TIPOS[nuevo].cls; pintarFilas(card); resumenSucursal();
+    };
+    el.querySelector('.x').onclick = () => cerrarCard(card);
+    pintarFilas(card);
+    resumenSucursal();
+    el.querySelector('input')?.focus();
+  }
+
+  function pintarFilas(card) {
+    const prod = prods.find(p => String(p.id) === card.prodId);
+    const u = prod.unidad ? ` ${esc(prod.unidad)}` : '';
+    const rows = card.el.querySelector('.rows'), ft = card.el.querySelector('.ft');
+    rows.innerHTML = prod.gustos.map(g => {
+      const k = `${prod.id}_${g.id}`;
+      if (card.tipo === 'stock') {
+        const act = stockMap[k];
+        return `<div class="rw"><span class="g">${esc(g.nombre)}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" value="${act ? act.cant : ''}" placeholder="0"><span class="hint">${act ? 'antes ' + act.cant : 'sin dato'}</span></div>`;
+      }
+      const s = sugerido(card.tipo, prod.id, g.id);
+      return `<div class="rw"><span class="g">${esc(g.nombre)}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" placeholder="0"><span class="hint">${s != null ? `<span class="sug" data-s="${s}" title="Usar sugerido">sug. ${s}</span>` : ''}</span></div>`;
+    }).join('');
+    rows.querySelectorAll('.sug').forEach(sp => sp.onclick = () => { sp.closest('.rw').querySelector('input').value = sp.dataset.s; resumenSucursal(); });
+    rows.querySelectorAll('input').forEach(i => i.oninput = resumenSucursal);
+    if (card.tipo === 'stock') {
+      ft.innerHTML = `<span>Se guarda al enviar${u ? ' ·' + u : ''}</span>`;
+    } else {
+      const haySug = rows.querySelector('.sug');
+      ft.innerHTML = `<span>${u ? 'Unidad:' + u : ''}</span>${haySug ? '<button>Usar sugeridos</button>' : ''}`;
+      const b = ft.querySelector('button');
+      if (b) b.onclick = () => { rows.querySelectorAll('.sug').forEach(sp => sp.closest('.rw').querySelector('input').value = sp.dataset.s); resumenSucursal(); };
+    }
+  }
+
+  function abrirNota() {
+    const id = 'c' + (++sSeq);
+    const el = crearCardEl(TIPOS.aviso.cls, `
+      <div class="hd"><span class="nm">Nota</span>
+        <select aria-label="Tipo de nota">${['necesito', 'tengo', 'aviso'].map(t => `<option value="${t}" ${t === 'aviso' ? 'selected' : ''}>${TIPOS[t].label}</option>`).join('')}</select>
+        <button class="x" title="Cerrar" aria-label="Cerrar">✕</button></div>
+      <textarea placeholder="Escribí lo que necesites avisar"></textarea>`);
+    const card = { id, kind: 'nota', tipo: 'aviso', el };
+    sCards.push(card);
+    const sel = el.querySelector('select');
+    sel.onchange = () => { card.tipo = sel.value; el.className = 'card ' + TIPOS[sel.value].cls; resumenSucursal(); };
+    el.querySelector('.x').onclick = () => cerrarCard(card);
+    el.querySelector('textarea').oninput = resumenSucursal;
+    el.querySelector('textarea').focus();
+    resumenSucursal();
+  }
+
+  function cerrarCard(card) {
+    card.el.remove();
+    sCards = sCards.filter(c => c !== card);
+    if (!sCards.length) document.getElementById('sboard').innerHTML = '<div class="empty" id="s-empty">Elegí una tarjeta de la izquierda</div>';
+    resumenSucursal();
+  }
+
+  function itemsDeCard(card) {
+    const prod = prods.find(p => String(p.id) === card.prodId);
+    const items = [];
+    card.el.querySelectorAll('.rows input').forEach(i => {
+      if (i.value === '') return;
+      const v = parseInt(i.value);
+      if (isNaN(v) || v < 0) return;
+      if (card.tipo !== 'stock' && v === 0) return;
+      const g = prod.gustos.find(x => String(x.id) === i.dataset.g);
+      items.push({ prod: prod.nombre, gusto: g ? g.nombre : '', cant: String(v), obs: '', obsProd: '', prod_id: String(prod.id), gusto_id: String(i.dataset.g), unidad: prod.unidad || '' });
+    });
+    return items;
+  }
+
+  function resumenSucursal() {
+    const el = document.getElementById('s-res'); if (!el) return;
+    let nec = 0, ten = 0, stk = 0, notas = 0;
+    sCards.forEach(c => {
+      if (c.kind === 'nota') { if (c.el.querySelector('textarea').value.trim()) notas++; return; }
+      const n = itemsDeCard(c).length;
+      if (c.tipo === 'necesito') nec += n; else if (c.tipo === 'tengo') ten += n; else stk += n;
+    });
+    el.textContent = `${sCards.length} tarjetas abiertas · ${nec} necesito · ${ten} tengo · ${stk} stock · ${notas} notas`;
+    prodsDePdv(pdvActual).forEach(p => {
+      const m = document.getElementById('mz-' + p.id);
+      if (m) { const n = sCards.filter(c => c.kind === 'prod' && c.prodId === String(p.id)).length; m.textContent = n ? '● ' + n : ''; }
+    });
+  }
+
+  async function setStockPizarra(prodId, gustoId, cantidad) {
+    // Misma lógica que setStock() de index.html (DELETE + INSERT) + historial con usuario y origen
+    const eId = String(empresaActual), pdvStr = String(pdvActual), cant = parseInt(cantidad) || 0;
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+    await fetch(`${SUPABASE_URL}/rest/v1/stock?empresa_id=eq.${eId}&pdv_id=eq.${pdvStr}&prod_id=eq.${prodId}&gusto_id=eq.${gustoId}`, { method: 'DELETE', headers: H });
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/stock`, {
+      method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ empresa_id: eId, pdv_id: pdvStr, prod_id: String(prodId), gusto_id: String(gustoId), cantidad: cant, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    try {
+      const pdv = pdvs.find(p => String(p.id) === pdvStr || String(p.orden) === pdvStr);
+      await sbApi('stock_historial', { method: 'POST', body: JSON.stringify({
+        empresa_id: eId, pdv_id: pdv?.id || pdvStr, prod_id: String(prodId), gusto_id: String(gustoId),
+        cantidad: cant, fecha: fechaHoyAR(), username: user.username, origen: 'pizarra' }) });
+    } catch (e) { /* no crítico, igual que index */ }
+  }
+
+  async function enviarPizarra(btn) {
+    const filas = [], stockItems = [];
+    for (const c of sCards) {
+      if (c.kind === 'nota') {
+        const t = c.el.querySelector('textarea').value.trim();
+        if (t) filas.push({ tipo: c.tipo, items: [], texto: t });
+      } else if (c.tipo === 'stock') {
+        itemsDeCard(c).forEach(it => stockItems.push(it));
+      } else {
+        const items = itemsDeCard(c);
+        if (items.length) filas.push({ tipo: c.tipo, items, texto: '' });
+      }
+    }
+    if (!filas.length && !stockItems.length) { toast('Cargá al menos una cantidad o escribí una nota', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    try {
+      const fecha = fechaHoyAR(), hora = horaAR(), pdvN = pdvNombre(pdvActual);
+      if (filas.length) {
+        const body = filas.map(f => ({
+          empresa_id: String(empresaActual), pdv_id: String(pdvActual), pdv_nombre: pdvN, fecha, archivado: false,
+          tipo: f.tipo, estado: 'nueva', usuario: user.username,
+          datos: JSON.stringify({ pdv_id: String(pdvActual), pdv_nombre: pdvN, fecha, hora, usuario: user.username, items: f.items, texto: f.texto, origen: 'pizarra' })
+        }));
+        await sbApi('pedidos_envio', { method: 'POST', body: JSON.stringify(body) });
+      }
+      let errStock = 0;
+      for (const it of stockItems) { try { await setStockPizarra(it.prod_id, it.gusto_id, it.cant); } catch (e) { errStock++; console.error(e); } }
+      const partes = [];
+      if (filas.length) partes.push(`${filas.length} ${filas.length === 1 ? 'nota enviada' : 'notas enviadas'}`);
+      if (stockItems.length) partes.push(`stock de ${stockItems.length - errStock} gustos guardado`);
+      toast('✅ ' + partes.join(' y '));
+      if (errStock) toast(`⚠️ No se pudo guardar el stock de ${errStock} gustos`, 'error');
+      avisarCambio();
+      await renderSucursal();
+    } catch (e) {
+      toast('Error al enviar: ' + e.message, 'error');
+      btn.disabled = false; btn.textContent = 'Enviar pizarra';
+    }
+  }
+
+  // ── Mis notas (sucursal) ──
+  async function cargarMisNotas() {
+    const cont = document.getElementById('misnotas'); if (!cont || !pdvActual) return;
+    const notas = await sbApi(`pedidos_envio?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&or=(estado.in.(nueva,vista,en_camino),created_at.gte.${hace7dias()})&order=created_at.desc&select=*`) || [];
+    const ids = notas.map(n => n.id);
+    const envios = ids.length ? (await sbApi(`pedidos?empresa_id=eq.${empresaActual}&nota_id=in.(${ids.join(',')})&select=*`) || []) : [];
+    const porNota = {}; envios.forEach(e => (porNota[e.nota_id] = porNota[e.nota_id] || []).push(e));
+    if (!notas.length) { cont.innerHTML = '<div class="empty">Todavía no enviaste notas.</div>'; return; }
+    const conNovedad = notas.filter(n => n.novedad_sucursal).map(n => n.id);
+    cont.innerHTML = notas.map(n => {
+      const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
+      const env = porNota[n.id] || [];
+      const items = (d.items || []).map(i => `<div class="it">• ${esc(i.prod)} ${esc(i.gusto)} · <b>${esc(i.cant)}</b>${i.unidad ? ' ' + esc(i.unidad) : ''}</div>`).join('');
+      const tablaEnv = env.length ? `<table><tr><th>Enviado</th><th>Cant.</th><th>Recibido</th></tr>${env.map(e => {
+        const it = (d.items || []).find(i => String(i.prod_id) === String(e.prod_id) && String(i.gusto_id) === String(e.gusto_id));
+        const nom = it ? `${it.prod} ${it.gusto}` : nombreProdGusto(e.prod_id, e.gusto_id);
+        return `<tr><td>${esc(nom)}</td><td class="num">${esc(e.cantidad)}</td><td class="num">${e.confirmado ? esc(e.cantidad_recibida) : '—'}</td></tr>`;
+      }).join('')}</table>` : '';
+      const puedeRecibir = env.length && n.estado !== 'recibida' && env.some(e => !e.confirmado);
+      return `<div class="mn ${t.cls}">
+        <div class="top"><b>${t.label}</b>${etiquetaFecha(n.created_at)}<span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}</span>
+          ${n.visto_por ? `<span style="font-size:12px;opacity:.8">visto por ${esc(n.visto_por)}</span>` : ''}
+          ${n.novedad_sucursal ? '<span class="nuevo-tag">Novedad</span>' : ''}
+          ${puedeRecibir ? `<button class="btn btn-sm btn-acc" style="margin-left:auto" onclick="abrirRecibir('${esc(n.id)}')">Recibido</button>` : ''}</div>
+        ${items}${d.texto ? `<div class="it" style="white-space:pre-wrap">${esc(d.texto)}</div>` : ''}
+        ${n.respuesta ? `<div class="resp">💬 ${esc(n.respuesta)}</div>` : ''}${tablaEnv}
+      </div>`;
+    }).join('');
+    window._misNotas = { notas, porNota };
+    if (conNovedad.length) {
+      sbApi(`pedidos_envio?id=in.(${conNovedad.join(',')})`, { method: 'PATCH', body: JSON.stringify({ novedad_sucursal: false }) })
+        .then(avisarCambio).catch(() => {});
+    }
+  }
+
+  function nombreProdGusto(prodId, gustoId) {
+    const p = prods.find(x => String(x.id) === String(prodId));
+    const g = p?.gustos.find(x => String(x.id) === String(gustoId));
+    return `${p ? p.nombre : 'Producto'} ${g ? g.nombre : ''}`;
+  }
+
+  function abrirRecibir(notaId) {
+    const { notas, porNota } = window._misNotas || {};
+    const n = (notas || []).find(x => String(x.id) === String(notaId)); if (!n) return;
+    const env = (porNota[n.id] || []);
+    abrirModal(`
+      <h3>Confirmar lo recibido</h3>
+      <div class="sub">Si te llegó otra cantidad, corregila antes de confirmar.</div>
+      <table><tr><th>Producto</th><th>Enviado</th><th>Recibido</th></tr>
+      ${env.map(e => `<tr><td>${esc(nombreProdGusto(e.prod_id, e.gusto_id))}</td><td class="num">${esc(e.cantidad)}</td>
+        <td><input class="inp" type="number" min="0" step="1" data-pid="${esc(e.id)}" value="${e.confirmado ? esc(e.cantidad_recibida) : esc(e.cantidad)}" ${e.confirmado ? 'disabled' : ''}></td></tr>`).join('')}
+      </table>
+      <div class="acts"><button class="btn" onclick="cerrarModal()">Cancelar</button><button class="btn btn-acc" id="btn-conf-rec">Confirmar recibido</button></div>`);
+    document.getElementById('btn-conf-rec').onclick = async (ev) => {
+      const b = ev.target; b.disabled = true;
+      try {
+        const ins = [...document.querySelectorAll('#modal-root input[data-pid]:not([disabled])')];
+        for (const i of ins) {
+          const v = parseInt(i.value);
+          if (isNaN(v) || v < 0) { toast('Revisá las cantidades', 'error'); b.disabled = false; return; }
+        }
+        for (const i of ins) {
+          await sbApi(`pedidos?id=eq.${i.dataset.pid}`, { method: 'PATCH', body: JSON.stringify({ confirmado: true, cantidad_recibida: parseInt(i.value), username_op: user.username }) });
+        }
+        await sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ estado: 'recibida', recibida_por: user.username, recibida_at: new Date().toISOString() }) });
+        cerrarModal(); toast('📥 Recepción confirmada'); avisarCambio(); cargarMisNotas();
+      } catch (e) { toast('Error: ' + e.message, 'error'); b.disabled = false; }
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  CENTRAL
+  // ══════════════════════════════════════════════════════════════════
+  async function cargarDatosCentral() {
+    const notas = await sbApi(`pedidos_envio?empresa_id=eq.${empresaActual}&archivado=is.false&or=(estado.in.(nueva,vista,en_camino),created_at.gte.${hace7dias()})&order=created_at.asc&select=*`) || [];
+    const ids = notas.map(n => n.id);
+    const envios = ids.length ? (await sbApi(`pedidos?empresa_id=eq.${empresaActual}&nota_id=in.(${ids.join(',')})&select=*`) || []) : [];
+    cEnvios = {}; envios.forEach(e => (cEnvios[e.nota_id] = cEnvios[e.nota_id] || []).push(e));
+    cNotas = notas;
+    const st = await sbApi(`stock?empresa_id=eq.${empresaActual}&select=pdv_id,updated_at`).catch(() => []) || [];
+    frescura = {};
+    st.forEach(r => { const d = parseTs(r.updated_at); const k = String(r.pdv_id); if (d && (!frescura[k] || d > frescura[k])) frescura[k] = d; });
+  }
+
+  async function cargarCentral(silencioso) {
+    const app = document.getElementById('app');
+    if (!silencioso) app.innerHTML = '<div class="empty">Cargando…</div>';
+    try { await cargarDatosCentral(); } catch (e) { app.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`; return; }
+    if (tabActual !== 'central') return;
+    renderCentral();
+  }
+
+  function notasFiltradas() {
+    return cNotas.filter(n =>
+      (!cFiltro.tipo || n.tipo === cFiltro.tipo) &&
+      (!cFiltro.pdv || String(n.pdv_id) === cFiltro.pdv) &&
+      (cFiltro.cerradas || ABIERTOS.includes(n.estado)));
+  }
+
+  function renderCentral() {
+    const app = document.getElementById('app');
+    const scroll = document.getElementById('cboard')?.scrollTop || 0;
+    const nNuevas = cNotas.filter(n => n.estado === 'nueva').length;
+    app.innerHTML = `
+      <div class="c-bar">
+        <select class="sel" onchange="cFiltro.tipo=this.value;renderCentral()">
+          <option value="">Todos los tipos</option>${['necesito', 'tengo', 'aviso'].map(t => `<option value="${t}" ${cFiltro.tipo === t ? 'selected' : ''}>${TIPOS[t].label}</option>`).join('')}</select>
+        <select class="sel" onchange="cFiltro.pdv=this.value;renderCentral()">
+          <option value="">Todas las sucursales</option>${pdvs.map(p => `<option value="${esc(p.id)}" ${cFiltro.pdv === String(p.id) ? 'selected' : ''}>${esc(p.nombre || p.name)}</option>`).join('')}</select>
+        <label style="font-size:13px;color:var(--text-muted);display:flex;gap:6px;align-items:center"><input type="checkbox" ${cFiltro.cerradas ? 'checked' : ''} onchange="cFiltro.cerradas=this.checked;renderCentral()"> Ver resueltas (7 días)</label>
+        <button class="btn btn-sm" onclick="ordenarCentral()">Ordenar</button>
+        <span style="font-size:13px;color:var(--text-muted)">${nNuevas ? `<b style="color:var(--accent)">${nNuevas} sin ver</b> · ` : ''}${notasFiltradas().length} notas</span>
+        <div class="legend" style="margin-left:auto">
+          <span><span class="lg" style="background:var(--nec-bd)"></span>Necesito</span><span><span class="lg" style="background:var(--ten-bd)"></span>Tengo</span><span><span class="lg" style="background:var(--avi-bd)"></span>Aviso</span>
+          <span class="pill f-hoy">Hoy</span><span class="pill f-ayer">Ayer</span><span class="pill f-vie">2+ días</span>
+        </div>
+      </div>
+      <div class="fresh-strip">${pdvs.map(p => `<span class="fs">${esc(p.nombre || p.name)} ${frescuraPill(frescura[String(p.id)] ? frescura[String(p.id)].toISOString() : null)}</span>`).join('')}</div>
+      <div class="cboard" id="cboard"></div>`;
+    const board = document.getElementById('cboard');
+    const lista = notasFiltradas();
+    if (!lista.length) { board.innerHTML = '<div class="empty">No hay notas para mostrar.</div>'; return; }
+    const cols = Math.max(1, Math.floor((board.clientWidth - 14) / 256));
+    let auto = 0, maxY = 0;
+    lista.forEach(n => {
+      let x = n.pos_x, y = n.pos_y;
+      if (x == null || y == null) { x = 14 + (auto % cols) * 256; y = 14 + Math.floor(auto / cols) * 210; auto++; }
+      const el = document.createElement('div');
+      el.className = `pit ${(TIPOS[n.tipo] || TIPOS.necesito).cls}${n.estado === 'nueva' ? ' nueva' : ''}`;
+      el.style.left = x + 'px'; el.style.top = y + 'px';
+      el.innerHTML = htmlPostit(n);
+      board.appendChild(el);
+      maxY = Math.max(maxY, y + el.offsetHeight + 20);
+      arrastrable(el, el, board, (nx, ny, movido) => {
+        if (movido) { n.pos_x = nx; n.pos_y = ny; sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: nx, pos_y: ny }) }).catch(() => {}); }
+        else abrirDetalle(n.id);
+      }, true);
+      const bv = el.querySelector('[data-visto]');
+      if (bv) bv.addEventListener('pointerdown', e => e.stopPropagation());
+      if (bv) bv.onclick = (e) => { e.stopPropagation(); marcarVisto(n.id); };
+    });
+    board.style.height = Math.max(560, maxY) + 'px';
+    board.scrollTop = scroll;
+  }
+
+  function htmlPostit(n) {
+    const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
+    const items = d.items || [];
+    const lineas = items.slice(0, 7).map(i => `<div class="it">• ${esc(i.prod)} ${esc(i.gusto)} · <b>${esc(i.cant)}</b></div>`).join('')
+      + (items.length > 7 ? `<div class="it">+ ${items.length - 7} más…</div>` : '');
+    const texto = d.texto ? `<div class="tx">${esc(d.texto.length > 160 ? d.texto.slice(0, 160) + '…' : d.texto)}</div>` : '';
+    const env = cEnvios[n.id] || [];
+    return `<div class="top"><b>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))}</b>${etiquetaFecha(n.created_at)}</div>
+      <div style="font-size:11px;opacity:.85;margin-bottom:4px">${t.label}${n.usuario ? ' · ' + esc(n.usuario) : ''}</div>
+      ${lineas}${texto}${n.respuesta ? `<div class="resp">💬 ${esc(n.respuesta)}</div>` : ''}
+      <div class="ft"><span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}${env.length ? ' · ' + env.length + ' env.' : ''}</span>
+        ${n.estado === 'nueva' ? '<button data-visto>Visto</button>' : '<span style="font-size:11px;opacity:.7">clic para abrir</span>'}</div>`;
+  }
+
+  async function marcarVisto(id) {
+    try {
+      await sbApi(`pedidos_envio?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ estado: 'vista', visto_por: user.username, visto_at: new Date().toISOString(), novedad_sucursal: true }) });
+      const n = cNotas.find(x => String(x.id) === String(id)); if (n) { n.estado = 'vista'; n.visto_por = user.username; }
+      avisarCambio(); renderCentral();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function ordenarCentral() {
+    const lista = notasFiltradas(); if (!lista.length) return;
+    const board = document.getElementById('cboard');
+    const cols = Math.max(1, Math.floor((board.clientWidth - 14) / 256));
+    const orden = [...lista].sort((a, b) => String(a.pdv_nombre || '').localeCompare(String(b.pdv_nombre || '')) || (parseTs(a.created_at) - parseTs(b.created_at)));
+    orden.forEach((n, i) => { n.pos_x = 14 + (i % cols) * 256; n.pos_y = 14 + Math.floor(i / cols) * 210; });
+    renderCentral();
+    await Promise.all(orden.map(n => sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: n.pos_x, pos_y: n.pos_y }) }).catch(() => {})));
+    toast('Pizarra ordenada por sucursal');
+  }
+
+  function abrirDetalle(id) {
+    const n = cNotas.find(x => String(x.id) === String(id)); if (!n) return;
+    const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
+    const items = d.items || [];
+    const env = cEnvios[n.id] || [];
+    const abierta = ABIERTOS.includes(n.estado);
+    const puedeEnviar = n.tipo === 'necesito' && items.length && !env.length && abierta;
+    const tabla = items.length ? `<table><tr><th>Producto</th><th>Pidió</th>${puedeEnviar ? '<th>Envío</th><th></th>' : ''}${env.length ? '<th>Enviado</th><th>Recibido</th>' : ''}</tr>
+      ${items.map((i, ix) => {
+        const e = env.find(x => String(x.prod_id) === String(i.prod_id) && String(x.gusto_id) === String(i.gusto_id));
+        return `<tr><td>${esc(i.prod)} ${esc(i.gusto)}</td><td class="num">${esc(i.cant)}${i.unidad ? ' ' + esc(i.unidad) : ''}</td>
+          ${puedeEnviar ? `<td><input class="inp" type="number" min="0" step="1" data-ix="${ix}" placeholder="—" oninput="difEnvio(this,${parseInt(i.cant) || 0})"></td><td class="dcell"></td>` : ''}
+          ${env.length ? `<td class="num">${e ? esc(e.cantidad) : '—'}</td><td class="num">${e && e.confirmado ? esc(e.cantidad_recibida) + (parseInt(e.cantidad_recibida) !== parseInt(e.cantidad) ? ` <span class="dif">(${parseInt(e.cantidad_recibida) - parseInt(e.cantidad)})</span>` : '') : '—'}</td>` : ''}</tr>`;
+      }).join('')}</table>` : '';
+    const linea = (lbl, quien, cuando) => quien ? `<div>${lbl}: <b>${esc(quien)}</b>${cuando ? ' · ' + esc(parseTs(cuando)?.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) || '') : ''}</div>` : '';
+    abrirModal(`
+      <h3>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))} · ${t.label}</h3>
+      <div class="sub">${etiquetaFecha(n.created_at)} <span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}</span> ${n.usuario ? '· enviada por ' + esc(n.usuario) : ''}</div>
+      ${tabla}
+      ${d.texto ? `<div style="white-space:pre-wrap;font-size:13px;background:var(--surface2);border-radius:8px;padding:8px 10px;margin:8px 0">${esc(d.texto)}</div>` : ''}
+      ${puedeEnviar ? '<div style="font-size:12px;color:var(--text-muted)">La columna Envío es opcional. Si la completás, se registra el envío y la sucursal confirma lo recibido.</div>' : ''}
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">
+        ${linea('Vista por', n.visto_por, n.visto_at)}${linea('Respondida por', n.respondido_por, n.respondido_at)}${linea('Resuelta por', n.resuelta_por, n.resuelta_at)}${linea('Recibida por', n.recibida_por, n.recibida_at)}
+      </div>
+      <textarea id="m-resp" placeholder="Respuesta para la sucursal (opcional)">${esc(n.respuesta || '')}</textarea>
+      <div class="acts">
+        <button class="btn" onclick="cerrarModal()">Cerrar</button>
+        ${abierta ? `<button class="btn" onclick="accionNota('${esc(n.id)}','responder',this)">Guardar respuesta</button>` : ''}
+        ${abierta && n.tipo === 'necesito' && n.estado !== 'en_camino' ? `<button class="btn" onclick="accionNota('${esc(n.id)}','en_camino',this)">En camino</button>` : ''}
+        ${abierta ? `<button class="btn btn-acc" onclick="accionNota('${esc(n.id)}','resuelta',this)">Resuelta</button>` : ''}
+      </div>`);
+  }
+
+  function difEnvio(inp, pidio) {
+    const cell = inp.closest('tr').querySelector('.dcell');
+    if (inp.value === '') { cell.innerHTML = ''; return; }
+    const v = parseInt(inp.value) || 0;
+    cell.innerHTML = v === pidio ? '<span class="ok">completo</span>' : `<span class="dif">${v - pidio > 0 ? '+' : ''}${v - pidio}</span>`;
+  }
+
+  async function accionNota(id, accion, btn) {
+    const n = cNotas.find(x => String(x.id) === String(id)); if (!n) return;
+    const d = parseDatos(n), items = d.items || [];
+    const resp = document.getElementById('m-resp').value.trim();
+    const ahora = new Date().toISOString();
+    const patch = { novedad_sucursal: true };
+    if (resp !== (n.respuesta || '')) Object.assign(patch, { respuesta: resp || null, respondido_por: user.username, respondido_at: ahora });
+    if (n.estado === 'nueva') Object.assign(patch, { estado: 'vista', visto_por: user.username, visto_at: ahora });
+    if (accion === 'en_camino') patch.estado = 'en_camino';
+    if (accion === 'resuelta') Object.assign(patch, { estado: 'resuelta', resuelta_por: user.username, resuelta_at: ahora });
+    // Envío (opcional) → tabla pedidos, igual que "Pedido por sucursal"
+    const envios = [];
+    let invalido = false;
+    document.querySelectorAll('#modal-root input[data-ix]').forEach(i => {
+      if (i.value === '') return;
+      const v = parseInt(i.value);
+      if (isNaN(v) || v < 0) { invalido = true; return; }
+      if (v === 0) return;
+      const it = items[parseInt(i.dataset.ix)];
+      if (!it || !it.prod_id || !it.gusto_id) return;
+      envios.push({ empresa_id: String(empresaActual), pdv_id: String(n.pdv_id), prod_id: String(it.prod_id), gusto_id: String(it.gusto_id),
+        cantidad: v, fecha_pedido: n.fecha || fechaHoyAR(), fecha_envio: fechaHoyAR(), estado: 'enviado', username_admin: user.username, nota_id: String(n.id) });
+    });
+    if (invalido) { toast('Revisá las cantidades de envío', 'error'); return; }
+    if (envios.length && accion === 'responder') patch.estado = 'en_camino';
+    btn.disabled = true;
+    try {
+      if (envios.length) await sbApi('pedidos', { method: 'POST', body: JSON.stringify(envios) });
+      await sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+      cerrarModal();
+      toast(accion === 'resuelta' ? '✅ Nota resuelta' : accion === 'en_camino' || envios.length ? '🚚 Marcada en camino' : '💬 Respuesta guardada');
+      avisarCambio();
+      await cargarCentral(true);
+    } catch (e) { toast('Error: ' + e.message, 'error'); btn.disabled = false; }
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  RESUMEN Y CRUCE
+  // ══════════════════════════════════════════════════════════════════
+  async function cargarResumen() {
+    const app = document.getElementById('app');
+    if (!document.getElementById('resumen-wrap')) app.innerHTML = '<div class="empty">Cargando…</div>';
+    try { await cargarDatosCentral(); } catch (e) { app.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`; return; }
+    if (tabActual !== 'resumen') return;
+    const pend = cNotas.filter(n => n.estado === 'nueva' || n.estado === 'vista');
+    const agg = (tipo) => {
+      const m = {};
+      pend.filter(n => n.tipo === tipo).forEach(n => (parseDatos(n).items || []).forEach(i => {
+        const k = `${i.prod_id || i.prod}_${i.gusto_id || i.gusto}`;
+        if (!m[k]) m[k] = { prod: i.prod, gusto: i.gusto, unidad: i.unidad || '', total: 0, por: {} };
+        const c = parseInt(i.cant) || 0;
+        m[k].total += c;
+        const pn = n.pdv_nombre || pdvNombre(n.pdv_id);
+        m[k].por[pn] = (m[k].por[pn] || 0) + c;
+      }));
+      return m;
+    };
+    const nec = agg('necesito'), ten = agg('tengo');
+    const filasNec = Object.values(nec).sort((a, b) => (a.prod + a.gusto).localeCompare(b.prod + b.gusto));
+    const cruces = [];
+    Object.entries(nec).forEach(([k, v]) => {
+      if (!ten[k]) return;
+      Object.entries(v.por).forEach(([pN, cN]) => Object.entries(ten[k].por).forEach(([pT, cT]) => {
+        if (pN !== pT) cruces.push({ prod: v.prod, gusto: v.gusto, pN, cN, pT, cT });
+      }));
+    });
+    const hoy = Date.now();
+    app.innerHTML = `<div id="resumen-wrap" class="grid2">
+      <div class="panel"><h3>Lo que piden las sucursales <span style="font-size:12px;color:var(--text-muted);font-weight:400">· notas nuevas o vistas</span></h3>
+        ${filasNec.length ? `<table class="tbl"><tr><th>Producto</th><th>Total</th><th>Detalle</th></tr>
+          ${filasNec.map(f => `<tr><td>${esc(f.prod)} ${esc(f.gusto)}</td><td class="num"><b>${f.total}</b>${f.unidad ? ' ' + esc(f.unidad) : ''}</td><td style="font-size:12px;color:var(--text-muted)">${Object.entries(f.por).map(([p, c]) => `${esc(p)} ${c}`).join(' · ')}</td></tr>`).join('')}
+        </table>` : '<div class="empty" style="padding:16px">No hay pedidos pendientes.</div>'}
+      </div>
+      <div class="panel"><h3>Cruce: necesita ↔ tiene</h3>
+        ${cruces.length ? `<table class="tbl"><tr><th>Producto</th><th>Necesita</th><th>Tiene</th></tr>
+          ${cruces.map(c => `<tr><td>${esc(c.prod)} ${esc(c.gusto)}</td><td><span style="color:var(--nec-tx)">${esc(c.pN)}</span> <span class="num">${c.cN}</span></td><td><span style="color:var(--ten-tx)">${esc(c.pT)}</span> <span class="num">${c.cT}</span></td></tr>`).join('')}
+        </table>` : '<div class="empty" style="padding:16px">No hay coincidencias entre lo que una sucursal necesita y otra tiene.</div>'}
+      </div>
+      <div class="panel"><h3>Stock por sucursal</h3>
+        <table class="tbl"><tr><th>Sucursal</th><th>Última carga</th></tr>
+          ${[...pdvs].sort((a, b) => (frescura[String(a.id)]?.getTime() || 0) - (frescura[String(b.id)]?.getTime() || 0)).map(p => {
+            const f = frescura[String(p.id)];
+            return `<tr><td>${esc(p.nombre || p.name)}</td><td>${frescuraPill(f ? f.toISOString() : null)}</td></tr>`;
+          }).join('')}
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  CONFIGURACIÓN (admin)
+  // ══════════════════════════════════════════════════════════════════
+  function renderConfig() {
+    document.getElementById('app').innerHTML = `<div class="panel" style="max-width:560px">
+      <h3>Puntos de venta que ven todas las pizarras</h3>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Cualquier operador que trabaje en un punto de venta tildado ve la pizarra central, puede marcar visto, responder, registrar envíos y resolver.</div>
+      <table class="tbl">${pdvs.map(p => `<tr><td>${esc(p.nombre || p.name)}</td>
+        <td style="text-align:right"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${p.pizarra_ve_todas ? 'checked' : ''} onchange="setVeTodas('${esc(p.id)}',this)"> Ve todas</label></td></tr>`).join('')}
+      </table></div>`;
+  }
+  async function setVeTodas(id, chk) {
+    try {
+      await sbApi(`pdvs?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ pizarra_ve_todas: chk.checked }) });
+      const p = pdvs.find(x => String(x.id) === String(id)); if (p) p.pizarra_ve_todas = chk.checked;
+      toast('Guardado');
+    } catch (e) { chk.checked = !chk.checked; toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  ARRASTRE / MODAL
+  // ══════════════════════════════════════════════════════════════════
+  function arrastrable(el, handle, board, onEnd, clicEsAccion) {
+    handle.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      if (e.target.closest('button,select,input,textarea')) return;
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      el.style.zIndex = ++sZ;
+      const sx = e.clientX, sy = e.clientY, ox = el.offsetLeft, oy = el.offsetTop;
+      let movido = false;
+      arrastrando = true;
+      const mv = ev => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (!movido && Math.abs(dx) + Math.abs(dy) < 5) return;
+        movido = true;
+        el.style.left = Math.max(0, Math.min(board.scrollWidth - el.offsetWidth, ox + dx)) + 'px';
+        el.style.top = Math.max(0, oy + dy) + 'px';
+      };
+      const up = () => {
+        handle.removeEventListener('pointermove', mv);
+        handle.removeEventListener('pointerup', up);
+        handle.removeEventListener('pointercancel', up);
+        arrastrando = false;
+        if (onEnd) onEnd(Math.round(el.offsetLeft), Math.round(el.offsetTop), movido);
+      };
+      handle.addEventListener('pointermove', mv);
+      handle.addEventListener('pointerup', up);
+      handle.addEventListener('pointercancel', up);
+    });
+  }
+
+  function abrirModal(html) {
+    modalAbierto = true;
+    document.getElementById('modal-root').innerHTML = `<div class="modal-bg" onclick="if(event.target===this)cerrarModal()"><div class="modal">${html}</div></div>`;
+  }
+  function cerrarModal() { modalAbierto = false; document.getElementById('modal-root').innerHTML = ''; }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalAbierto) cerrarModal(); });
+
+  init();
+</script>
+</body>
+</html>

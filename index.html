@@ -314,6 +314,7 @@
       <span class="user-badge" id="user-badge"></span>
       <button id="btn-sesiones-admin" onclick="verSesionesActivas()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Ver sesiones activas">📡 Sesiones</button>
       <button id="btn-proveedores-link" onclick="window.open('proveedores.html','_blank')" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir módulo de Proveedores">🚚 Proveedores</button>
+      <button id="btn-pizarra-link" onclick="abrirPizarra()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir la pizarra de mercadería">🧾 Pizarra<span id="pizarra-badge" style="display:none;background:#ff5a5a;color:#fff;font-size:11px;font-weight:700;border-radius:9px;padding:1px 6px;margin-left:6px;font-family:var(--mono);"></span></button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </header>
@@ -2921,7 +2922,95 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
   }
 
+  // ── PIZARRA (módulo pizarra.html) ────────────────────────────────────
+  // currentUser vive solo en memoria: se deja en localStorage lo mínimo para que
+  // la ventana de la pizarra sepa quién está logueado. Se renueva cada 20 s
+  // (la pizarra la da por vencida a los 10 min) y se borra al cerrar sesión.
+  let _pizarraInterval = null, _pizarraUltimo = null, _pizarraWin = null, _pizarraBC = null;
+  function guardarSesionPizarra() {
+    if (!currentUser) return;
+    try { localStorage.setItem('ma_pizarra_sesion', JSON.stringify({ username: currentUser.username, empresa: String(empresaActual), ts: Date.now() })); } catch(e) {}
+  }
+  function abrirPizarra() {
+    guardarSesionPizarra();
+    try {
+      // Si ya hay una ventana "pizarra_ma" abierta, la reutiliza sin recargarla
+      // (salvo que esté bloqueada por sesión vencida o cambio de empresa)
+      const w = (_pizarraWin && !_pizarraWin.closed) ? _pizarraWin : window.open('', 'pizarra_ma');
+      if (!w) { toast('El navegador bloqueó la ventana. Permití ventanas emergentes para este sitio.','error'); return; }
+      let enBlanco = true, bloqueada = false;
+      try {
+        enBlanco = !w.location.href || w.location.href === 'about:blank';
+        bloqueada = !enBlanco && !!w.document.querySelector('.blocker');
+      } catch(e) {}
+      if (enBlanco) w.location.href = 'pizarra.html';
+      else if (bloqueada) w.location.reload();
+      _pizarraWin = w;
+      w.focus();
+    } catch(e) { window.open('pizarra.html', 'pizarra_ma'); }
+  }
+  async function pizarraEsCentral() {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    const mis = (currentUser.pdvs||[]).map(String);
+    if (!mis.length) return false;
+    const pdvs = await getPdv();
+    return pdvs.some(p => mis.includes(String(p.id)) && p.pizarra_ve_todas);
+  }
+  async function pizarraContar(silencioso) {
+    if (!currentUser) return;
+    guardarSesionPizarra();
+    try {
+      const mis = (currentUser.pdvs||[]).map(String);
+      const central = await pizarraEsCentral();
+      let total = 0; const partes = [];
+      if (central) {
+        const r = await sbApi(`pedidos_envio?empresa_id=eq.${empresaActual}&estado=eq.nueva&archivado=is.false&select=id`) || [];
+        total += r.length;
+        if (r.length) partes.push(`${r.length} ${r.length>1?'notas nuevas':'nota nueva'} de sucursales`);
+      }
+      if (mis.length) {
+        const r = await sbApi(`pedidos_envio?empresa_id=eq.${empresaActual}&pdv_id=in.(${mis.join(',')})&novedad_sucursal=is.true&select=id`) || [];
+        total += r.length;
+        if (r.length) partes.push(`${r.length} ${r.length>1?'novedades':'novedad'} en tus notas`);
+      }
+      const badge = document.getElementById('pizarra-badge');
+      if (badge) { badge.textContent = total; badge.style.display = total ? 'inline-block' : 'none'; }
+      if (!silencioso && total && (_pizarraUltimo === null || total > _pizarraUltimo)) {
+        toast('🧾 Pizarra: ' + partes.join(' y '), 'info');
+        if (_pizarraUltimo !== null && localStorage.getItem('pizarra_sonido') !== 'off') mcSonar();
+      }
+      _pizarraUltimo = total;
+    } catch(e) { /* no crítico: puede faltar la migración SQL */ }
+  }
+  async function iniciarPizarra() {
+    guardarSesionPizarra();
+    const btn = document.getElementById('btn-pizarra-link');
+    const tienePdv = (currentUser?.pdvs||[]).length > 0;
+    let central = false;
+    try { central = await pizarraEsCentral(); } catch(e) {}
+    if (!tienePdv && !central) { if (btn) btn.style.display = 'none'; return; }
+    if (btn) btn.style.display = '';
+    _pizarraUltimo = null;
+    if (_pizarraInterval) clearInterval(_pizarraInterval);
+    pizarraContar();
+    _pizarraInterval = setInterval(() => pizarraContar(), 20000);
+    // Cambios hechos desde la ventana de la pizarra: actualizar el numerito sin sonar
+    if (!_pizarraBC && 'BroadcastChannel' in window) {
+      _pizarraBC = new BroadcastChannel('pizarra_ma');
+      _pizarraBC.onmessage = () => pizarraContar(true);
+    }
+  }
+  function detenerPizarra() {
+    if (_pizarraInterval) { clearInterval(_pizarraInterval); _pizarraInterval = null; }
+    _pizarraUltimo = null;
+    try { localStorage.removeItem('ma_pizarra_sesion'); } catch(e) {}
+    const btn = document.getElementById('btn-pizarra-link'); if (btn) btn.style.display = 'none';
+    const badge = document.getElementById('pizarra-badge'); if (badge) badge.style.display = 'none';
+  }
+
   function doLogout() {
+    detenerPizarra();
     cerrarSesionActiva().catch(()=>{});
     if (_sesionesAdminPollInterval) { clearInterval(_sesionesAdminPollInterval); _sesionesAdminPollInterval = null; }
     if (_cancelInterval) { clearInterval(_cancelInterval); _cancelInterval = null; _cancelIdsConocidos = null; }
@@ -3040,6 +3129,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const roleLabel = isAdmin?'admin':isProduccion?'producción':isViewer?'usuario':isVisorPedidos?'visor pedidos':'operador';
       document.getElementById('user-badge').innerHTML = `<b>${currentUser.displayName||currentUser.username}</b> · ${roleLabel}`;
       updateHeaderEmpresa();
+      iniciarPizarra();
       const btnProv = document.getElementById('btn-proveedores-link');
       if (btnProv) btnProv.style.display = (isAdmin || currentUser.perms?.proveedores) ? '' : 'none';
 
@@ -7284,7 +7374,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     try {
       const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
       // Upsert por empresa+pdv+fecha (reemplaza el del día)
-      await fetch(`${SUPABASE_URL}/rest/v1/pedidos_envio?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=eq.${fecha}`, { method:'DELETE', headers:H });
+      // usuario=is.null → no borra las notas de la pizarra (esas guardan usuario)
+      await fetch(`${SUPABASE_URL}/rest/v1/pedidos_envio?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvId}&fecha=eq.${fecha}&usuario=is.null`, { method:'DELETE', headers:H });
       await fetch(`${SUPABASE_URL}/rest/v1/pedidos_envio`, { method:'POST', headers:H,
         body: JSON.stringify({ empresa_id: String(empresaActual), pdv_id: String(pdvId), pdv_nombre: pdvNombre, fecha, datos: JSON.stringify(datos) }) });
       toast('📤 Pedido enviado correctamente','success');
@@ -14786,6 +14877,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   function cambiarEmpresa(id) {
     empresaActual = String(id);
     _pdvCache=null; _prodCache=null; _asigCache=null;
+    guardarSesionPizarra(); _pizarraUltimo = null;
     updateHeaderEmpresa();
     const empresas = getEmpresas();
     const emp = empresas.find(e => String(e.id) === String(id));
