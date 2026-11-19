@@ -315,6 +315,7 @@
       <button id="btn-sesiones-admin" onclick="verSesionesActivas()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Ver sesiones activas">📡 Sesiones</button>
       <button id="btn-proveedores-link" onclick="window.open('proveedores.html','_blank')" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir módulo de Proveedores">🚚 Proveedores</button>
       <button id="btn-pizarra-link" onclick="abrirPizarra()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir la pizarra de mercadería">🧾 Pizarra<span id="pizarra-badge" style="display:none;background:#ff5a5a;color:#fff;font-size:11px;font-weight:700;border-radius:9px;padding:1px 6px;margin-left:6px;font-family:var(--mono);"></span></button>
+      <button id="btn-encargos-link" onclick="abrirEncargos()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir el calendario de encargos">📅 Encargos<span id="encargos-badge" style="display:none;background:#fbbf24;color:#000;font-size:11px;font-weight:700;border-radius:9px;padding:1px 6px;margin-left:6px;font-family:var(--mono);"></span></button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </header>
@@ -2991,7 +2992,43 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         if (_pizarraUltimo !== null && localStorage.getItem('pizarra_sonido') !== 'off') mcSonar();
       }
       _pizarraUltimo = total;
+      encargosContar();
     } catch(e) { /* no crítico: puede faltar la migración SQL */ }
+  }
+  // ── ENCARGOS (módulo encargos.html) — usa la misma sesión que la pizarra ──
+  let _encargosWin = null, _encargosBC = null;
+  function abrirEncargos() {
+    guardarSesionPizarra();
+    try {
+      const w = (_encargosWin && !_encargosWin.closed) ? _encargosWin : window.open('', 'encargos_ma');
+      if (!w) { toast('El navegador bloqueó la ventana. Permití ventanas emergentes para este sitio.','error'); return; }
+      let enBlanco = true, bloqueada = false;
+      try {
+        enBlanco = !w.location.href || w.location.href === 'about:blank';
+        bloqueada = !enBlanco && !!w.document.querySelector('.blocker');
+      } catch(e) {}
+      if (enBlanco) w.location.href = 'encargos.html';
+      else if (bloqueada) w.location.reload();
+      _encargosWin = w;
+      w.focus();
+    } catch(e) { window.open('encargos.html', 'encargos_ma'); }
+  }
+  window.abrirEncargos = abrirEncargos;
+  // Numerito: encargos de hoy todavía sin entregar en mis sucursales
+  async function encargosContar() {
+    if (!currentUser) return;
+    try {
+      const mis = (currentUser.pdvs||[]).map(String);
+      const filtroPdv = mis.length ? `&pdv_id=in.(${mis.map(encodeURIComponent).join(',')})` : '';
+      if (!mis.length && currentUser.role !== 'admin') return;
+      const r = await sbApi(`encargos?empresa_id=eq.${empresaActual}&fecha=eq.${fechaHoyAR()}&estado=in.(pendiente,hecho)${filtroPdv}&select=id`) || [];
+      const badge = document.getElementById('encargos-badge');
+      if (badge) { badge.textContent = r.length; badge.style.display = r.length ? 'inline-block' : 'none'; badge.title = r.length + ' encargo(s) para hoy'; }
+      if (!_encargosBC && 'BroadcastChannel' in window) {
+        _encargosBC = new BroadcastChannel('encargos_ma');
+        _encargosBC.onmessage = () => encargosContar();
+      }
+    } catch(e) { /* no crítico: puede faltar la tabla encargos */ }
   }
   async function iniciarPizarra() {
     guardarSesionPizarra();
@@ -2999,8 +3036,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const tienePdv = (currentUser?.pdvs||[]).length > 0;
     let central = false;
     try { central = await pizarraEsCentral(); } catch(e) {}
-    if (!tienePdv && !central) { if (btn) btn.style.display = 'none'; return; }
+    const btnEnc = document.getElementById('btn-encargos-link');
+    if (!tienePdv && !central) { if (btn) btn.style.display = 'none'; if (btnEnc) btnEnc.style.display = 'none'; return; }
     if (btn) btn.style.display = '';
+    if (btnEnc) btnEnc.style.display = '';
     _pizarraUltimo = null;
     if (_pizarraInterval) clearInterval(_pizarraInterval);
     pizarraContar();
@@ -3065,6 +3104,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     try { localStorage.removeItem('ma_pizarra_sesion'); } catch(e) {}
     const btn = document.getElementById('btn-pizarra-link'); if (btn) btn.style.display = 'none';
     const badge = document.getElementById('pizarra-badge'); if (badge) badge.style.display = 'none';
+    const btnEnc = document.getElementById('btn-encargos-link'); if (btnEnc) btnEnc.style.display = 'none';
+    const badgeEnc = document.getElementById('encargos-badge'); if (badgeEnc) badgeEnc.style.display = 'none';
   }
 
   function doLogout() {

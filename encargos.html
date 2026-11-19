@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📅 Encargos · Stock MA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10; --surface: #111518; --surface2: #181d22;
+    --border: #232a32; --accent: #c8f04a; --accent-dim: #a8cc30;
+    --text: #eef2f6; --text-muted: #7a8899; --text-dim: #3d4d5c;
+    --danger: #ff5a5a; --radius: 12px;
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+    --pend: #fbbf24; --hecho: #38bdf8; --entr: #4ade80; --online: #a855f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+  button { font-family: var(--font); cursor: pointer; }
+  input, select, textarea { font-family: var(--font); }
+  .btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 700; }
+  .btn:hover { border-color: var(--text-muted); }
+  .btn-acc { background: var(--accent); color: #000; border-color: var(--accent); }
+  .btn-acc:hover { background: var(--accent-dim); }
+  .btn-danger { color: var(--danger); border-color: rgba(255,90,90,.4); background: none; }
+  .btn-sm { padding: 4px 9px; font-size: 12px; }
+  .inp { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 14px; outline: none; }
+  .inp:focus { border-color: var(--accent); }
+  label.lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 4px; font-family: var(--mono); }
+
+  /* Header */
+  header { position: sticky; top: 0; z-index: 50; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  header h1 { font-size: 17px; font-weight: 900; margin-right: 6px; }
+  .mes-nav { display: flex; align-items: center; gap: 6px; }
+  .mes-nav .titulo { font-size: 16px; font-weight: 800; min-width: 150px; text-align: center; }
+  .spacer { flex: 1; }
+  #user-lbl { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+  #cambiar-bar { display: none; background: #3b2a06; border-bottom: 1px solid #f59e0b; color: #fde68a; padding: 8px 14px; font-size: 13px; align-items: center; gap: 10px; }
+
+  /* Personas */
+  #personas-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 54px; z-index: 40; }
+  #personas-bar .hint { font-size: 11px; color: var(--text-muted); margin-right: 4px; }
+  .persona { display: inline-flex; align-items: center; gap: 4px; border-radius: 14px; padding: 3px 10px; font-size: 12px; font-weight: 700; color: #000; cursor: grab; user-select: none; }
+  .leyenda { display: flex; gap: 10px; margin-left: auto; font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
+  .leyenda span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--c); }
+
+  /* Calendario */
+  #cal-wrap { padding: 10px 14px 30px; }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; }
+  .cal .dow { font-size: 11px; color: var(--text-muted); text-transform: uppercase; text-align: center; font-family: var(--mono); padding: 4px 0; }
+  .dia { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; min-height: 118px; padding: 4px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; overflow: hidden; }
+  .dia:hover { border-color: var(--text-dim); }
+  .dia.fuera { opacity: .4; }
+  .dia.hoy { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .dia.sel { background: #1a2410; }
+  .dia.drop { background: #22300f; border-color: var(--accent); }
+  .dia .num { font-size: 12px; font-weight: 800; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .dia.hoy .num { color: var(--accent); }
+  .dia .num .tot { font-family: var(--mono); font-weight: 500; font-size: 10px; }
+  .mini { border-radius: 5px; padding: 2px 5px; font-size: 11px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--c); background: color-mix(in srgb, var(--c) 16%, var(--surface2)); }
+  .mini[draggable=true] { cursor: grab; }
+  .mini.online { border: 1px dashed var(--online); border-left: 3px dashed var(--online); border-radius: 10px; background: color-mix(in srgb, var(--online) 14%, var(--surface2)); }
+  .mini.entregado { opacity: .55; text-decoration: line-through; }
+  .mini .h { font-family: var(--mono); color: var(--text-muted); }
+  .mas { font-size: 10px; color: var(--text-muted); padding-left: 4px; }
+
+  /* Panel del día */
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--surface); border-left: 1px solid var(--border); z-index: 60; transform: translateX(100%); transition: transform .2s; display: flex; flex-direction: column; }
+  #panel.open { transform: none; box-shadow: -10px 0 40px rgba(0,0,0,.5); }
+  #panel .ph { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  #panel .ph h2 { font-size: 16px; flex: 1; }
+  #panel .pb { flex: 1; overflow-y: auto; padding: 12px 14px 40px; display: flex; flex-direction: column; gap: 12px; }
+  #panel .personas-panel { padding: 8px 14px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .card { background: var(--surface2); border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .card.online { border: 1px dashed var(--online); border-left: 4px dashed var(--online); border-radius: 16px; }
+  .card.cancelado { opacity: .5; }
+  .card .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card .cli { font-weight: 800; font-size: 15px; flex: 1; }
+  .badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; border-radius: 6px; padding: 2px 7px; background: var(--c); color: #000; }
+  .card .meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+  .card .meta a { color: #25D366; text-decoration: none; }
+  .items { font-size: 13px; border-top: 1px solid var(--border); padding-top: 6px; }
+  .items div { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
+  .items .q { font-family: var(--mono); color: var(--text-muted); margin-right: 6px; }
+  .tots { display: flex; gap: 12px; font-family: var(--mono); font-size: 12px; flex-wrap: wrap; }
+  .tots b { font-size: 14px; }
+  .slots { display: flex; gap: 6px; flex-wrap: wrap; }
+  .slot { flex: 1; min-width: 110px; border: 1px dashed var(--border); border-radius: 8px; padding: 4px 6px; font-size: 11px; color: var(--text-muted); cursor: pointer; }
+  .slot.drop { border-color: var(--accent); background: #22300f; }
+  .slot .who { display: inline-block; margin-top: 2px; border-radius: 10px; padding: 1px 8px; font-weight: 800; color: #000; font-size: 12px; }
+  .acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ubic { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .ubic input { flex: 1; padding: 5px 8px; font-size: 13px; }
+
+  /* Modales */
+  .ov { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 620px; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
+  .modal.sm { max-width: 360px; }
+  .modal .mh { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--surface2); font-weight: 800; font-size: 15px; }
+  .modal .mb { padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .modal .mf { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 560px) { .row2, .row3 { grid-template-columns: 1fr; } }
+  .tel-ayuda { font-size: 11px; margin-top: 3px; color: var(--text-muted); }
+  .buscador { position: relative; }
+  .res { position: absolute; left: 0; right: 0; top: 100%; z-index: 5; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; max-height: 260px; overflow-y: auto; display: none; margin-top: 2px; }
+  .res div { padding: 7px 10px; display: flex; justify-content: space-between; gap: 10px; cursor: pointer; font-size: 13px; }
+  .res div.act, .res div:hover { background: #22300f; }
+  .res .p { font-family: var(--mono); color: var(--accent); white-space: nowrap; }
+  table.it { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.it td, table.it th { padding: 5px 4px; border-bottom: 1px solid var(--border); text-align: left; }
+  table.it th { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-family: var(--mono); }
+  table.it .n { text-align: right; font-family: var(--mono); white-space: nowrap; }
+  table.it input { width: 70px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; color: var(--text); text-align: right; font-family: var(--mono); }
+  .total-box { display: flex; justify-content: flex-end; gap: 18px; font-family: var(--mono); font-size: 13px; align-items: baseline; flex-wrap: wrap; }
+  .total-box .big { font-size: 22px; font-weight: 900; color: var(--accent); }
+  .pago-btns { display: flex; flex-direction: column; gap: 10px; }
+  .pago-btns button { border: none; border-radius: 8px; padding: 14px; font-size: 16px; font-weight: 900; }
+  .monto-big { font-size: 34px; font-weight: 900; color: var(--accent); text-align: center; font-family: var(--mono); }
+
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .t { background: var(--surface2); border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+  .t.success { border-color: var(--entr); color: var(--entr); }
+  .t.error { border-color: var(--danger); color: var(--danger); }
+  .blocker { position: fixed; inset: 0; background: var(--bg); z-index: 300; display: flex; align-items: center; justify-content: center; text-align: center; padding: 30px; flex-direction: column; gap: 12px; }
+  .blocker .ic { font-size: 50px; }
+  .menu-pop { position: fixed; z-index: 150; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 4px; display: flex; flex-direction: column; min-width: 150px; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+  .menu-pop button { background: none; border: none; color: var(--text); text-align: left; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+  .menu-pop button:hover { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<div id="cambiar-bar"><span id="cambiar-txt"></span><button class="btn btn-sm btn-acc" onclick="location.reload()">Cambiar</button></div>
+
+<header>
+  <h1>📅 Encargos</h1>
+  <select id="pdv-sel" class="inp" style="width:auto;min-width:150px;" onchange="cambiarPdv(this.value)"></select>
+  <div class="mes-nav">
+    <button class="btn" onclick="moverMes(-1)">‹</button>
+    <div class="titulo" id="mes-titulo"></div>
+    <button class="btn" onclick="moverMes(1)">›</button>
+    <button class="btn btn-sm" onclick="irHoy()">Hoy</button>
+  </div>
+  <div class="spacer"></div>
+  <span id="user-lbl"></span>
+  <button class="btn" onclick="cargarMes()" title="Actualizar">↻</button>
+  <button class="btn btn-acc" onclick="nuevoEncargo()">+ Nuevo encargo</button>
+</header>
+
+<div id="personas-bar">
+  <span class="hint">Arrastrá un nombre a la tarjeta:</span>
+  <span id="personas-chips"></span>
+  <div class="leyenda">
+    <span style="--c:var(--pend)">Pendiente</span>
+    <span style="--c:var(--hecho)">Hecho</span>
+    <span style="--c:var(--entr)">Entregado</span>
+    <span style="--c:var(--online)">🛒 Tienda online</span>
+  </div>
+</div>
+
+<div id="cal-wrap"><div class="cal" id="cal"></div></div>
+
+<div id="panel">
+  <div class="ph">
+    <h2 id="panel-titulo"></h2>
+    <button class="btn btn-acc btn-sm" onclick="nuevoEncargo(S.diaSel)">+ Encargo</button>
+    <button class="btn btn-sm" onclick="cerrarPanel()">✕</button>
+  </div>
+  <div class="personas-panel" id="personas-panel"></div>
+  <div class="pb" id="panel-body"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════════
+// ENCARGOS — calendario de encargos de mostrador por sucursal (Stock MA)
+// Se abre desde index.html (botón 📅 Encargos) y usa la misma sesión que la Pizarra.
+// ════════════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://brcnctdfbdffxmdypnrh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyY25jdGRmYmRmZnhtZHlwbnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3OTYzMzIsImV4cCI6MjA5NDM3MjMzMn0.t8Ot0v465qdHshX-Ridce42iPpytYjoMoHxR_mBytZQ';
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DOW = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const SESION_KEY = 'ma_pizarra_sesion';
+const SESION_MAX_MS = 10 * 60 * 1000;
+
+const S = {
+  user: null, empresa: null, central: false,
+  pdvs: [], pdvsVisibles: [], pdvSel: '',
+  year: 0, month: 0, diaSel: null,
+  encargos: [], online: [], personas: [], prods: [],
+  dragging: false
+};
+let _bc = null;
+
+// ── Utilidades (mismas reglas que index.html) ──
+function esc(x) { return String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fechaHoyAR() {
+  return new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+}
+function parsePrecioAR(p) {
+  const s = String(p || '').trim();
+  if (!s) return 0;
+  if (s.includes(',')) return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+  return parseFloat(s.replace(/[^0-9.]/g, '')) || 0;
+}
+function normTelAR(t) {
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.startsWith('54')) d = d.slice(2);
+  if (d.length === 11 && d.startsWith('9')) d = d.slice(1);
+  if (d.startsWith('0')) d = d.slice(1);
+  return d;
+}
+function telInfoAR(t) {
+  const n = normTelAR(t);
+  if (!n) return { norm: '', ok: false, nivel: 'vacio', msg: '📱 Código de área + número, sin 0 ni 15. Ej: 11 1234-5678' };
+  if (n.length < 10) return { norm: n, ok: false, nivel: 'warn', msg: '⚠️ Falta el código de área: deben ser 10 números. Van ' + n.length + '.' };
+  if (n.length > 10) return { norm: n, ok: false, nivel: 'warn', msg: '⚠️ Sobran números (' + n.length + '). Si pusiste el 15, sacalo.' };
+  return { norm: n, ok: true, nivel: 'ok', msg: '✓ Se guardará como ' + n };
+}
+function norm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function fmt$(n) { return '$' + (Math.round((+n || 0) * 100) / 100).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+function r2(n) { return Math.round((+n || 0) * 100) / 100; }
+function addDays(iso, n) { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function isoDe(y, m, d) { return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+function fechaLarga(iso) {
+  const d = new Date(iso + 'T12:00:00Z');
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  return `${dias[d.getUTCDay()]} ${d.getUTCDate()} de ${MESES[d.getUTCMonth()].toLowerCase()}`;
+}
+function colorPersona(nombre) {
+  let h = 0; for (const c of String(nombre)) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `hsl(${h},70%,62%)`;
+}
+function toast(msg, tipo) {
+  const el = document.createElement('div');
+  el.className = 't ' + (tipo || '');
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), tipo === 'error' ? 6000 : 3000);
+}
+function avisarCambios() { try { _bc && _bc.postMessage('cambio'); } catch (e) {} }
+
+// sbApi: mismo comportamiento que index (GET paginado por Range, nunca limit+offset)
+async function sbApi(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+  if (method === 'GET') {
+    headers['Prefer'] = 'count=none'; headers['Range-Unit'] = 'items';
+    const PAGE = 1000; let offset = 0, all = [];
+    while (true) {
+      headers['Range'] = `${offset}-${offset + PAGE - 1}`;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `Error ${res.status}`); }
+      const t = await res.text();
+      const page = t ? JSON.parse(t) : [];
+      if (!Array.isArray(page)) return page;
+      all = all.concat(page);
+      if (page.length < PAGE) break;
+      offset += PAGE;
+    }
+    return all;
+  }
+  headers['Prefer'] = 'return=representation';
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers, body: options.body || undefined });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `Error ${res.status}`); }
+  const t = await res.text();
+  return t ? JSON.parse(t) : null;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SESIÓN (la deja index.html en localStorage, igual que para la Pizarra)
+// ════════════════════════════════════════════════════════════════════
+function leerSesion() {
+  try { return JSON.parse(localStorage.getItem(SESION_KEY) || 'null'); } catch (e) { return null; }
+}
+function bloquear(msg) {
+  const b = document.createElement('div');
+  b.className = 'blocker';
+  b.innerHTML = `<div class="ic">📅</div><div style="font-size:18px;font-weight:800;">${esc(msg)}</div>
+    <div style="color:var(--text-muted);font-size:13px;">Abrí Encargos con el botón <b>📅 Encargos</b> de la pantalla principal.</div>
+    <button class="btn" onclick="location.reload()">Reintentar</button>`;
+  document.body.appendChild(b);
+}
+function vigilarSesion() {
+  // Si en index entra otro usuario, mostramos la barra "Cambiar" (no nos quedamos fijos con el primero)
+  const chequear = () => {
+    const s = leerSesion();
+    const bar = document.getElementById('cambiar-bar');
+    if (s && s.username && S.user && (s.username !== S.user.username || String(s.empresa) !== String(S.empresa)) && Date.now() - (s.ts || 0) < SESION_MAX_MS) {
+      document.getElementById('cambiar-txt').textContent = `En la pantalla principal ahora está ${s.username}. Esta ventana sigue como ${S.user.display_name || S.user.username}.`;
+      bar.style.display = 'flex';
+    } else bar.style.display = 'none';
+  };
+  window.addEventListener('storage', e => { if (e.key === SESION_KEY) chequear(); });
+  setInterval(chequear, 5000);
+}
+
+async function init() {
+  const s = leerSesion();
+  if (!s || !s.username) { bloquear('No hay una sesión abierta'); return; }
+  if (Date.now() - (s.ts || 0) > SESION_MAX_MS) { bloquear('La sesión venció'); return; }
+  S.empresa = String(s.empresa || '1');
+  try {
+    const u = await sbApi(`usuarios?username=eq.${encodeURIComponent(s.username)}&select=username,display_name,role,pdvs`);
+    if (!u || !u.length) { bloquear('Usuario no encontrado'); return; }
+    S.user = u[0];
+  } catch (e) { bloquear('No se pudo conectar: ' + e.message); return; }
+  document.getElementById('user-lbl').textContent = '👤 ' + (S.user.display_name || S.user.username);
+  try { _bc = new BroadcastChannel('encargos_ma'); _bc.onmessage = () => { if (!document.querySelector('.ov')) cargarMes(); }; } catch (e) {}
+
+  const mis = (S.user.pdvs || []).map(String);
+  S.pdvs = await sbApi(`pdvs?empresa_id=eq.${S.empresa}&order=orden.asc,created_at.asc&select=*`).catch(() => []) || [];
+  S.central = S.user.role === 'admin' || S.pdvs.some(p => mis.includes(String(p.id)) && p.pizarra_ve_todas);
+  S.pdvsVisibles = S.central ? S.pdvs : S.pdvs.filter(p => mis.includes(String(p.id)));
+  if (!S.pdvsVisibles.length) { bloquear('Tu usuario no tiene sucursal asignada'); return; }
+  const guardado = localStorage.getItem('encargos_pdv_' + S.user.username);
+  const propio = S.pdvsVisibles.find(p => mis.includes(String(p.id)));
+  S.pdvSel = String((S.pdvsVisibles.find(p => String(p.id) === guardado) || propio || S.pdvsVisibles[0]).id);
+  const sel = document.getElementById('pdv-sel');
+  sel.innerHTML = S.pdvsVisibles.map(p => `<option value="${esc(p.id)}">${esc(p.nombre || p.name)}</option>`).join('');
+  sel.value = S.pdvSel;
+  if (S.pdvsVisibles.length < 2) sel.disabled = true;
+
+  const hoy = fechaHoyAR();
+  S.year = +hoy.slice(0, 4); S.month = +hoy.slice(5, 7) - 1;
+  vigilarSesion();
+  await Promise.all([cargarPersonas(), cargarProductos()]);
+  await cargarMes();
+  // Refresco automático (sin pisar lo que se está editando ni un arrastre)
+  setInterval(() => { if (!document.querySelector('.ov') && !S.dragging && !document.hidden) cargarMes(true); }, 30000);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DATOS
+// ════════════════════════════════════════════════════════════════════
+async function cargarPersonas() {
+  try { S.personas = await sbApi(`pizarra_personas?empresa_id=eq.${S.empresa}&order=orden.asc,nombre.asc&select=id,nombre`) || []; }
+  catch (e) { S.personas = []; }
+  const chips = S.personas.map(p => `<span class="persona" draggable="true" data-persona="${esc(p.nombre)}" style="background:${colorPersona(p.nombre)}">${esc(p.nombre)}</span>`).join(' ')
+    || '<span style="font-size:12px;color:var(--text-dim)">No hay personas. Se cargan en index → Admin → Personas de la pizarra.</span>';
+  document.getElementById('personas-chips').innerHTML = chips;
+  document.getElementById('personas-panel').innerHTML = chips;
+  document.querySelectorAll('.persona').forEach(el => {
+    el.addEventListener('dragstart', e => { S.dragging = true; e.dataTransfer.setData('text/persona', el.dataset.persona); e.dataTransfer.effectAllowed = 'copy'; });
+    el.addEventListener('dragend', () => { S.dragging = false; });
+  });
+}
+
+// Productos + gustos + precio de Lista 1 (igual que ventasGetPrecio en index)
+async function cargarProductos() {
+  try {
+    const [prods, gustos, lista] = await Promise.all([
+      sbApi(`productos?empresa_id=eq.${S.empresa}&order=orden.asc,created_at.asc&select=*`),
+      sbApi(`gustos?select=id,producto_id,nombre,orden&order=orden.asc`),
+      sbApi(`lista_datos?empresa_id=eq.${S.empresa}&select=prod_id,datos`)
+    ]);
+    const precios = {}, pcts = {}, sched = {};
+    (lista || []).forEach(r => {
+      const pid = String(r.prod_id || '');
+      if (!pid || pid === '__config__' || pid.startsWith('CONFIG_')) return;
+      const dv = typeof r.datos === 'string' ? (() => { try { return JSON.parse(r.datos); } catch (e) { return null; } })() : r.datos;
+      if (pid.startsWith('SCHED_')) { sched[pid.slice(6)] = dv; return; }
+      precios[pid] = (dv && !Array.isArray(dv) && dv.gustos) ? dv.gustos : (dv || []);
+      pcts[pid] = (dv && !Array.isArray(dv) && dv.pct !== undefined) ? (dv.pct || 0) : 0;
+    });
+    // Programaciones de precio ya vencidas: se usan en memoria (index las graba al abrir Ventas)
+    const ahora = new Date();
+    Object.entries(sched).forEach(([pid, d]) => {
+      if (d && d.activar_fecha && ahora >= new Date(d.activar_fecha)) { precios[pid] = d.gustos || []; pcts[pid] = d.pct || 0; }
+    });
+    const out = [];
+    (prods || []).forEach(p => {
+      const pid = String(p.id), pn = p.nombre || p.name || '';
+      const gs = (gustos || []).filter(g => String(g.producto_id) === pid);
+      const precioDe = gid => {
+        const d = (precios[pid] || []).find(x => String(x.gid) === String(gid));
+        if (!d || !d.precio) return 0;
+        const base = parsePrecioAR(d.precio), pct = pcts[pid] || 0;
+        return r2(pct ? base * (1 + pct / 100) : base);
+      };
+      if (!gs.length) out.push({ prodId: pid, prod: pn, gustoId: '', gusto: '', precio: precioDe(''), k: norm(pn) });
+      gs.forEach(g => out.push({ prodId: pid, prod: pn, gustoId: String(g.id), gusto: g.nombre || '', precio: precioDe(g.id), k: norm(pn + ' ' + (g.nombre || '')) }));
+    });
+    S.prods = out;
+  } catch (e) { toast('No se pudieron cargar los productos: ' + e.message, 'error'); }
+}
+
+function rangoGrilla() {
+  const primero = isoDe(S.year, S.month, 1);
+  const dow = (new Date(primero + 'T12:00:00Z').getUTCDay() + 6) % 7; // lunes = 0
+  const desde = addDays(primero, -dow);
+  const ultimo = isoDe(S.year, S.month, new Date(Date.UTC(S.year, S.month + 1, 0)).getUTCDate());
+  const dowU = (new Date(ultimo + 'T12:00:00Z').getUTCDay() + 6) % 7;
+  return { desde, hasta: addDays(ultimo, 6 - dowU) };
+}
+
+async function cargarMes(silencioso) {
+  const { desde, hasta } = rangoGrilla();
+  try {
+    const [enc, onl] = await Promise.all([
+      sbApi(`encargos?empresa_id=eq.${S.empresa}&pdv_id=eq.${encodeURIComponent(S.pdvSel)}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*&order=fecha.asc,horario.asc,id.asc`),
+      sbApi(`pedidos_online?empresa_id=eq.${S.empresa}&pdv_id=eq.${encodeURIComponent(S.pdvSel)}&fecha_entrega=gte.${desde}&fecha_entrega=lte.${hasta}&estado=neq.cancelado&select=*&order=fecha_entrega.asc`).catch(() => [])
+    ]);
+    S.encargos = enc || []; S.online = onl || [];
+  } catch (e) {
+    if (!silencioso) toast('Error cargando encargos: ' + e.message + (/encargos/.test(e.message) ? ' (¿corriste el SQL?)' : ''), 'error');
+    return;
+  }
+  renderCal();
+  if (S.diaSel && document.getElementById('panel').classList.contains('open')) renderPanel();
+}
+
+function cambiarPdv(v) {
+  S.pdvSel = String(v);
+  try { localStorage.setItem('encargos_pdv_' + S.user.username, S.pdvSel); } catch (e) {}
+  cargarMes();
+}
+function moverMes(d) { S.month += d; if (S.month < 0) { S.month = 11; S.year--; } if (S.month > 11) { S.month = 0; S.year++; } cargarMes(); }
+function irHoy() { const h = fechaHoyAR(); S.year = +h.slice(0, 4); S.month = +h.slice(5, 7) - 1; cargarMes(); }
+
+// ════════════════════════════════════════════════════════════════════
+// CALENDARIO
+// ════════════════════════════════════════════════════════════════════
+function colorEstado(e) { return e === 'entregado' ? 'var(--entr)' : e === 'hecho' ? 'var(--hecho)' : e === 'cancelado' ? 'var(--text-dim)' : 'var(--pend)'; }
+function horaOnline(p) { return String(p.envio_horario || '').replace('hasta-', '≤'); }
+
+function renderCal() {
+  document.getElementById('mes-titulo').textContent = `${MESES[S.month]} ${S.year}`;
+  const { desde, hasta } = rangoGrilla();
+  const hoy = fechaHoyAR();
+  let html = DOW.map(d => `<div class="dow">${d}</div>`).join('');
+  for (let f = desde; f <= hasta; f = addDays(f, 1)) {
+    const fuera = +f.slice(5, 7) - 1 !== S.month;
+    const encs = S.encargos.filter(e => e.fecha === f && e.estado !== 'cancelado');
+    const onls = S.online.filter(p => p.fecha_entrega === f);
+    const items = [
+      ...encs.map(e => ({ h: e.horario || '', html: miniEnc(e) })),
+      ...onls.map(p => ({ h: horaOnline(p), html: miniOnline(p) }))
+    ].sort((a, b) => a.h.localeCompare(b.h));
+    const max = 4;
+    const pend = encs.filter(e => e.estado === 'pendiente' || e.estado === 'hecho').length;
+    html += `<div class="dia ${fuera ? 'fuera' : ''} ${f === hoy ? 'hoy' : ''} ${f === S.diaSel ? 'sel' : ''}" data-fecha="${f}" onclick="abrirDia('${f}')">
+      <div class="num"><span>${+f.slice(8)}</span>${items.length ? `<span class="tot">${items.length}${pend ? ' · ' + pend + ' pend.' : ''}</span>` : ''}</div>
+      ${items.slice(0, max).map(i => i.html).join('')}
+      ${items.length > max ? `<div class="mas">+${items.length - max} más</div>` : ''}
+    </div>`;
+  }
+  const cal = document.getElementById('cal');
+  cal.innerHTML = html;
+  // Arrastrar encargos de un día a otro
+  cal.querySelectorAll('.mini[draggable=true]').forEach(el => {
+    el.addEventListener('click', ev => { ev.stopPropagation(); abrirDia(el.closest('.dia').dataset.fecha, el.dataset.id); });
+    el.addEventListener('dragstart', e => { S.dragging = true; e.dataTransfer.setData('text/encargo', el.dataset.id); e.dataTransfer.effectAllowed = 'move'; });
+    el.addEventListener('dragend', () => { S.dragging = false; });
+  });
+  cal.querySelectorAll('.dia').forEach(d => {
+    d.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/encargo')) { e.preventDefault(); d.classList.add('drop'); } });
+    d.addEventListener('dragleave', () => d.classList.remove('drop'));
+    d.addEventListener('drop', e => {
+      d.classList.remove('drop');
+      const id = e.dataTransfer.getData('text/encargo');
+      if (id) { e.preventDefault(); reprogramar(id, d.dataset.fecha); }
+    });
+  });
+}
+function miniEnc(e) {
+  const mov = e.estado === 'pendiente' || e.estado === 'hecho';
+  return `<div class="mini ${e.estado === 'entregado' ? 'entregado' : ''}" style="--c:${colorEstado(e.estado)}" data-id="${e.id}" draggable="${mov}" title="#${e.id} · ${esc(e.cliente_nombre)} · ${fmt$(e.total)}">
+    ${e.horario ? `<span class="h">${esc(e.horario)}</span> ` : ''}${esc(e.cliente_nombre)} · ${fmt$(e.total)}</div>`;
+}
+function miniOnline(p) {
+  return `<div class="mini online ${p.estado === 'entregado' ? 'entregado' : ''}" style="--c:var(--online)" title="Pedido online #${esc(p.nro_pedido || p.id)}">
+    🛒 ${horaOnline(p) ? `<span class="h">${esc(horaOnline(p))}</span> ` : ''}${esc(p.cliente_nombre || '')}</div>`;
+}
+
+async function reprogramar(id, fecha) {
+  const e = S.encargos.find(x => String(x.id) === String(id));
+  if (!e || e.fecha === fecha) return;
+  if (!(e.estado === 'pendiente' || e.estado === 'hecho')) { toast('Solo se reprograman encargos pendientes o hechos', 'error'); return; }
+  try {
+    await sbApi(`encargos?id=eq.${e.id}`, { method: 'PATCH', body: JSON.stringify({ fecha, updated_at: new Date().toISOString() }) });
+    toast(`Encargo #${e.id} movido al ${fechaLarga(fecha)}`, 'success');
+    avisarCambios(); cargarMes();
+  } catch (err) { toast('Error: ' + err.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PANEL DEL DÍA
+// ════════════════════════════════════════════════════════════════════
+function abrirDia(f, focoId) {
+  S.diaSel = f;
+  document.querySelectorAll('.dia.sel').forEach(d => d.classList.remove('sel'));
+  document.querySelector(`.dia[data-fecha="${f}"]`)?.classList.add('sel');
+  document.getElementById('panel').classList.add('open');
+  renderPanel();
+  if (focoId) setTimeout(() => document.getElementById('card-' + focoId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+}
+function cerrarPanel() {
+  document.getElementById('panel').classList.remove('open');
+  S.diaSel = null;
+  document.querySelectorAll('.dia.sel').forEach(d => d.classList.remove('sel'));
+}
+
+function slotHtml(tipo, id, campo, etiqueta, valor) {
+  return `<div class="slot" data-tipo="${tipo}" data-id="${id}" data-campo="${campo}" onclick="menuSlot(event,'${tipo}','${id}','${campo}')">
+    ${etiqueta}<br>${valor ? `<span class="who" style="background:${colorPersona(valor)}">${esc(valor)}</span>` : '<span style="color:var(--text-dim)">— arrastrá —</span>'}</div>`;
+}
+
+function renderPanel() {
+  const f = S.diaSel;
+  document.getElementById('panel-titulo').textContent = fechaLarga(f) + (f === fechaHoyAR() ? ' · HOY' : '');
+  const encs = S.encargos.filter(e => e.fecha === f)
+    .sort((a, b) => (a.estado === 'cancelado') - (b.estado === 'cancelado') || String(a.horario || '').localeCompare(String(b.horario || '')));
+  const onls = S.online.filter(p => p.fecha_entrega === f);
+  let html = '';
+  if (!encs.length && !onls.length) html = '<div style="color:var(--text-muted);text-align:center;padding:30px 0;">No hay encargos este día.</div>';
+  html += encs.map(cardEnc).join('');
+  if (onls.length) html += `<div style="font-size:11px;color:var(--online);font-weight:800;letter-spacing:.06em;margin-top:6px;">🛒 PEDIDOS DE LA TIENDA</div>` + onls.map(cardOnline).join('');
+  const body = document.getElementById('panel-body');
+  body.innerHTML = html;
+  body.querySelectorAll('.slot').forEach(sl => {
+    sl.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/persona')) { e.preventDefault(); sl.classList.add('drop'); } });
+    sl.addEventListener('dragleave', () => sl.classList.remove('drop'));
+    sl.addEventListener('drop', e => {
+      sl.classList.remove('drop');
+      const n = e.dataTransfer.getData('text/persona');
+      if (n) { e.preventDefault(); asignarPersona(sl.dataset.tipo, sl.dataset.id, sl.dataset.campo, n); }
+    });
+  });
+}
+
+function cardEnc(e) {
+  const items = Array.isArray(e.items) ? e.items : [];
+  const saldo = r2((+e.total || 0) - (+e.sena || 0));
+  const activo = e.estado === 'pendiente' || e.estado === 'hecho';
+  const tel = e.cliente_tel ? `<a href="https://wa.me/549${esc(e.cliente_tel)}" target="_blank">📱 ${esc(e.cliente_tel)}</a>` : '';
+  const estadoTxt = e.estado === 'cancelado' ? `cancelado${e.sena_destino ? ' · seña ' + e.sena_destino : ''}` : e.estado;
+  return `<div class="card ${e.estado === 'cancelado' ? 'cancelado' : ''}" id="card-${e.id}" style="--c:${colorEstado(e.estado)}">
+    <div class="top"><span class="cli">${esc(e.cliente_nombre)}</span><span class="badge" style="--c:${colorEstado(e.estado)}">${esc(estadoTxt)}</span></div>
+    <div class="meta"><span>#${e.id}</span>${e.horario ? `<span>🕑 ${esc(e.horario)}</span>` : ''}${tel}${e.creado_por ? `<span>cargó ${esc(e.creado_por)}</span>` : ''}</div>
+    <div class="items">${items.map(it => `<div><span><span class="q">${it.cantidad}×</span>${esc(it.prod_nombre)}${it.gusto_nombre ? ' · ' + esc(it.gusto_nombre) : ''}</span><span class="h" style="font-family:var(--mono)">${fmt$(it.precio * it.cantidad)}</span></div>`).join('')}</div>
+    ${e.nota ? `<div style="font-size:12px;background:var(--surface);border-radius:6px;padding:6px 8px;">📝 ${esc(e.nota)}</div>` : ''}
+    <div class="tots"><span>Total <b>${fmt$(e.total)}</b></span><span>Seña <b style="color:var(--hecho)">${fmt$(e.sena)}</b>${e.sena_forma_pago ? ' (' + esc(e.sena_forma_pago) + ')' : ''}</span>${e.estado !== 'entregado' && e.estado !== 'cancelado' ? `<span>Saldo <b style="color:var(--accent)">${fmt$(saldo)}</b></span>` : ''}</div>
+    <div class="ubic">📦 <input class="inp" placeholder="¿Dónde está guardado?" value="${esc(e.ubicacion || '')}" onchange="guardarUbicacion(${e.id}, this.value)" ${e.estado === 'cancelado' ? 'disabled' : ''}></div>
+    <div class="slots">
+      ${slotHtml('enc', e.id, 'tomado_por', 'Lo toma', e.tomado_por)}
+      ${slotHtml('enc', e.id, 'hecho_por', 'Lo hace', e.hecho_por)}
+      ${slotHtml('enc', e.id, 'entregado_por', 'Lo entrega', e.entregado_por)}
+    </div>
+    ${activo ? `<div class="acciones">
+      <button class="btn btn-sm" onclick="editarEncargo(${e.id})">✎ Editar</button>
+      ${e.estado === 'pendiente' ? `<button class="btn btn-sm" style="color:var(--hecho)" onclick="cambiarEstado(${e.id},'hecho')">✓ Hecho</button>` : `<button class="btn btn-sm" onclick="cambiarEstado(${e.id},'pendiente')">↺ Pendiente</button>`}
+      ${!e.ticket_sena ? `<button class="btn btn-sm" onclick="cobrarSenaDe(${e.id})">💵 Cobrar seña</button>` : ''}
+      <button class="btn btn-sm btn-acc" onclick="entregar(${e.id})">📦 Entregar y cobrar</button>
+      <button class="btn btn-sm btn-danger" onclick="cancelarEncargo(${e.id})">✕ Cancelar</button>
+      ${!e.ticket_sena ? `<button class="btn btn-sm btn-danger" title="Borrar (carga equivocada)" onclick="borrarEncargo(${e.id})">🗑</button>` : ''}
+    </div>` : ''}
+    ${e.cancelado_motivo ? `<div style="font-size:12px;color:var(--text-muted)">Motivo: ${esc(e.cancelado_motivo)}</div>` : ''}
+  </div>`;
+}
+
+function cardOnline(p) {
+  const items = Array.isArray(p.items) ? p.items : [];
+  const tel = p.cliente_tel ? `<a href="https://wa.me/549${esc(normTelAR(p.cliente_tel))}" target="_blank">📱 ${esc(p.cliente_tel)}</a>` : '';
+  return `<div class="card online" style="--c:var(--online)">
+    <div class="top"><span class="cli">🛒 ${esc(p.cliente_nombre || '')}</span><span class="badge" style="--c:var(--online);color:#fff">${esc(p.estado || '')}</span></div>
+    <div class="meta"><span>Online #${esc(p.nro_pedido || p.id)}</span>${horaOnline(p) ? `<span>🕑 ${esc(horaOnline(p))}</span>` : ''}<span>${p.modalidad === 'delivery' ? '🛵 Delivery' : '🏪 Retiro'}</span>${tel}</div>
+    ${p.direccion ? `<div class="meta">📍 ${esc(p.direccion)}</div>` : ''}
+    <div class="items">${items.map(it => `<div><span><span class="q">${it.cantidad}×</span>${esc(it.prod_nombre || '')}${it.gusto_nombre ? ' · ' + esc(it.gusto_nombre) : ''}</span></div>`).join('')}</div>
+    <div class="tots"><span>Total <b>${fmt$(p.total_final || p.total)}</b></span><span>${esc(p.metodo_pago || '')}</span></div>
+    <div class="slots">
+      ${slotHtml('onl', p.id, 'recepcionado_por', 'Lo recepciona', p.recepcionado_por)}
+      ${slotHtml('onl', p.id, 'entregado_por', 'Lo entrega', p.entregado_por)}
+    </div>
+    <div style="font-size:11px;color:var(--text-muted)">El estado de los pedidos online se cambia desde Pedidos en la pantalla principal.</div>
+  </div>`;
+}
+
+// ── Nombres en las tarjetas (arrastrar o tocar el casillero) ──
+async function asignarPersona(tipo, id, campo, nombre) {
+  const tabla = tipo === 'onl' ? 'pedidos_online' : 'encargos';
+  const body = { [campo]: nombre || null };
+  if (tipo === 'enc') body.updated_at = new Date().toISOString();
+  try {
+    await sbApi(`${tabla}?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
+    const lista = tipo === 'onl' ? S.online : S.encargos;
+    const obj = lista.find(x => String(x.id) === String(id)); if (obj) obj[campo] = nombre || null;
+    renderPanel(); renderCal(); avisarCambios();
+  } catch (e) {
+    toast('Error: ' + e.message + (tipo === 'onl' ? ' (¿corriste el ALTER de pedidos_online?)' : ''), 'error');
+  }
+}
+function menuSlot(ev, tipo, id, campo) {
+  ev.stopPropagation();
+  document.querySelector('.menu-pop')?.remove();
+  const m = document.createElement('div');
+  m.className = 'menu-pop';
+  m.innerHTML = S.personas.map(p => `<button data-n="${esc(p.nombre)}"><span class="persona" style="background:${colorPersona(p.nombre)};cursor:pointer">${esc(p.nombre)}</span></button>`).join('')
+    + `<button data-n="" style="color:var(--danger)">✕ Quitar</button>`;
+  m.querySelectorAll('button').forEach(b => b.onclick = () => { m.remove(); asignarPersona(tipo, id, campo, b.dataset.n); });
+  document.body.appendChild(m);
+  const r = ev.currentTarget.getBoundingClientRect();
+  m.style.left = Math.min(r.left, window.innerWidth - 170) + 'px';
+  m.style.top = Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8) + 'px';
+  setTimeout(() => document.addEventListener('click', () => m.remove(), { once: true }), 0);
+}
+
+async function guardarUbicacion(id, valor) {
+  try {
+    await sbApi(`encargos?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ ubicacion: valor.trim() || null, updated_at: new Date().toISOString() }) });
+    const e = S.encargos.find(x => x.id === id); if (e) e.ubicacion = valor.trim() || null;
+    toast('Ubicación guardada', 'success');
+  } catch (err) { toast('Error: ' + err.message, 'error'); }
+}
+
+async function cambiarEstado(id, estado) {
+  try {
+    const r = await sbApi(`encargos?id=eq.${id}&estado=in.(pendiente,hecho)`, { method: 'PATCH', body: JSON.stringify({ estado, updated_at: new Date().toISOString() }) });
+    if (!r || !r.length) toast('El encargo ya no está activo', 'error');
+    avisarCambios(); cargarMes();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function borrarEncargo(id) {
+  const e = S.encargos.find(x => x.id === id); if (!e) return;
+  if (e.ticket_sena) { toast('Tiene seña cobrada: usá Cancelar', 'error'); return; }
+  if (!confirm(`¿Borrar el encargo #${id} de ${e.cliente_nombre}? Usalo solo si se cargó por error.`)) return;
+  try { await sbApi(`encargos?id=eq.${id}&ticket_sena=is.null`, { method: 'DELETE' }); toast('Encargo borrado'); avisarCambios(); cargarMes(); }
+  catch (err) { toast('Error: ' + err.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FORMULARIO DE ENCARGO (nuevo / editar) con buscador de productos
+// ════════════════════════════════════════════════════════════════════
+let F = null; // estado del formulario abierto
+
+function nuevoEncargo(fecha) {
+  abrirForm({ id: null, fecha: fecha || S.diaSel || fechaHoyAR(), cliente_nombre: '', cliente_tel: '', horario: '', items: [], nota: '', ubicacion: '', tomado_por: '', hecho_por: '', sena: 0, ticket_sena: null });
+}
+function editarEncargo(id) {
+  const e = S.encargos.find(x => x.id === id); if (!e) return;
+  abrirForm(JSON.parse(JSON.stringify(e)));
+}
+
+function abrirForm(enc) {
+  F = { enc, items: (Array.isArray(enc.items) ? enc.items : []).map(i => ({ ...i })), act: -1, res: [] };
+  const nuevo = !enc.id;
+  const senaFija = !!enc.ticket_sena;
+  const optsP = sel => '<option value="">—</option>' + S.personas.map(p => `<option ${p.nombre === sel ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')
+    + (sel && !S.personas.some(p => p.nombre === sel) ? `<option selected>${esc(sel)}</option>` : '');
+  const ov = document.createElement('div');
+  ov.className = 'ov'; ov.id = 'ov-form';
+  ov.innerHTML = `<div class="modal">
+    <div class="mh">${nuevo ? '📝 Nuevo encargo' : `✎ Encargo #${enc.id}`} · ${esc(S.pdvsVisibles.find(p => String(p.id) === S.pdvSel)?.nombre || '')}</div>
+    <div class="mb">
+      <div class="row2">
+        <div><label class="lbl">Cliente *</label><input class="inp" id="f-nombre" value="${esc(enc.cliente_nombre)}" maxlength="80"></div>
+        <div><label class="lbl">Teléfono</label><input class="inp" id="f-tel" value="${esc(enc.cliente_tel || '')}" inputmode="tel" oninput="ayudaTel()"><div class="tel-ayuda" id="f-tel-ayuda"></div></div>
+      </div>
+      <div class="row2">
+        <div><label class="lbl">Día *</label><input class="inp" type="date" id="f-fecha" value="${esc(enc.fecha)}"></div>
+        <div><label class="lbl">Horario</label><input class="inp" type="time" id="f-horario" value="${esc(enc.horario || '')}"></div>
+      </div>
+      <div class="buscador">
+        <label class="lbl">Agregar producto</label>
+        <input class="inp" id="f-buscar" placeholder="🔍 Escribí producto o gusto (ej: rav verd)" autocomplete="off" oninput="buscarProd()" onkeydown="teclaBuscar(event)" onfocus="buscarProd()">
+        <div class="res" id="f-res"></div>
+      </div>
+      <div id="f-items"></div>
+      <div class="row2">
+        <div><label class="lbl">Nota</label><textarea class="inp" id="f-nota" rows="2" maxlength="300">${esc(enc.nota || '')}</textarea></div>
+        <div><label class="lbl">¿Dónde está guardado?</label><input class="inp" id="f-ubic" value="${esc(enc.ubicacion || '')}" maxlength="80"></div>
+      </div>
+      <div class="row3">
+        <div><label class="lbl">Lo toma</label><select class="inp" id="f-toma">${optsP(enc.tomado_por || '')}</select></div>
+        <div><label class="lbl">Lo hace</label><select class="inp" id="f-hace">${optsP(enc.hecho_por || '')}</select></div>
+        <div><label class="lbl">Seña $ ${senaFija ? '(ya cobrada)' : ''}</label><input class="inp" type="number" min="0" step="any" id="f-sena" value="${enc.sena || ''}" ${senaFija ? 'disabled' : ''} oninput="renderItems()" placeholder="0"></div>
+      </div>
+      <div class="total-box"><span>Seña <b id="f-tsena">$0</b></span><span>Saldo <b id="f-saldo">$0</b></span><span>Total <span class="big" id="f-total">$0</span></span></div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="cerrarForm()">Cancelar</button>
+      <button class="btn btn-acc" id="f-guardar" onclick="guardarForm()">${nuevo ? '💾 Guardar encargo' : '💾 Guardar cambios'}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.addEventListener('click', cerrarResFuera);
+  ayudaTel(); renderItems();
+  setTimeout(() => document.getElementById(nuevo ? 'f-nombre' : 'f-buscar')?.focus(), 30);
+}
+function cerrarResFuera(e) { if (!e.target.closest('.buscador')) { const r = document.getElementById('f-res'); if (r) r.style.display = 'none'; } }
+function cerrarForm() { document.getElementById('ov-form')?.remove(); document.removeEventListener('click', cerrarResFuera); F = null; }
+
+function ayudaTel() {
+  const inp = document.getElementById('f-tel'), el = document.getElementById('f-tel-ayuda');
+  const r = telInfoAR(inp.value);
+  el.textContent = r.msg;
+  el.style.color = r.nivel === 'ok' ? '#25D366' : r.nivel === 'warn' ? '#fbbf24' : 'var(--text-muted)';
+}
+
+function buscarProd() {
+  const q = norm(document.getElementById('f-buscar').value);
+  const box = document.getElementById('f-res');
+  if (!q) { box.style.display = 'none'; F.res = []; return; }
+  const terms = q.split(' ');
+  F.res = S.prods.filter(p => terms.every(t => p.k.includes(t))).slice(0, 40);
+  F.act = F.res.length ? 0 : -1;
+  pintarRes();
+}
+function pintarRes() {
+  const box = document.getElementById('f-res');
+  if (!F.res.length) { box.innerHTML = '<div style="color:var(--text-muted);cursor:default">Sin resultados</div>'; box.style.display = 'block'; return; }
+  box.innerHTML = F.res.map((p, i) => `<div class="${i === F.act ? 'act' : ''}" onmousedown="event.preventDefault();elegirProd(${i})"><span>${esc(p.prod)}${p.gusto ? ' · <b>' + esc(p.gusto) + '</b>' : ''}</span><span class="p">${p.precio ? fmt$(p.precio) : 'sin precio'}</span></div>`).join('');
+  box.style.display = 'block';
+  box.querySelector('.act')?.scrollIntoView({ block: 'nearest' });
+}
+function teclaBuscar(e) {
+  if (!F.res.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); F.act = Math.min(F.act + 1, F.res.length - 1); pintarRes(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); F.act = Math.max(F.act - 1, 0); pintarRes(); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (F.act >= 0) elegirProd(F.act); }
+  else if (e.key === 'Escape') { document.getElementById('f-res').style.display = 'none'; }
+}
+function elegirProd(i) {
+  const p = F.res[i]; if (!p) return;
+  const ex = F.items.find(it => String(it.prod_id) === p.prodId && String(it.gusto_id || '') === p.gustoId);
+  if (ex) ex.cantidad = r2((+ex.cantidad || 0) + 1);
+  else F.items.push({ prod_id: p.prodId, prod_nombre: p.prod, gusto_id: p.gustoId, gusto_nombre: p.gusto, cantidad: 1, precio: p.precio, precio_manual: !p.precio });
+  const inp = document.getElementById('f-buscar');
+  inp.value = ''; document.getElementById('f-res').style.display = 'none'; F.res = [];
+  renderItems(); inp.focus();
+}
+function totalItems() { return r2(F.items.reduce((s, it) => s + (+it.precio || 0) * (+it.cantidad || 0), 0)); }
+function renderItems() {
+  const cont = document.getElementById('f-items'); if (!cont) return;
+  cont.innerHTML = F.items.length ? `<table class="it"><thead><tr><th>Producto</th><th class="n">Cant.</th><th class="n">Precio</th><th class="n">Subtotal</th><th></th></tr></thead><tbody>
+    ${F.items.map((it, i) => `<tr>
+      <td>${esc(it.prod_nombre)}${it.gusto_nombre ? ' · <b>' + esc(it.gusto_nombre) + '</b>' : ''}</td>
+      <td class="n"><input type="number" min="0" step="any" value="${it.cantidad}" onchange="setItem(${i},'cantidad',this.value)"></td>
+      <td class="n">${it.precio_manual ? `<input type="number" min="0" step="any" value="${it.precio || ''}" placeholder="$" onchange="setItem(${i},'precio',this.value)">` : fmt$(it.precio)}</td>
+      <td class="n">${fmt$((+it.precio || 0) * (+it.cantidad || 0))}</td>
+      <td class="n"><button class="btn btn-sm btn-danger" onclick="quitarItem(${i})">✕</button></td>
+    </tr>`).join('')}</tbody></table>`
+    : '<div style="font-size:13px;color:var(--text-dim);text-align:center;padding:8px;">Todavía no hay productos. Buscalos arriba.</div>';
+  const tot = totalItems();
+  const sena = +(document.getElementById('f-sena')?.value || 0) || 0;
+  document.getElementById('f-total').textContent = fmt$(tot);
+  document.getElementById('f-tsena').textContent = fmt$(sena);
+  document.getElementById('f-saldo').textContent = fmt$(tot - sena);
+}
+function setItem(i, campo, v) {
+  const n = parseFloat(String(v).replace(',', '.')) || 0;
+  if (campo === 'cantidad' && n <= 0) { quitarItem(i); return; }
+  F.items[i][campo] = r2(n); renderItems();
+}
+function quitarItem(i) { F.items.splice(i, 1); renderItems(); }
+
+async function guardarForm() {
+  const enc = F.enc, nuevo = !enc.id;
+  const nombre = document.getElementById('f-nombre').value.trim();
+  const fecha = document.getElementById('f-fecha').value;
+  if (!nombre) { toast('Falta el nombre del cliente', 'error'); return; }
+  if (!fecha) { toast('Elegí el día', 'error'); return; }
+  if (!F.items.length) { toast('Agregá al menos un producto', 'error'); return; }
+  if (F.items.some(it => !(+it.precio > 0))) { toast('Hay productos sin precio: cargalo a mano', 'error'); return; }
+  const total = totalItems();
+  const sena = enc.ticket_sena ? (+enc.sena || 0) : r2(+(document.getElementById('f-sena').value || 0) || 0);
+  if (sena < 0) { toast('La seña no puede ser negativa', 'error'); return; }
+  if (sena > total) { toast('La seña es mayor que el total', 'error'); return; }
+  const tel = normTelAR(document.getElementById('f-tel').value);
+  const datos = {
+    cliente_nombre: nombre, cliente_tel: tel || null, fecha,
+    horario: document.getElementById('f-horario').value || null,
+    items: F.items.map(it => ({ prod_id: it.prod_id, prod_nombre: it.prod_nombre, gusto_id: it.gusto_id || '', gusto_nombre: it.gusto_nombre || '', cantidad: +it.cantidad, precio: +it.precio, ...(it.precio_manual ? { precio_manual: true } : {}) })),
+    total, nota: document.getElementById('f-nota').value.trim() || null,
+    ubicacion: document.getElementById('f-ubic').value.trim() || null,
+    tomado_por: document.getElementById('f-toma').value || null,
+    hecho_por: document.getElementById('f-hace').value || null,
+    updated_at: new Date().toISOString()
+  };
+  const btn = document.getElementById('f-guardar'); btn.disabled = true;
+  try {
+    if (nuevo) {
+      const pdv = S.pdvs.find(p => String(p.id) === S.pdvSel);
+      const r = await sbApi('encargos', { method: 'POST', body: JSON.stringify({ ...datos, empresa_id: S.empresa, pdv_id: S.pdvSel, pdv_nombre: pdv?.nombre || pdv?.name || '', estado: 'pendiente', sena: 0, creado_por: S.user.username }) });
+      const creado = r && r[0];
+      cerrarForm();
+      toast(`Encargo #${creado?.id} guardado`, 'success');
+      if (creado && sena > 0) await cobrarSena(creado, sena);
+    } else {
+      // No se edita lo ya entregado/cancelado
+      const r = await sbApi(`encargos?id=eq.${enc.id}&estado=in.(pendiente,hecho)`, { method: 'PATCH', body: JSON.stringify(datos) });
+      if (!r || !r.length) { toast('El encargo ya no está activo, no se guardó', 'error'); btn.disabled = false; return; }
+      cerrarForm();
+      toast('Cambios guardados', 'success');
+      if (!enc.ticket_sena && sena > 0) await cobrarSena(r[0], sena);
+    }
+    // Ir al mes del encargo si quedó en otro
+    if (+fecha.slice(0, 4) !== S.year || +fecha.slice(5, 7) - 1 !== S.month) { S.year = +fecha.slice(0, 4); S.month = +fecha.slice(5, 7) - 1; }
+    avisarCambios(); await cargarMes();
+    abrirDia(fecha);
+  } catch (e) { toast('Error: ' + e.message, 'error'); btn.disabled = false; }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// COBRO (mismos pasos y mismos valores de metodo_pago que Ventas en index)
+// Devuelve { metodo, efectivo, tarjeta } o null si se cancela.
+// ════════════════════════════════════════════════════════════════════
+function cobrar(total, titulo) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'ov-cobro';
+    const fin = v => { ov.remove(); resolve(v); };
+    const paso1 = () => {
+      ov.innerHTML = `<div class="modal sm"><div class="mb" style="text-align:center;">
+        <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">${esc(titulo)}<br>¿Cómo paga el cliente?</div>
+        <div class="monto-big">${fmt$(total)}</div>
+        <div class="pago-btns">
+          <button style="background:#4ade80;color:#000" data-m="efectivo">💵 Efectivo</button>
+          <button style="background:#8b5cf6;color:#fff" data-m="tarjeta">💳 Tarjeta</button>
+          <button style="background:#0ea5e9;color:#fff" data-m="mixto">💵+💳 Mixto</button>
+        </div>
+        <button class="btn" style="width:100%" data-m="x">✗ Cancelar</button></div></div>`;
+      ov.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+        const m = b.dataset.m;
+        if (m === 'x') fin(null); else if (m === 'efectivo') pasoEfectivo(); else if (m === 'tarjeta') pasoTarjeta(); else pasoMixto();
+      });
+    };
+    const pasoEfectivo = () => {
+      ov.innerHTML = `<div class="modal sm"><div class="mh">💵 Pago en efectivo · ${fmt$(total)}</div><div class="mb">
+        <label class="lbl">¿Cuánto entrega el cliente?</label>
+        <input class="inp" type="number" min="0" step="any" id="c-entrega" style="font-size:22px;text-align:center;font-family:var(--mono)">
+        <div id="c-vuelto" style="text-align:center;font-size:13px;color:var(--text-muted)">&nbsp;</div></div>
+        <div class="mf"><button class="btn" id="c-volver">← Volver</button><button class="btn btn-acc" id="c-ok">💾 Confirmar</button></div></div>`;
+      const inp = ov.querySelector('#c-entrega'), out = ov.querySelector('#c-vuelto');
+      inp.oninput = () => { const v = +inp.value || 0; out.innerHTML = v >= total ? `Vuelto: <b style="font-size:26px;color:#6ee7b7;font-family:var(--mono)">${fmt$(v - total)}</b>` : (v ? `<span style="color:var(--danger)">Faltan ${fmt$(total - v)}</span>` : '&nbsp;'); };
+      inp.onkeydown = e => { if (e.key === 'Enter') ov.querySelector('#c-ok').click(); };
+      ov.querySelector('#c-volver').onclick = paso1;
+      ov.querySelector('#c-ok').onclick = () => { const v = +inp.value || 0; if (v < total) { toast('El monto no alcanza', 'error'); inp.focus(); return; } fin({ metodo: 'efectivo', efectivo: total, tarjeta: 0 }); };
+      setTimeout(() => inp.focus(), 30);
+    };
+    const pasoTarjeta = () => {
+      ov.innerHTML = `<div class="modal sm"><div class="mh">💳 Pago con tarjeta · ${fmt$(total)}</div><div class="mb" style="text-align:center;">
+        <div style="font-size:40px">💳</div><div style="font-weight:700;color:#8b5cf6">Procesá el pago y confirmá</div></div>
+        <div class="mf"><button class="btn" id="c-volver">← Volver</button><button class="btn" style="background:#8b5cf6;color:#fff;border-color:#8b5cf6" id="c-ok">💾 Confirmar</button></div></div>`;
+      ov.querySelector('#c-volver').onclick = paso1;
+      ov.querySelector('#c-ok').onclick = () => fin({ metodo: 'tarjeta', efectivo: 0, tarjeta: total });
+    };
+    const pasoMixto = () => {
+      ov.innerHTML = `<div class="modal sm"><div class="mh">💵+💳 Pago mixto · ${fmt$(total)}</div><div class="mb">
+        <label class="lbl">¿Cuánto paga en efectivo?</label>
+        <input class="inp" type="number" min="0" step="any" id="c-ef" style="font-size:20px;text-align:center;font-family:var(--mono)">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono)"><span>💳 Tarjeta</span><b id="c-tj" style="color:#8b5cf6">${fmt$(total)}</b></div></div>
+        <div class="mf"><button class="btn" id="c-volver">← Volver</button><button class="btn" style="background:#0ea5e9;color:#fff;border-color:#0ea5e9" id="c-ok">💾 Confirmar</button></div></div>`;
+      const inp = ov.querySelector('#c-ef');
+      inp.oninput = () => { ov.querySelector('#c-tj').textContent = fmt$(Math.max(total - (+inp.value || 0), 0)); };
+      ov.querySelector('#c-volver').onclick = paso1;
+      ov.querySelector('#c-ok').onclick = () => {
+        const ef = r2(+inp.value || 0);
+        if (ef <= 0 || ef >= total) { toast('En mixto el efectivo tiene que ser mayor a 0 y menor al total', 'error'); return; }
+        fin({ metodo: 'mixto', efectivo: ef, tarjeta: r2(total - ef) });
+      };
+      setTimeout(() => inp.focus(), 30);
+    };
+    document.body.appendChild(ov);
+    paso1();
+  });
+}
+
+// Fila de `ventas` con el mismo formato que guardarVenta() de index
+function filaVenta(enc, ticket, it, pago) {
+  return {
+    empresa_id: S.empresa, pdv_id: String(enc.pdv_id), fecha: fechaHoyAR(), ticket_id: ticket,
+    prod_id: String(it.prod_id), prod_nombre: it.prod_nombre, gusto_id: String(it.gusto_id || ''), gusto_nombre: it.gusto_nombre || '',
+    cantidad: it.cantidad, precio: it.precio, precio_lista: it.precio,
+    descuento_pct: 0, descuento_monto: 0, descuento_motivo: null, lista: 'Lista 1',
+    metodo_pago: pago.metodo,
+    monto_efectivo: pago.metodo === 'mixto' ? pago.efectivo : null,
+    monto_tarjeta: pago.metodo === 'mixto' ? pago.tarjeta : null,
+    username: S.user.username, cliente_tel: enc.cliente_tel || null, cliente_nombre: enc.cliente_nombre || null
+  };
+}
+async function insertarVentas(rows) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/ventas`, {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify(rows)
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+// Mismo acumulador del control de efectivo que usa index (mismo navegador)
+function sumarEfectivo(pdvId, monto) {
+  if (!(monto > 0)) return;
+  try { const k = `ef_acum_${S.empresa}_${pdvId}`; localStorage.setItem(k, (parseFloat(localStorage.getItem(k)) || 0) + monto); } catch (e) {}
+}
+const SENA_ITEM = enc => ({ prod_id: 'ENCARGO_SENA', prod_nombre: `Seña encargo #${enc.id}`, gusto_id: '', gusto_nombre: '', cantidad: 1 });
+
+// ── Seña: entra a caja el día que se cobra ──
+async function cobrarSenaDe(id) {
+  const e = S.encargos.find(x => x.id === id); if (!e) return;
+  const v = prompt(`Seña para el encargo #${id} (total ${fmt$(e.total)}):`, '');
+  if (v === null) return;
+  const monto = r2(parseFloat(String(v).replace(',', '.')) || 0);
+  if (monto <= 0) { toast('Monto inválido', 'error'); return; }
+  if (monto > +e.total) { toast('La seña es mayor que el total', 'error'); return; }
+  await cobrarSena(e, monto);
+  avisarCambios(); cargarMes();
+}
+async function cobrarSena(enc, monto) {
+  const pago = await cobrar(monto, `Seña encargo #${enc.id}`);
+  if (!pago) { toast('Seña no cobrada. Podés cobrarla después con "💵 Cobrar seña".', 'error'); return false; }
+  const ticket = `ENC_SENA_${enc.id}`;
+  // Reservar la seña en el encargo primero (evita cobrarla dos veces desde dos ventanas)
+  const r = await sbApi(`encargos?id=eq.${enc.id}&ticket_sena=is.null`, { method: 'PATCH', body: JSON.stringify({ ticket_sena: ticket, sena: monto, sena_forma_pago: pago.metodo, sena_fecha: fechaHoyAR(), updated_at: new Date().toISOString() }) }).catch(e => { toast('Error: ' + e.message, 'error'); return null; });
+  if (!r || !r.length) { toast('Ese encargo ya tenía la seña cobrada', 'error'); return false; }
+  try {
+    await insertarVentas([filaVenta(enc, ticket, { ...SENA_ITEM(enc), precio: monto }, pago)]);
+  } catch (e) {
+    // Se revierte la marca para poder reintentar
+    await sbApi(`encargos?id=eq.${enc.id}`, { method: 'PATCH', body: JSON.stringify({ ticket_sena: null, sena: 0, sena_forma_pago: null, sena_fecha: null }) }).catch(() => {});
+    toast('⚠️ La seña NO se registró en ventas: ' + e.message, 'error');
+    return false;
+  }
+  if (pago.metodo === 'efectivo') sumarEfectivo(enc.pdv_id, monto);
+  toast(`✓ Seña de ${fmt$(monto)} registrada (${pago.metodo})`, 'success');
+  return true;
+}
+
+// ── Entrega: cobra el saldo, graba la venta con los productos y la seña en negativo ──
+async function entregar(id) {
+  const e = S.encargos.find(x => x.id === id); if (!e) return;
+  const items = Array.isArray(e.items) ? e.items : [];
+  if (!items.length) { toast('El encargo no tiene productos', 'error'); return; }
+  const sena = e.ticket_sena ? (+e.sena || 0) : 0;
+  const saldo = r2((+e.total || 0) - sena);
+  // Confirmación + quién lo entrega
+  const quien = await new Promise(resolve => {
+    const ov = document.createElement('div'); ov.className = 'ov';
+    ov.innerHTML = `<div class="modal sm"><div class="mh">📦 Entregar encargo #${e.id}</div><div class="mb">
+      <div style="font-weight:800;font-size:15px">${esc(e.cliente_nombre)}</div>
+      <div class="tots" style="font-size:13px"><span>Total <b>${fmt$(e.total)}</b></span><span>Seña <b>${fmt$(sena)}</b></span></div>
+      <div class="monto-big">${fmt$(saldo)}</div><div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:-8px">a cobrar ahora</div>
+      ${e.ubicacion ? `<div style="font-size:13px">📦 Está en: <b>${esc(e.ubicacion)}</b></div>` : ''}
+      <div><label class="lbl">¿Quién lo entrega?</label><select class="inp" id="q-ent"><option value="">—</option>${S.personas.map(p => `<option ${p.nombre === e.entregado_por ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select></div>
+      </div><div class="mf"><button class="btn" id="q-no">Cancelar</button><button class="btn btn-acc" id="q-si">Continuar →</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#q-no').onclick = () => { ov.remove(); resolve(undefined); };
+    ov.querySelector('#q-si').onclick = () => { const v = ov.querySelector('#q-ent').value; ov.remove(); resolve(v); };
+  });
+  if (quien === undefined) return;
+
+  let pago = { metodo: 'efectivo', efectivo: 0, tarjeta: 0 };
+  if (saldo > 0) {
+    pago = await cobrar(saldo, `Entrega encargo #${e.id}`);
+    if (!pago) return;
+  }
+  // Marcar entregado solo si sigue activo (evita doble entrega/cobro)
+  const ticket = `ENC_${e.id}`;
+  let r;
+  try {
+    r = await sbApi(`encargos?id=eq.${e.id}&estado=in.(pendiente,hecho)`, { method: 'PATCH', body: JSON.stringify({ estado: 'entregado', ticket_entrega: ticket, entregado_at: new Date().toISOString(), entregado_por: quien || e.entregado_por || null, updated_at: new Date().toISOString() }) });
+  } catch (err) { toast('Error: ' + err.message, 'error'); return; }
+  if (!r || !r.length) { toast('Ese encargo ya fue entregado o cancelado', 'error'); cargarMes(); return; }
+  const rows = items.map(it => filaVenta(e, ticket, it, pago));
+  if (sena > 0) rows.push(filaVenta(e, ticket, { ...SENA_ITEM(e), precio: -sena }, pago));
+  try {
+    await insertarVentas(rows);
+  } catch (err) {
+    await sbApi(`encargos?id=eq.${e.id}`, { method: 'PATCH', body: JSON.stringify({ estado: e.estado, ticket_entrega: null, entregado_at: null }) }).catch(() => {});
+    toast('⚠️ No se registró la venta, el encargo sigue pendiente: ' + err.message, 'error');
+    return;
+  }
+  if (pago.metodo === 'efectivo') sumarEfectivo(e.pdv_id, saldo);
+  toast(`📦 Entregado · venta de ${fmt$(saldo)} registrada`, 'success');
+  avisarCambios(); cargarMes();
+}
+
+// ── Cancelación: retener o devolver la seña ──
+async function cancelarEncargo(id) {
+  const e = S.encargos.find(x => x.id === id); if (!e) return;
+  const tieneSena = !!e.ticket_sena && +e.sena > 0;
+  const dec = await new Promise(resolve => {
+    const ov = document.createElement('div'); ov.className = 'ov';
+    ov.innerHTML = `<div class="modal sm"><div class="mh">✕ Cancelar encargo #${e.id}</div><div class="mb">
+      <div><b>${esc(e.cliente_nombre)}</b> · ${fmt$(e.total)}</div>
+      <div><label class="lbl">Motivo</label><input class="inp" id="k-mot" placeholder="Ej: no vino, cambió de idea…" maxlength="150"></div>
+      ${tieneSena ? `<div><label class="lbl">Seña cobrada: ${fmt$(e.sena)}</label>
+        <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="radio" name="k-s" value="retenida" checked> Retener la seña (queda en caja)</label>
+        <label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="radio" name="k-s" value="devuelta"> Devolver la seña (sale de caja hoy)</label>
+        <select class="inp" id="k-met" style="margin-top:4px"><option value="efectivo">Se devuelve en efectivo</option><option value="tarjeta">Se devuelve por tarjeta/transferencia</option></select></div>` : ''}
+      </div><div class="mf"><button class="btn" id="k-no">Volver</button><button class="btn btn-danger" id="k-si">Cancelar encargo</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#k-no').onclick = () => { ov.remove(); resolve(null); };
+    ov.querySelector('#k-si').onclick = () => {
+      const v = { motivo: ov.querySelector('#k-mot').value.trim(), destino: tieneSena ? ov.querySelector('input[name=k-s]:checked').value : null, met: tieneSena ? ov.querySelector('#k-met').value : null };
+      ov.remove(); resolve(v);
+    };
+  });
+  if (!dec) return;
+  let r;
+  try {
+    r = await sbApi(`encargos?id=eq.${e.id}&estado=in.(pendiente,hecho)`, { method: 'PATCH', body: JSON.stringify({ estado: 'cancelado', cancelado_motivo: dec.motivo || null, sena_destino: dec.destino, updated_at: new Date().toISOString() }) });
+  } catch (err) { toast('Error: ' + err.message, 'error'); return; }
+  if (!r || !r.length) { toast('Ese encargo ya no estaba activo', 'error'); cargarMes(); return; }
+  if (dec.destino === 'devuelta') {
+    const pago = { metodo: dec.met, efectivo: 0, tarjeta: 0 };
+    try {
+      await insertarVentas([filaVenta(e, `ENC_DEV_${e.id}`, { ...SENA_ITEM(e), prod_nombre: `Devolución seña encargo #${e.id}`, precio: -(+e.sena) }, pago)]);
+      if (dec.met === 'efectivo') sumarEfectivo(e.pdv_id, -(+e.sena));
+    } catch (err) {
+      await sbApi(`encargos?id=eq.${e.id}`, { method: 'PATCH', body: JSON.stringify({ estado: e.estado, sena_destino: null, cancelado_motivo: null }) }).catch(() => {});
+      toast('⚠️ No se registró la devolución, el encargo sigue activo: ' + err.message, 'error');
+      return;
+    }
+  }
+  toast('Encargo cancelado' + (dec.destino ? ' · seña ' + dec.destino : ''), 'success');
+  avisarCambios(); cargarMes();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.querySelector('.ov')) cerrarPanel();
+});
+init();
+</script>
+</body>
+</html>
