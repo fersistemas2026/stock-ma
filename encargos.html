@@ -121,6 +121,14 @@
   .pago-btns button { border: none; border-radius: 8px; padding: 14px; font-size: 16px; font-weight: 900; }
   .monto-big { font-size: 34px; font-weight: 900; color: var(--accent); text-align: center; font-family: var(--mono); }
 
+  .modo { display: flex; gap: 6px; }
+  .modo button { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 8px; font-weight: 800; font-size: 13px; }
+  .modo button.on { background: var(--accent); color: #000; border-color: var(--accent); }
+  .qbox { position: relative; }
+  .qbox .res { width: 420px; max-width: 90vw; max-height: 380px; }
+  .qbox .res div { flex-direction: column; gap: 1px; align-items: stretch; }
+  .qbox .res .l1 { display: flex; justify-content: space-between; gap: 8px; }
+  .qbox .res .l2 { font-size: 11px; color: var(--text-muted); }
   #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 6px; align-items: center; }
   .t { background: var(--surface2); border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
   .t.success { border-color: var(--entr); color: var(--entr); }
@@ -146,6 +154,10 @@
     <button class="btn btn-sm" onclick="irHoy()">Hoy</button>
   </div>
   <div class="spacer"></div>
+  <div class="qbox">
+    <input class="inp" id="q" placeholder="🔍 Buscar por nombre o teléfono" autocomplete="off" style="width:240px" oninput="buscarRapidoDeb()" onkeydown="if(event.key==='Escape'){this.value='';buscarRapidoDeb()}">
+    <div class="res" id="q-res"></div>
+  </div>
   <span id="user-lbl"></span>
   <button class="btn" onclick="cargarMes()" title="Actualizar">↻</button>
   <button class="btn btn-acc" onclick="nuevoEncargo()">+ Nuevo encargo</button>
@@ -312,7 +324,13 @@ async function init() {
     S.user = u[0];
   } catch (e) { bloquear('No se pudo conectar: ' + e.message); return; }
   document.getElementById('user-lbl').textContent = '👤 ' + (S.user.display_name || S.user.username);
-  try { _bc = new BroadcastChannel('encargos_ma'); _bc.onmessage = () => { if (!document.querySelector('.ov')) cargarMes(); }; } catch (e) {}
+  try {
+    _bc = new BroadcastChannel('encargos_ma');
+    _bc.onmessage = ev => {
+      if (ev.data && ev.data.ir) { irADia(ev.data.ir); window.focus(); return; }
+      if (!document.querySelector('.ov')) cargarMes();
+    };
+  } catch (e) {}
 
   const mis = (S.user.pdvs || []).map(String);
   S.pdvs = await sbApi(`pdvs?empresa_id=eq.${S.empresa}&order=orden.asc,created_at.asc&select=*`).catch(() => []) || [];
@@ -332,6 +350,9 @@ async function init() {
   vigilarSesion();
   await Promise.all([cargarPersonas(), cargarProductos()]);
   await cargarMes();
+  const mDia = /dia=(\d{4}-\d{2}-\d{2})/.exec(location.hash || '');
+  if (mDia) { history.replaceState(null, '', location.pathname); irADia(mDia[1]); }
+  document.addEventListener('click', ev => { if (!ev.target.closest('.qbox')) document.getElementById('q-res').style.display = 'none'; });
   // Refresco automático (sin pisar lo que se está editando ni un arrastre)
   setInterval(() => { if (!document.querySelector('.ov') && !S.dragging && !document.hidden) cargarMes(true); }, 30000);
 }
@@ -422,6 +443,47 @@ function cambiarPdv(v) {
   cargarMes();
 }
 function moverMes(d) { S.month += d; if (S.month < 0) { S.month = 11; S.year--; } if (S.month > 11) { S.month = 0; S.year++; } cargarMes(); }
+async function irADia(f, focoId) {
+  if (+f.slice(0, 4) !== S.year || +f.slice(5, 7) - 1 !== S.month) { S.year = +f.slice(0, 4); S.month = +f.slice(5, 7) - 1; await cargarMes(); }
+  abrirDia(f, focoId);
+}
+
+// ── Buscador rápido: nombre o teléfono, todas las fechas, solo la sucursal elegida ──
+let _qTimer = null, _qRes = [];
+function buscarRapidoDeb() { clearTimeout(_qTimer); _qTimer = setTimeout(buscarRapido, 300); }
+async function buscarRapido() {
+  const raw = document.getElementById('q').value.replace(/[,()*%\\"]/g, ' ').replace(/\s+/g, ' ').trim();
+  const box = document.getElementById('q-res');
+  if (raw.length < 2) { box.style.display = 'none'; return; }
+  const dig = raw.replace(/\D/g, '');
+  const conds = n => {
+    const c = [`${n}.ilike."*${raw}*"`];
+    if (dig.length >= 3) c.push(`cliente_tel.ilike.*${dig}*`);
+    return encodeURIComponent('(' + c.join(',') + ')');
+  };
+  try {
+    const [enc, onl] = await Promise.all([
+      sbApi(`encargos?empresa_id=eq.${S.empresa}&pdv_id=eq.${encodeURIComponent(S.pdvSel)}&or=${conds('cliente_nombre')}&select=id,fecha,horario,cliente_nombre,cliente_tel,estado,total,modalidad&order=fecha.desc`),
+      sbApi(`pedidos_online?empresa_id=eq.${S.empresa}&pdv_id=eq.${encodeURIComponent(S.pdvSel)}&or=${conds('cliente_nombre')}&select=id,nro_pedido,fecha_entrega,cliente_nombre,cliente_tel,estado,total,total_final&order=fecha_entrega.desc`).catch(() => [])
+    ]);
+    _qRes = [
+      ...(enc || []).map(e => ({ tipo: 'enc', id: e.id, fecha: e.fecha, nombre: e.cliente_nombre, tel: e.cliente_tel, estado: e.estado, total: e.total, extra: (e.horario ? '🕑 ' + e.horario + ' · ' : '') + (e.modalidad === 'envio' ? '🛵 Envío' : '🏪 Retiro') })),
+      ...(onl || []).filter(p => p.fecha_entrega).map(p => ({ tipo: 'onl', id: p.id, fecha: p.fecha_entrega, nombre: p.cliente_nombre, tel: p.cliente_tel, estado: p.estado, total: p.total_final || p.total, extra: '🛒 Online #' + (p.nro_pedido || p.id) }))
+    ].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).slice(0, 50);
+  } catch (e) { toast('Error buscando: ' + e.message, 'error'); return; }
+  const hoy = fechaHoyAR();
+  box.innerHTML = _qRes.length ? _qRes.map((r, i) => `<div onclick="elegirBusqueda(${i})">
+      <span class="l1"><span><b>${esc(r.nombre || '')}</b>${r.tel ? ' · ' + esc(r.tel) : ''}</span><span style="font-family:var(--mono);color:var(--accent)">${fmt$(r.total)}</span></span>
+      <span class="l2">${fechaLarga(r.fecha)}${r.fecha === hoy ? ' (HOY)' : ''} · ${esc(r.extra)} · <span style="color:${r.tipo === 'onl' ? 'var(--online)' : colorEstado(r.estado)}">${esc(r.estado || '')}</span></span>
+    </div>`).join('') : '<div style="color:var(--text-muted);cursor:default">Sin resultados en esta sucursal</div>';
+  box.style.display = 'block';
+}
+function elegirBusqueda(i) {
+  const r = _qRes[i]; if (!r) return;
+  document.getElementById('q-res').style.display = 'none';
+  irADia(r.fecha, r.tipo === 'onl' ? 'onl-' + r.id : String(r.id));
+}
+
 function irHoy() { const h = fechaHoyAR(); S.year = +h.slice(0, 4); S.month = +h.slice(5, 7) - 1; cargarMes(); }
 
 // ════════════════════════════════════════════════════════════════════
@@ -472,7 +534,7 @@ function renderCal() {
 function miniEnc(e) {
   const mov = e.estado === 'pendiente' || e.estado === 'hecho';
   return `<div class="mini ${e.estado === 'entregado' ? 'entregado' : ''}" style="--c:${colorEstado(e.estado)}" data-id="${e.id}" draggable="${mov}" title="#${e.id} · ${esc(e.cliente_nombre)} · ${fmt$(e.total)}">
-    ${e.horario ? `<span class="h">${esc(e.horario)}</span> ` : ''}${esc(e.cliente_nombre)} · ${fmt$(e.total)}</div>`;
+    ${e.modalidad === 'envio' ? '🛵 ' : ''}${e.horario ? `<span class="h">${esc(e.horario)}</span> ` : ''}${esc(e.cliente_nombre)} · ${fmt$(e.total)}</div>`;
 }
 function miniOnline(p) {
   return `<div class="mini online ${p.estado === 'entregado' ? 'entregado' : ''}" style="--c:var(--online)" title="Pedido online #${esc(p.nro_pedido || p.id)}">
@@ -543,7 +605,8 @@ function cardEnc(e) {
   const estadoTxt = e.estado === 'cancelado' ? `cancelado${e.sena_destino ? ' · seña ' + e.sena_destino : ''}` : e.estado;
   return `<div class="card ${e.estado === 'cancelado' ? 'cancelado' : ''}" id="card-${e.id}" style="--c:${colorEstado(e.estado)}">
     <div class="top"><span class="cli">${esc(e.cliente_nombre)}</span><span class="badge" style="--c:${colorEstado(e.estado)}">${esc(estadoTxt)}</span></div>
-    <div class="meta"><span>#${e.id}</span>${e.horario ? `<span>🕑 ${esc(e.horario)}</span>` : ''}${tel}${e.creado_por ? `<span>cargó ${esc(e.creado_por)}</span>` : ''}</div>
+    <div class="meta"><span>#${e.id}</span>${e.horario ? `<span>🕑 ${esc(e.horario)}</span>` : ''}<span>${e.modalidad === 'envio' ? '🛵 Envío' : '🏪 Retiro'}</span>${tel}${e.creado_por ? `<span>cargó ${esc(e.creado_por)}</span>` : ''}</div>
+    ${e.modalidad === 'envio' && e.domicilio ? `<div class="meta">📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.domicilio)}" target="_blank" style="color:var(--text)">${esc(e.domicilio)}</a></div>` : ''}
     <div class="items">${items.map(it => `<div><span><span class="q">${it.cantidad}×</span>${esc(it.prod_nombre)}${it.gusto_nombre ? ' · ' + esc(it.gusto_nombre) : ''}</span><span class="h" style="font-family:var(--mono)">${fmt$(it.precio * it.cantidad)}</span></div>`).join('')}</div>
     ${e.nota ? `<div style="font-size:12px;background:var(--surface);border-radius:6px;padding:6px 8px;">📝 ${esc(e.nota)}</div>` : ''}
     <div class="tots"><span>Total <b>${fmt$(e.total)}</b></span><span>Seña <b style="color:var(--hecho)">${fmt$(e.sena)}</b>${e.sena_forma_pago ? ' (' + esc(e.sena_forma_pago) + ')' : ''}</span>${e.estado !== 'entregado' && e.estado !== 'cancelado' ? `<span>Saldo <b style="color:var(--accent)">${fmt$(saldo)}</b></span>` : ''}</div>
@@ -568,10 +631,10 @@ function cardEnc(e) {
 function cardOnline(p) {
   const items = Array.isArray(p.items) ? p.items : [];
   const tel = p.cliente_tel ? `<a href="https://wa.me/549${esc(normTelAR(p.cliente_tel))}" target="_blank">📱 ${esc(p.cliente_tel)}</a>` : '';
-  return `<div class="card online" style="--c:var(--online)">
+  return `<div class="card online" id="card-onl-${esc(p.id)}" style="--c:var(--online)">
     <div class="top"><span class="cli">🛒 ${esc(p.cliente_nombre || '')}</span><span class="badge" style="--c:var(--online);color:#fff">${esc(p.estado || '')}</span></div>
     <div class="meta"><span>Online #${esc(p.nro_pedido || p.id)}</span>${horaOnline(p) ? `<span>🕑 ${esc(horaOnline(p))}</span>` : ''}<span>${p.modalidad === 'delivery' ? '🛵 Delivery' : '🏪 Retiro'}</span>${tel}</div>
-    ${p.direccion ? `<div class="meta">📍 ${esc(p.direccion)}</div>` : ''}
+    ${p.direccion ? `<div class="meta">📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" style="color:var(--text)">${esc(p.direccion)}</a></div>` : ''}
     <div class="items">${items.map(it => `<div><span><span class="q">${it.cantidad}×</span>${esc(it.prod_nombre || '')}${it.gusto_nombre ? ' · ' + esc(it.gusto_nombre) : ''}</span></div>`).join('')}</div>
     <div class="tots"><span>Total <b>${fmt$(p.total_final || p.total)}</b></span><span>${esc(p.metodo_pago || '')}</span></div>
     <div class="slots">
@@ -641,7 +704,7 @@ async function borrarEncargo(id) {
 let F = null; // estado del formulario abierto
 
 function nuevoEncargo(fecha) {
-  abrirForm({ id: null, fecha: fecha || S.diaSel || fechaHoyAR(), cliente_nombre: '', cliente_tel: '', horario: '', items: [], nota: '', ubicacion: '', tomado_por: '', hecho_por: '', sena: 0, ticket_sena: null });
+  abrirForm({ id: null, fecha: fecha || S.diaSel || fechaHoyAR(), cliente_nombre: '', cliente_tel: '', horario: '', modalidad: 'retiro', domicilio: '', items: [], nota: '', ubicacion: '', tomado_por: '', hecho_por: '', sena: 0, ticket_sena: null });
 }
 function editarEncargo(id) {
   const e = S.encargos.find(x => x.id === id); if (!e) return;
@@ -649,7 +712,7 @@ function editarEncargo(id) {
 }
 
 function abrirForm(enc) {
-  F = { enc, items: (Array.isArray(enc.items) ? enc.items : []).map(i => ({ ...i })), act: -1, res: [] };
+  F = { enc, items: (Array.isArray(enc.items) ? enc.items : []).map(i => ({ ...i })), act: -1, res: [], modo: enc.modalidad === 'envio' ? 'envio' : 'retiro' };
   const nuevo = !enc.id;
   const senaFija = !!enc.ticket_sena;
   const optsP = sel => '<option value="">—</option>' + S.personas.map(p => `<option ${p.nombre === sel ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')
@@ -666,6 +729,16 @@ function abrirForm(enc) {
       <div class="row2">
         <div><label class="lbl">Día *</label><input class="inp" type="date" id="f-fecha" value="${esc(enc.fecha)}"></div>
         <div><label class="lbl">Horario</label><input class="inp" type="time" id="f-horario" value="${esc(enc.horario || '')}"></div>
+      </div>
+      <div>
+        <label class="lbl">Entrega</label>
+        <div class="modo" id="f-modo">
+          <button type="button" data-v="retiro" class="${enc.modalidad !== 'envio' ? 'on' : ''}" onclick="setModo('retiro')">🏪 Retira en el local</button>
+          <button type="button" data-v="envio" class="${enc.modalidad === 'envio' ? 'on' : ''}" onclick="setModo('envio')">🛵 Envío</button>
+        </div>
+        <div id="f-dom-box" style="margin-top:8px;${enc.modalidad === 'envio' ? '' : 'display:none'}">
+          <label class="lbl">Domicilio *</label><input class="inp" id="f-dom" value="${esc(enc.domicilio || '')}" maxlength="150" placeholder="Calle, número, piso/depto, entre calles…">
+        </div>
       </div>
       <div class="buscador">
         <label class="lbl">Agregar producto</label>
@@ -693,6 +766,12 @@ function abrirForm(enc) {
   document.addEventListener('click', cerrarResFuera);
   ayudaTel(); renderItems();
   setTimeout(() => document.getElementById(nuevo ? 'f-nombre' : 'f-buscar')?.focus(), 30);
+}
+function setModo(v) {
+  F.modo = v;
+  document.querySelectorAll('#f-modo button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  document.getElementById('f-dom-box').style.display = v === 'envio' ? '' : 'none';
+  if (v === 'envio') document.getElementById('f-dom').focus();
 }
 function cerrarResFuera(e) { if (!e.target.closest('.buscador')) { const r = document.getElementById('f-res'); if (r) r.style.display = 'none'; } }
 function cerrarForm() { document.getElementById('ov-form')?.remove(); document.removeEventListener('click', cerrarResFuera); F = null; }
@@ -769,6 +848,8 @@ async function guardarForm() {
   if (!fecha) { toast('Elegí el día', 'error'); return; }
   if (!F.items.length) { toast('Agregá al menos un producto', 'error'); return; }
   if (F.items.some(it => !(+it.precio > 0))) { toast('Hay productos sin precio: cargalo a mano', 'error'); return; }
+  const domicilio = F.modo === 'envio' ? document.getElementById('f-dom').value.trim() : '';
+  if (F.modo === 'envio' && !domicilio) { toast('Cargá el domicilio para el envío', 'error'); document.getElementById('f-dom').focus(); return; }
   const total = totalItems();
   const sena = enc.ticket_sena ? (+enc.sena || 0) : r2(+(document.getElementById('f-sena').value || 0) || 0);
   if (sena < 0) { toast('La seña no puede ser negativa', 'error'); return; }
@@ -777,6 +858,7 @@ async function guardarForm() {
   const datos = {
     cliente_nombre: nombre, cliente_tel: tel || null, fecha,
     horario: document.getElementById('f-horario').value || null,
+    modalidad: F.modo, domicilio: domicilio || null,
     items: F.items.map(it => ({ prod_id: it.prod_id, prod_nombre: it.prod_nombre, gusto_id: it.gusto_id || '', gusto_nombre: it.gusto_nombre || '', cantidad: +it.cantidad, precio: +it.precio, ...(it.precio_manual ? { precio_manual: true } : {}) })),
     total, nota: document.getElementById('f-nota').value.trim() || null,
     ubicacion: document.getElementById('f-ubic').value.trim() || null,
@@ -946,6 +1028,7 @@ async function entregar(id) {
       <div class="tots" style="font-size:13px"><span>Total <b>${fmt$(e.total)}</b></span><span>Seña <b>${fmt$(sena)}</b></span></div>
       <div class="monto-big">${fmt$(saldo)}</div><div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:-8px">a cobrar ahora</div>
       ${e.ubicacion ? `<div style="font-size:13px">📦 Está en: <b>${esc(e.ubicacion)}</b></div>` : ''}
+      ${e.modalidad === 'envio' ? `<div style="font-size:13px">🛵 Envío a: <b>${esc(e.domicilio || '')}</b></div>` : ''}
       <div><label class="lbl">¿Quién lo entrega?</label><select class="inp" id="q-ent"><option value="">—</option>${S.personas.map(p => `<option ${p.nombre === e.entregado_por ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select></div>
       </div><div class="mf"><button class="btn" id="q-no">Cancelar</button><button class="btn btn-acc" id="q-si">Continuar →</button></div></div>`;
     document.body.appendChild(ov);

@@ -2997,8 +2997,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
   // ── ENCARGOS (módulo encargos.html) — usa la misma sesión que la pizarra ──
   let _encargosWin = null, _encargosBC = null;
-  function abrirEncargos() {
+  function abrirEncargos(fecha) {
     guardarSesionPizarra();
+    const dest = 'encargos.html' + (fecha ? '#dia=' + fecha : '');
     try {
       const w = (_encargosWin && !_encargosWin.closed) ? _encargosWin : window.open('', 'encargos_ma');
       if (!w) { toast('El navegador bloqueó la ventana. Permití ventanas emergentes para este sitio.','error'); return; }
@@ -3007,23 +3008,91 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         enBlanco = !w.location.href || w.location.href === 'about:blank';
         bloqueada = !enBlanco && !!w.document.querySelector('.blocker');
       } catch(e) {}
-      if (enBlanco) w.location.href = 'encargos.html';
-      else if (bloqueada) w.location.reload();
+      if (enBlanco || bloqueada) w.location.href = dest;
+      else if (fecha) { try { (_encargosBC || new BroadcastChannel('encargos_ma')).postMessage({ ir: fecha }); } catch(e) {} }
       _encargosWin = w;
       w.focus();
-    } catch(e) { window.open('encargos.html', 'encargos_ma'); }
+    } catch(e) { window.open(dest, 'encargos_ma'); }
   }
   window.abrirEncargos = abrirEncargos;
-  // Numerito: encargos de hoy todavía sin entregar en mis sucursales
+  // ── Alerta de encargos para el operador de ventas ──
+  // 1) Al entrar a Ventas (una vez por día y usuario en esta sesión): hoy + atrasados.
+  // 2) 30 minutos antes del horario de cada encargo de hoy (una vez por encargo).
+  const ENC_AVISO_MIN = 30;
+  let _encEntradaPendiente = false;
+  function encargosAvisarEntrada() { _encEntradaPendiente = true; encargosContar(); }
+  function _encMinutos(hhmm) { const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm||'')); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+  function _encYaAvisados(hoy) {
+    try { const o = JSON.parse(localStorage.getItem('enc_avisados') || '{}'); return o.fecha === hoy ? o : { fecha: hoy, ids: [], entrada: [] }; }
+    catch(e) { return { fecha: hoy, ids: [], entrada: [] }; }
+  }
+  function encargosRevisarAlertas(lista, hoy) {
+    if (document.getElementById('modal-encargos-alerta')) return;
+    const av = _encYaAvisados(hoy);
+    const user = currentUser?.username || '';
+    if (_encEntradaPendiente) {
+      _encEntradaPendiente = false;
+      if (lista.length && !av.entrada.includes(user)) {
+        av.entrada.push(user);
+        try { localStorage.setItem('enc_avisados', JSON.stringify(av)); } catch(e) {}
+        mostrarAlertaEncargos('📅 Encargos para entregar', lista, hoy);
+        return;
+      }
+    }
+    const ahora = _encMinutos(horaAR());
+    const proximos = lista.filter(e => e.fecha === hoy && e.horario && !av.ids.includes(e.id) && (() => {
+      const m = _encMinutos(e.horario); return m !== null && ahora !== null && m - ahora <= ENC_AVISO_MIN && m - ahora >= -15;
+    })());
+    if (proximos.length) {
+      av.ids.push(...proximos.map(e => e.id));
+      try { localStorage.setItem('enc_avisados', JSON.stringify(av)); } catch(e) {}
+      mostrarAlertaEncargos('⏰ Encargos por entregar en menos de ' + ENC_AVISO_MIN + ' min', proximos, hoy);
+    }
+  }
+  function mostrarAlertaEncargos(titulo, lista, hoy) {
+    document.getElementById('modal-encargos-alerta')?.remove();
+    const fmt = n => '$' + Math.round(+n || 0).toLocaleString('es-AR');
+    const fila = e => {
+      const atras = e.fecha < hoy;
+      const saldo = (+e.total || 0) - (+e.sena || 0);
+      return `<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border);">
+        <div style="font-family:var(--mono);font-size:13px;min-width:56px;color:${atras ? '#ff5a5a' : '#fbbf24'};font-weight:700;">${atras ? e.fecha.slice(8,10) + '/' + e.fecha.slice(5,7) : (e.horario || '—')}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${_escP(e.cliente_nombre)} ${e.modalidad === 'envio' ? '🛵' : ''}${atras ? ' <span style="color:#ff5a5a;font-size:11px;font-weight:800;">ATRASADO</span>' : ''}</div>
+          <div style="font-size:12px;color:var(--text-muted);">Saldo ${fmt(saldo)}${e.ubicacion ? ' · 📦 ' + _escP(e.ubicacion) : ''}${e.modalidad === 'envio' && e.domicilio ? ' · 📍 ' + _escP(e.domicilio) : ''}</div>
+        </div>
+      </div>`;
+    };
+    const ov = document.createElement('div');
+    ov.id = 'modal-encargos-alerta';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9990;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
+    ov.innerHTML = `<div style="background:var(--surface);border:2px solid #fbbf24;border-radius:16px;width:100%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);font-size:16px;font-weight:800;">${titulo}</div>
+      <div style="padding:4px 18px;overflow-y:auto;">${lista.map(fila).join('')}</div>
+      <div style="padding:14px 18px;display:flex;gap:10px;">
+        <button onclick="document.getElementById('modal-encargos-alerta').remove()" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:14px;color:var(--text);font-weight:700;cursor:pointer;">Cancelar</button>
+        <button onclick="document.getElementById('modal-encargos-alerta').remove();abrirEncargos('${hoy}')" style="flex:2;background:#fbbf24;color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;">📅 Ir a Encargos</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    try { if (localStorage.getItem('pizarra_sonido') !== 'off') mcSonar(); } catch(e) {}
+  }
+  // Numerito: encargos de hoy (y atrasados) todavía sin entregar en mis sucursales
   async function encargosContar() {
     if (!currentUser) return;
     try {
       const mis = (currentUser.pdvs||[]).map(String);
       const filtroPdv = mis.length ? `&pdv_id=in.(${mis.map(encodeURIComponent).join(',')})` : '';
       if (!mis.length && currentUser.role !== 'admin') return;
-      const r = await sbApi(`encargos?empresa_id=eq.${empresaActual}&fecha=eq.${fechaHoyAR()}&estado=in.(pendiente,hecho)${filtroPdv}&select=id`) || [];
+      const hoy = fechaHoyAR();
+      const r = await sbApi(`encargos?empresa_id=eq.${empresaActual}&fecha=lte.${hoy}&estado=in.(pendiente,hecho)${filtroPdv}&select=id,fecha,horario,cliente_nombre,total,sena,ubicacion,modalidad,domicilio,estado&order=fecha.asc,horario.asc`) || [];
       const badge = document.getElementById('encargos-badge');
-      if (badge) { badge.textContent = r.length; badge.style.display = r.length ? 'inline-block' : 'none'; badge.title = r.length + ' encargo(s) para hoy'; }
+      const atras = r.filter(e => e.fecha < hoy).length;
+      if (badge) {
+        badge.textContent = r.length; badge.style.display = r.length ? 'inline-block' : 'none';
+        badge.style.background = atras ? '#ff5a5a' : '#fbbf24'; badge.style.color = atras ? '#fff' : '#000';
+        badge.title = (r.length - atras) + ' para hoy' + (atras ? ' · ' + atras + ' atrasado(s)' : '');
+      }
+      if (mis.length) encargosRevisarAlertas(r, hoy);
       if (!_encargosBC && 'BroadcastChannel' in window) {
         _encargosBC = new BroadcastChannel('encargos_ma');
         _encargosBC.onmessage = () => encargosContar();
@@ -9068,6 +9137,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
 
   async function initVentas() {
+    try { encargosAvisarEntrada(); } catch(e) {}
     try { actualizarBadgeDescuento(); } catch(e) {}
     try { poOpRecordatorio(); } catch(e) {}
     const [prods, saved] = await Promise.all([
