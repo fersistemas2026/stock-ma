@@ -135,6 +135,22 @@
   .blocker .box { max-width:380px; }
   .blocker h2 { font-size:18px; font-weight:500; margin-bottom:8px; }
   .blocker p { color:var(--text-muted); font-size:13px; margin-bottom:16px; }
+  /* ── Sesión / personas / tildes ── */
+  #ses-bar { display:none; position:sticky; top:58px; z-index:49; background:#3a3f10; color:var(--accent); font-size:13px; padding:8px 24px; align-items:center; gap:12px; border-bottom:1px solid var(--border); }
+  #ses-bar.on { display:flex; }
+  .personas-bar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:10px; font-size:12px; color:var(--text-muted); }
+  .pchip { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:14px; padding:4px 11px; font-size:12px; cursor:grab; user-select:none; }
+  .pchip:hover { border-color:var(--accent); }
+  .pit.drop-on { outline:2px dashed var(--accent); outline-offset:3px; }
+  .sigue { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12px; font-weight:700; }
+  .sigue button { background:none; border:1px solid currentColor; color:inherit; border-radius:5px; padding:0 5px; font-size:11px; line-height:16px; }
+  .tk { display:flex; align-items:flex-start; gap:6px; }
+  .tk input[type=checkbox] { margin-top:3px; accent-color:var(--accent); cursor:pointer; flex-shrink:0; }
+  .tk.hecho > span, .tkrow.hecho td span { text-decoration:line-through; opacity:.55; }
+  .tkrow input[type=checkbox] { accent-color:var(--accent); cursor:pointer; }
+  .avance { font-family:var(--mono); font-size:11px; padding:2px 7px; border-radius:6px; background:rgba(0,0,0,.35); }
+  .avance.full { background:#1f3d10; color:#C0DD97; }
+  .mazo-sep { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; margin:6px 2px 0; }
   @media (max-width:760px) { .suc-grid { grid-template-columns:1fr; } .mazo { flex-direction:row; flex-wrap:wrap; } }
 </style>
 </head>
@@ -147,6 +163,7 @@
     <span class="user-badge" id="user-badge"></span>
   </div>
 </header>
+<div id="ses-bar"><span id="ses-bar-txt"></span><button class="btn btn-sm btn-acc" onclick="cambiarUsuario()">Cambiar</button></div>
 <main id="app"><div class="empty">Cargando…</div></main>
 <div id="modal-root"></div>
 <div id="toasts"></div>
@@ -263,23 +280,111 @@
   let sCards = [], sZ = 10, sSeq = 0, stockMap = {}, refMap = {};
   // central
   let cNotas = [], cEnvios = {}, cFiltro = { tipo:'', pdv:'', cerradas:false }, frescura = {};
+  let personas = [];
 
   function pdvNombre(id) { const p = pdvs.find(x => String(x.id) === String(id)); return p ? (p.nombre || p.name || id) : id; }
   function prodsDePdv(pdvId) {
+    // Si el admin eligió productos para la pizarra, se muestran esos (en todas las sucursales).
+    // Si no eligió ninguno, queda como antes: los asignados a la sucursal que tengan gustos.
+    const elegidos = prods.filter(p => p.en_pizarra);
+    if (elegidos.length) return elegidos;
     const ids = asigs.filter(a => String(a.pdv_id) === String(pdvId)).map(a => String(a.producto_id));
     const base = ids.length ? prods.filter(p => ids.includes(String(p.id))) : prods;
     return base.filter(p => p.gustos.length);
   }
+  // Producto sin gustos → una sola fila de cantidad (gusto_id vacío)
+  function filasDe(prod) { return prod.gustos.length ? prod.gustos : [{ id: '', nombre: '' }]; }
+  function nomItem(i) { return `${i.prod}${i.gusto ? ' ' + i.gusto : ''}`; }
+
+  // ── TILDES DE ARMADO (central) ──
+  // Claves: 'i<n>' = ítem n de la tarjeta de producto · 't<n>' = renglón n del texto de la nota
+  function lineasTexto(texto) { return String(texto || '').split('\n').map((l, ix) => ({ ix, l: l.trim() })).filter(x => x.l); }
+  function tildesDe(n) {
+    let t = n.tildes;
+    if (typeof t === 'string') { try { t = JSON.parse(t); } catch (e) { t = []; } }
+    return Array.isArray(t) ? t.map(String) : [];
+  }
+  function avanceDe(n) {
+    const d = parseDatos(n);
+    const claves = [...(d.items || []).map((_, ix) => 'i' + ix), ...lineasTexto(d.texto).map(x => 't' + x.ix)];
+    const t = tildesDe(n);
+    return { hechos: claves.filter(k => t.includes(k)).length, total: claves.length };
+  }
+  function avancePill(n) {
+    const a = avanceDe(n);
+    if (!a.total || !a.hechos) return '';
+    return `<span class="avance${a.hechos === a.total ? ' full' : ''}">✓ ${a.hechos}/${a.total}</span>`;
+  }
+  async function toggleTilde(id, clave, marcado) {
+    const n = cNotas.find(x => String(x.id) === String(id)); if (!n) return;
+    try {
+      // Se lee lo último guardado para no pisar lo que tildó otra persona
+      const r = await sbApi(`pedidos_envio?id=eq.${id}&select=tildes`);
+      let t = r && r[0] ? tildesDe(r[0]) : tildesDe(n);
+      t = t.filter(k => k !== clave);
+      if (marcado) t.push(clave);
+      await sbApi(`pedidos_envio?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ tildes: t }) });
+      n.tildes = t;
+      document.querySelectorAll(`[data-tk="${id}|${clave}"]`).forEach(cb => { cb.checked = marcado; cb.closest('.tk,.tkrow')?.classList.toggle('hecho', marcado); });
+      const av = document.getElementById('m-avance');
+      if (av) { const a = avanceDe(n); av.textContent = `✓ ${a.hechos}/${a.total} armado`; av.classList.toggle('full', a.total > 0 && a.hechos === a.total); }
+      if (!modalAbierto && tabActual === 'central') renderCentral();
+      avisarCambio();
+    } catch (e) {
+      toast('No se pudo guardar el tilde: ' + e.message, 'error');
+      document.querySelectorAll(`[data-tk="${id}|${clave}"]`).forEach(cb => { cb.checked = !marcado; });
+    }
+  }
+  function tkHtml(n, clave, contenido) {
+    const on = tildesDe(n).includes(clave);
+    return `<div class="tk${on ? ' hecho' : ''}"><input type="checkbox" data-tk="${esc(n.id)}|${clave}" ${on ? 'checked' : ''} title="Tildar al armar"><span>${contenido}</span></div>`;
+  }
+  function engancharTildes(root) {
+    root.querySelectorAll('input[data-tk]').forEach(cb => {
+      cb.addEventListener('pointerdown', e => e.stopPropagation());
+      cb.onclick = e => e.stopPropagation();
+      cb.onchange = () => { const [id, clave] = cb.dataset.tk.split('|'); toggleTilde(id, clave, cb.checked); };
+    });
+  }
+
+  // ── PERSONAS QUE SIGUEN LAS NOTAS ──
+  async function cargarPersonas() {
+    personas = await sbApi(`pizarra_personas?empresa_id=eq.${empresaActual}&order=orden.asc,nombre.asc&select=id,nombre`).catch(() => []) || [];
+  }
+  async function asignarSigue(id, nombre) {
+    const n = cNotas.find(x => String(x.id) === String(id)); if (!n) return;
+    const antes = n.sigue;
+    n.sigue = nombre || null;
+    if (!modalAbierto) renderCentral();
+    try {
+      await sbApi(`pedidos_envio?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ sigue: nombre || null }) });
+      toast(nombre ? `👤 ${nombre} sigue la nota de ${n.pdv_nombre || pdvNombre(n.pdv_id)}` : 'Nota sin responsable');
+      avisarCambio();
+    } catch (e) {
+      n.sigue = antes; if (!modalAbierto) renderCentral();
+      toast('Error: ' + e.message, 'error');
+    }
+  }
 
   // ── INICIO ──────────────────────────────────────────────────────────
-  // index.html renueva la sesión cada 20 s; si pasan 10 min sin renovar, el panel está cerrado
+  // index.html renueva su sesión cada 20 s; si pasan 10 min sin renovar, index está cerrado.
+  // La pizarra toma esa sesión UNA vez al abrirse y se la guarda en su propia ventana
+  // (sessionStorage, sobrevive a F5). Después sigue funcionando aunque se cierre index
+  // o se cierre la sesión allí. Si en index entra otro usuario, ofrece "Cambiar".
   const SES_VENCE_MS = 10 * 60 * 1000;
+  const SES_WIN_KEY = 'ma_pizarra_sesion_win';
   function leerSesion() {
     try {
       const s = JSON.parse(localStorage.getItem(SES_KEY) || 'null');
       if (!s || !s.username || !s.ts || Date.now() - s.ts > SES_VENCE_MS) return null;
       return s;
     } catch (e) { return null; }
+  }
+  function leerSesionVentana() {
+    try { const s = JSON.parse(sessionStorage.getItem(SES_WIN_KEY) || 'null'); return s && s.username ? s : null; } catch (e) { return null; }
+  }
+  function guardarSesionVentana(s) {
+    try { sessionStorage.setItem(SES_WIN_KEY, JSON.stringify({ username: s.username, empresa: String(s.empresa || '1') })); } catch (e) {}
   }
   function bloquear(titulo, texto) {
     clearInterval(pollTimer);
@@ -292,12 +397,13 @@
   }
 
   async function init() {
-    const ses = leerSesion();
+    const ses = leerSesionVentana() || leerSesion();
     if (!ses || !ses.username) { bloquear('Sesión no iniciada', 'Ingresá al sistema y abrí la pizarra desde el botón del panel.'); return; }
     empresaActual = String(ses.empresa || '1');
     try {
       const r = await sbApi(`usuarios?username=eq.${encodeURIComponent(ses.username)}&select=username,role,display_name,perms,pdvs`);
-      if (!r || !r.length) { bloquear('Usuario no encontrado', 'Volvé a ingresar al sistema.'); return; }
+      if (!r || !r.length) { try { sessionStorage.removeItem(SES_WIN_KEY); } catch (e) {} bloquear('Usuario no encontrado', 'Volvé a ingresar al sistema.'); return; }
+      guardarSesionVentana(ses);
       const u = r[0];
       user = {
         username: u.username, role: u.role, displayName: u.display_name || u.username,
@@ -308,7 +414,8 @@
         sbApi(`pdvs?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`),
         sbApi(`productos?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`),
         sbApi(`gustos?select=id,producto_id,nombre,orden&order=orden.asc&limit=1000`),
-        sbApi(`asignaciones?empresa_id=eq.${empresaActual}&select=*`)
+        sbApi(`asignaciones?empresa_id=eq.${empresaActual}&select=*`),
+        cargarPersonas()
       ]);
       pdvs = pd || []; asigs = as || [];
       prods = (pr || []).map(p => ({ ...p, nombre: p.nombre || p.name || '',
@@ -331,18 +438,33 @@
     irTab(tabs[0][0]);
     pollTimer = setInterval(poll, POLL_MS);
     window.addEventListener('storage', e => { if (e.key === SES_KEY) chequearSesion(); });
+    chequearSesion();
   }
 
+  // Nunca bloquea: si index está cerrado o sin sesión, la pizarra sigue con su usuario.
+  // Solo avisa si en index hay OTRO usuario (o empresa) logueado.
+  let sesOtra = null;
   function chequearSesion() {
     const s = leerSesion();
-    if (!s || s.username !== user.username || String(s.empresa || '1') !== empresaActual) {
-      bloquear('Sesión cerrada', 'Se cerró o cambió la sesión en el sistema. Volvé a abrir la pizarra desde el panel.'); return false;
+    const bar = document.getElementById('ses-bar');
+    if (s && user && (s.username !== user.username || String(s.empresa || '1') !== empresaActual)) {
+      sesOtra = s;
+      document.getElementById('ses-bar-txt').textContent = `En el sistema ahora está logueado ${s.username}${String(s.empresa || '1') !== empresaActual ? ' (otra empresa)' : ''}. La pizarra sigue como ${user.displayName}.`;
+      bar.classList.add('on');
+    } else {
+      sesOtra = null;
+      bar.classList.remove('on');
     }
-    return true;
+  }
+  function cambiarUsuario() {
+    if (!sesOtra) return;
+    if (sCards.length && !confirm('Tenés tarjetas abiertas sin enviar y se van a perder. ¿Cambiar de usuario igual?')) return;
+    guardarSesionVentana(sesOtra);
+    window.location.reload();
   }
 
   async function poll() {
-    if (!chequearSesion()) return;
+    chequearSesion();
     if (modalAbierto || arrastrando) return;
     try {
       if (tabActual === 'central') await cargarCentral(true);
@@ -459,19 +581,21 @@
     return el;
   }
 
+  function tiposDe(prod) { return prod && prod.gustos.length ? ['necesito', 'tengo', 'stock'] : ['necesito', 'tengo']; }
   function tipoLibre(prodId) {
-    for (const t of ['necesito', 'tengo', 'stock']) if (!sCards.some(c => c.kind === 'prod' && c.prodId === prodId && c.tipo === t)) return t;
+    const prod = prods.find(p => String(p.id) === String(prodId));
+    for (const t of tiposDe(prod)) if (!sCards.some(c => c.kind === 'prod' && c.prodId === prodId && c.tipo === t)) return t;
     return null;
   }
 
   function abrirTarjeta(prodId) {
     const prod = prods.find(p => String(p.id) === String(prodId)); if (!prod) return;
     const tipo = tipoLibre(String(prodId));
-    if (!tipo) { toast('Esa tarjeta ya está abierta en los tres tipos', 'error'); return; }
+    if (!tipo) { toast('Esa tarjeta ya está abierta en todos los tipos', 'error'); return; }
     const id = 'c' + (++sSeq);
     const el = crearCardEl(TIPOS[tipo].cls, `
       <div class="hd"><span class="nm" title="${esc(prod.nombre)}">${esc(prod.nombre)}</span>
-        <select aria-label="Tipo de tarjeta">${['necesito', 'tengo', 'stock'].map(t => `<option value="${t}" ${t === tipo ? 'selected' : ''}>${TIPOS[t].label}</option>`).join('')}</select>
+        <select aria-label="Tipo de tarjeta">${tiposDe(prod).map(t => `<option value="${t}" ${t === tipo ? 'selected' : ''}>${TIPOS[t].label}</option>`).join('')}</select>
         <button class="x" title="Cerrar" aria-label="Cerrar">✕</button></div>
       <div class="rows"></div><div class="ft"></div>`);
     const card = { id, kind: 'prod', prodId: String(prodId), tipo, el };
@@ -494,14 +618,14 @@
     const prod = prods.find(p => String(p.id) === card.prodId);
     const u = prod.unidad ? ` ${esc(prod.unidad)}` : '';
     const rows = card.el.querySelector('.rows'), ft = card.el.querySelector('.ft');
-    rows.innerHTML = prod.gustos.map(g => {
+    rows.innerHTML = filasDe(prod).map(g => {
       const k = `${prod.id}_${g.id}`;
       if (card.tipo === 'stock') {
         const act = stockMap[k];
         return `<div class="rw"><span class="g">${esc(g.nombre)}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" value="${act ? act.cant : ''}" placeholder="0"><span class="hint">${act ? 'antes ' + act.cant : 'sin dato'}</span></div>`;
       }
       const s = sugerido(card.tipo, prod.id, g.id);
-      return `<div class="rw"><span class="g">${esc(g.nombre)}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" placeholder="0"><span class="hint">${s != null ? `<span class="sug" data-s="${s}" title="Usar sugerido">sug. ${s}</span>` : ''}</span></div>`;
+      return `<div class="rw"><span class="g">${esc(g.nombre || 'Cantidad')}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" placeholder="0"><span class="hint">${s != null ? `<span class="sug" data-s="${s}" title="Usar sugerido">sug. ${s}</span>` : ''}</span></div>`;
     }).join('');
     rows.querySelectorAll('.sug').forEach(sp => sp.onclick = () => { sp.closest('.rw').querySelector('input').value = sp.dataset.s; resumenSucursal(); });
     rows.querySelectorAll('input').forEach(i => i.oninput = resumenSucursal);
@@ -638,7 +762,7 @@
     cont.innerHTML = notas.map(n => {
       const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
       const env = porNota[n.id] || [];
-      const items = (d.items || []).map(i => `<div class="it">• ${esc(i.prod)} ${esc(i.gusto)} · <b>${esc(i.cant)}</b>${i.unidad ? ' ' + esc(i.unidad) : ''}</div>`).join('');
+      const items = (d.items || []).map(i => `<div class="it">• ${esc(nomItem(i))} · <b>${esc(i.cant)}</b>${i.unidad ? ' ' + esc(i.unidad) : ''}</div>`).join('');
       const tablaEnv = env.length ? `<table><tr><th>Enviado</th><th>Cant.</th><th>Recibido</th></tr>${env.map(e => {
         const it = (d.items || []).find(i => String(i.prod_id) === String(e.prod_id) && String(i.gusto_id) === String(e.gusto_id));
         const nom = it ? `${it.prod} ${it.gusto}` : nombreProdGusto(e.prod_id, e.gusto_id);
@@ -648,6 +772,8 @@
       return `<div class="mn ${t.cls}">
         <div class="top"><b>${t.label}</b>${etiquetaFecha(n.created_at)}<span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}</span>
           ${n.visto_por ? `<span style="font-size:12px;opacity:.8">visto por ${esc(n.visto_por)}</span>` : ''}
+          ${n.sigue ? `<span style="font-size:12px;font-weight:700">👤 Lo sigue ${esc(n.sigue)}</span>` : ''}
+          ${avancePill(n)}
           ${n.novedad_sucursal ? '<span class="nuevo-tag">Novedad</span>' : ''}
           ${puedeRecibir ? `<button class="btn btn-sm btn-acc" style="margin-left:auto" onclick="abrirRecibir('${esc(n.id)}')">Recibido</button>` : ''}</div>
         ${items}${d.texto ? `<div class="it" style="white-space:pre-wrap">${esc(d.texto)}</div>` : ''}
@@ -705,6 +831,7 @@
     const envios = ids.length ? (await sbApi(`pedidos?empresa_id=eq.${empresaActual}&nota_id=in.(${ids.join(',')})&select=*`) || []) : [];
     cEnvios = {}; envios.forEach(e => (cEnvios[e.nota_id] = cEnvios[e.nota_id] || []).push(e));
     cNotas = notas;
+    await cargarPersonas();
     const st = await sbApi(`stock?empresa_id=eq.${empresaActual}&select=pdv_id,updated_at`).catch(() => []) || [];
     frescura = {};
     st.forEach(r => { const d = parseTs(r.updated_at); const k = String(r.pdv_id); if (d && (!frescura[k] || d > frescura[k])) frescura[k] = d; });
@@ -744,7 +871,19 @@
         </div>
       </div>
       <div class="fresh-strip">${pdvs.map(p => `<span class="fs">${esc(p.nombre || p.name)} ${frescuraPill(frescura[String(p.id)] ? frescura[String(p.id)].toISOString() : null)}</span>`).join('')}</div>
+      <div class="personas-bar">${personas.length
+        ? `<span>👤 Arrastrá un nombre a la nota que sigue:</span>${personas.map(p => `<span class="pchip" draggable="true" data-persona="${esc(p.nombre)}">${esc(p.nombre)}</span>`).join('')}`
+        : '<span>👤 Para asignar quién sigue cada nota, cargá las personas en el sistema (Usuarios → Personas de la pizarra).</span>'}</div>
       <div class="cboard" id="cboard"></div>`;
+    app.querySelectorAll('.pchip').forEach(ch => {
+      ch.addEventListener('dragstart', e => {
+        arrastrando = true;
+        e.dataTransfer.setData('application/x-persona', ch.dataset.persona);
+        e.dataTransfer.setData('text/plain', ch.dataset.persona);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
+      ch.addEventListener('dragend', () => { arrastrando = false; document.querySelectorAll('.pit.drop-on').forEach(x => x.classList.remove('drop-on')); });
+    });
     const board = document.getElementById('cboard');
     const lista = notasFiltradas();
     if (!lista.length) { board.innerHTML = '<div class="empty">No hay notas para mostrar.</div>'; return; }
@@ -763,6 +902,22 @@
         if (movido) { n.pos_x = nx; n.pos_y = ny; sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: nx, pos_y: ny }) }).catch(() => {}); }
         else abrirDetalle(n.id);
       }, true);
+      // Soltar un nombre encima → "Lo sigue"
+      el.addEventListener('dragover', e => {
+        if (![...e.dataTransfer.types].includes('application/x-persona')) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; el.classList.add('drop-on');
+      });
+      el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('drop-on'); });
+      el.addEventListener('drop', e => {
+        const nom = e.dataTransfer.getData('application/x-persona');
+        el.classList.remove('drop-on');
+        if (!nom) return;
+        e.preventDefault(); arrastrando = false;
+        if (nom !== n.sigue) asignarSigue(n.id, nom);
+      });
+      const bq = el.querySelector('[data-quitar-sigue]');
+      if (bq) { bq.addEventListener('pointerdown', e => e.stopPropagation()); bq.onclick = e => { e.stopPropagation(); asignarSigue(n.id, null); }; }
+      engancharTildes(el);
       const bv = el.querySelector('[data-visto]');
       if (bv) bv.addEventListener('pointerdown', e => e.stopPropagation());
       if (bv) bv.onclick = (e) => { e.stopPropagation(); marcarVisto(n.id); };
@@ -774,14 +929,16 @@
   function htmlPostit(n) {
     const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
     const items = d.items || [];
-    const lineas = items.slice(0, 7).map(i => `<div class="it">• ${esc(i.prod)} ${esc(i.gusto)} · <b>${esc(i.cant)}</b></div>`).join('')
-      + (items.length > 7 ? `<div class="it">+ ${items.length - 7} más…</div>` : '');
-    const texto = d.texto ? `<div class="tx">${esc(d.texto.length > 160 ? d.texto.slice(0, 160) + '…' : d.texto)}</div>` : '';
+    const lineas = items.slice(0, 7).map((i, ix) => `<div class="it">${tkHtml(n, 'i' + ix, `${esc(nomItem(i))} · <b>${esc(i.cant)}</b>`)}</div>`).join('')
+      + (items.length > 7 ? `<div class="it">+ ${items.length - 7} más… (abrila para tildar)</div>` : '');
+    const lt = lineasTexto(d.texto);
+    const texto = lt.length ? `<div class="tx">${lt.slice(0, 7).map(x => tkHtml(n, 't' + x.ix, esc(x.l.length > 70 ? x.l.slice(0, 70) + '…' : x.l))).join('')}${lt.length > 7 ? `<div>+ ${lt.length - 7} renglones más…</div>` : ''}</div>` : '';
     const env = cEnvios[n.id] || [];
     return `<div class="top"><b>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))}</b>${etiquetaFecha(n.created_at)}</div>
       <div style="font-size:11px;opacity:.85;margin-bottom:4px">${t.label}${n.usuario ? ' · ' + esc(n.usuario) : ''}</div>
       ${lineas}${texto}${n.respuesta ? `<div class="resp">💬 ${esc(n.respuesta)}</div>` : ''}
-      <div class="ft"><span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}${env.length ? ' · ' + env.length + ' env.' : ''}</span>
+      ${n.sigue ? `<div class="sigue">👤 Lo sigue ${esc(n.sigue)} <button data-quitar-sigue title="Quitar">✕</button></div>` : ''}
+      <div class="ft"><span style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}${env.length ? ' · ' + env.length + ' env.' : ''}</span>${avancePill(n)}</span>
         ${n.estado === 'nueva' ? '<button data-visto>Visto</button>' : '<span style="font-size:11px;opacity:.7">clic para abrir</span>'}</div>`;
   }
 
@@ -811,10 +968,11 @@
     const env = cEnvios[n.id] || [];
     const abierta = ABIERTOS.includes(n.estado);
     const puedeEnviar = n.tipo === 'necesito' && items.length && !env.length && abierta;
-    const tabla = items.length ? `<table><tr><th>Producto</th><th>Pidió</th>${puedeEnviar ? '<th>Envío</th><th></th>' : ''}${env.length ? '<th>Enviado</th><th>Recibido</th>' : ''}</tr>
+    const tabla = items.length ? `<table><tr><th title="Tildar al armar">✓</th><th>Producto</th><th>Pidió</th>${puedeEnviar ? '<th>Envío</th><th></th>' : ''}${env.length ? '<th>Enviado</th><th>Recibido</th>' : ''}</tr>
       ${items.map((i, ix) => {
         const e = env.find(x => String(x.prod_id) === String(i.prod_id) && String(x.gusto_id) === String(i.gusto_id));
-        return `<tr><td>${esc(i.prod)} ${esc(i.gusto)}</td><td class="num">${esc(i.cant)}${i.unidad ? ' ' + esc(i.unidad) : ''}</td>
+        const tOn = tildesDe(n).includes('i' + ix);
+        return `<tr class="tkrow${tOn ? ' hecho' : ''}"><td style="width:22px"><input type="checkbox" data-tk="${esc(n.id)}|i${ix}" ${tOn ? 'checked' : ''}></td><td><span>${esc(nomItem(i))}</span></td><td class="num">${esc(i.cant)}${i.unidad ? ' ' + esc(i.unidad) : ''}</td>
           ${puedeEnviar ? `<td><input class="inp" type="number" min="0" step="1" data-ix="${ix}" placeholder="—" oninput="difEnvio(this,${parseInt(i.cant) || 0})"></td><td class="dcell"></td>` : ''}
           ${env.length ? `<td class="num">${e ? esc(e.cantidad) : '—'}</td><td class="num">${e && e.confirmado ? esc(e.cantidad_recibida) + (parseInt(e.cantidad_recibida) !== parseInt(e.cantidad) ? ` <span class="dif">(${parseInt(e.cantidad_recibida) - parseInt(e.cantidad)})</span>` : '') : '—'}</td>` : ''}</tr>`;
       }).join('')}</table>` : '';
@@ -823,7 +981,11 @@
       <h3>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))} · ${t.label}</h3>
       <div class="sub">${etiquetaFecha(n.created_at)} <span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}</span> ${n.usuario ? '· enviada por ' + esc(n.usuario) : ''}</div>
       ${tabla}
-      ${d.texto ? `<div style="white-space:pre-wrap;font-size:13px;background:var(--surface2);border-radius:8px;padding:8px 10px;margin:8px 0">${esc(d.texto)}</div>` : ''}
+      ${d.texto ? `<div style="font-size:13px;background:var(--surface2);border-radius:8px;padding:8px 10px;margin:8px 0;line-height:1.7">${lineasTexto(d.texto).map(x => tkHtml(n, 't' + x.ix, esc(x.l))).join('')}</div>` : ''}
+      <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:13px">👤 Lo sigue:
+        <select class="sel" id="m-sigue"><option value="">— nadie —</option>${[...new Set([...(n.sigue ? [n.sigue] : []), ...personas.map(p => p.nombre)])].map(nm => `<option value="${esc(nm)}" ${nm === n.sigue ? 'selected' : ''}>${esc(nm)}</option>`).join('')}</select>
+        ${(() => { const a = avanceDe(n); return a.total ? `<span class="avance${a.hechos === a.total && a.hechos ? ' full' : ''}" id="m-avance" style="margin-left:auto">✓ ${a.hechos}/${a.total} armado</span>` : ''; })()}
+      </div>
       ${puedeEnviar ? '<div style="font-size:12px;color:var(--text-muted)">La columna Envío es opcional. Si la completás, se registra el envío y la sucursal confirma lo recibido.</div>' : ''}
       <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">
         ${linea('Vista por', n.visto_por, n.visto_at)}${linea('Respondida por', n.respondido_por, n.respondido_at)}${linea('Resuelta por', n.resuelta_por, n.resuelta_at)}${linea('Recibida por', n.recibida_por, n.recibida_at)}
@@ -835,6 +997,9 @@
         ${abierta && n.tipo === 'necesito' && n.estado !== 'en_camino' ? `<button class="btn" onclick="accionNota('${esc(n.id)}','en_camino',this)">En camino</button>` : ''}
         ${abierta ? `<button class="btn btn-acc" onclick="accionNota('${esc(n.id)}','resuelta',this)">Resuelta</button>` : ''}
       </div>`);
+    const root = document.getElementById('modal-root');
+    engancharTildes(root);
+    document.getElementById('m-sigue').onchange = (e) => asignarSigue(n.id, e.target.value || null);
   }
 
   function difEnvio(inp, pidio) {
@@ -937,12 +1102,28 @@
   //  CONFIGURACIÓN (admin)
   // ══════════════════════════════════════════════════════════════════
   function renderConfig() {
-    document.getElementById('app').innerHTML = `<div class="panel" style="max-width:560px">
+    const nEleg = prods.filter(p => p.en_pizarra).length;
+    document.getElementById('app').innerHTML = `<div class="grid2" style="align-items:start"><div class="panel">
       <h3>Puntos de venta que ven todas las pizarras</h3>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Cualquier operador que trabaje en un punto de venta tildado ve la pizarra central, puede marcar visto, responder, registrar envíos y resolver.</div>
       <table class="tbl">${pdvs.map(p => `<tr><td>${esc(p.nombre || p.name)}</td>
         <td style="text-align:right"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${p.pizarra_ve_todas ? 'checked' : ''} onchange="setVeTodas('${esc(p.id)}',this)"> Ve todas</label></td></tr>`).join('')}
-      </table></div>`;
+      </table></div>
+      <div class="panel">
+        <h3>Productos de la pizarra <span id="cfg-nprod" style="font-size:12px;color:var(--text-muted);font-weight:400">· ${nEleg} elegidos</span></h3>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Los tildados son las tarjetas que ven todas las sucursales en su mazo. Si no tildás ninguno, cada sucursal ve los productos que tiene asignados. Los productos sin gustos se cargan con una sola cantidad.</div>
+        <table class="tbl">${prods.map(p => `<tr><td>${esc(p.nombre)}<span style="font-size:11px;color:var(--text-muted)"> · ${p.gustos.length ? p.gustos.length + ' gustos' : 'sin gustos'}</span></td>
+          <td style="text-align:right"><label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${p.en_pizarra ? 'checked' : ''} onchange="setEnPizarra('${esc(p.id)}',this)"> En la pizarra</label></td></tr>`).join('') || '<tr><td class="empty">No hay productos cargados</td></tr>'}
+        </table>
+      </div></div>`;
+  }
+  async function setEnPizarra(id, chk) {
+    try {
+      await sbApi(`productos?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ en_pizarra: chk.checked }) });
+      const p = prods.find(x => String(x.id) === String(id)); if (p) p.en_pizarra = chk.checked;
+      const c = document.getElementById('cfg-nprod'); if (c) c.textContent = `· ${prods.filter(x => x.en_pizarra).length} elegidos`;
+      toast('Guardado');
+    } catch (e) { chk.checked = !chk.checked; toast('Error: ' + e.message, 'error'); }
   }
   async function setVeTodas(id, chk) {
     try {
@@ -989,7 +1170,10 @@
     modalAbierto = true;
     document.getElementById('modal-root').innerHTML = `<div class="modal-bg" onclick="if(event.target===this)cerrarModal()"><div class="modal">${html}</div></div>`;
   }
-  function cerrarModal() { modalAbierto = false; document.getElementById('modal-root').innerHTML = ''; }
+  function cerrarModal() {
+    modalAbierto = false; document.getElementById('modal-root').innerHTML = '';
+    if (tabActual === 'central' && document.getElementById('cboard')) renderCentral();  // refleja tildes y "lo sigue" cambiados en el detalle
+  }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalAbierto) cerrarModal(); });
 
   init();
