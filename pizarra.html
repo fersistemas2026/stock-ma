@@ -99,6 +99,15 @@
   .cboard { position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:auto; min-height:560px; }
   .pit { position:absolute; width:240px; border:1px solid; border-radius:10px; padding:9px 11px; cursor:grab; user-select:none; touch-action:none; }
   .pit.nueva { border-width:3px; }
+  /* Vista por sucursal: una columna por PDV, tarjetas apiladas */
+  .cboard.cols { display:flex; gap:14px; padding:14px; overflow-x:auto; align-items:flex-start; }
+  .ccol { flex:0 0 250px; display:flex; flex-direction:column; gap:10px; }
+  .ccol-hd { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:13px; font-weight:700; padding:6px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; }
+  .ccol-hd .num { font-size:11px; color:var(--text-muted); font-weight:400; }
+  .cols .pit { position:relative; left:auto !important; top:auto !important; width:auto; cursor:pointer; }
+  .vista-sw { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .vista-sw button { background:none; border:none; color:var(--text-muted); padding:6px 12px; font-size:12px; }
+  .vista-sw button.on { background:var(--surface2); color:var(--text); font-weight:700; }
   .pit .top { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:13px; margin-bottom:6px; }
   .pit .it { font-size:12.5px; line-height:1.55; }
   .pit .tx { font-size:12.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -281,6 +290,9 @@
   // central
   let cNotas = [], cEnvios = {}, cFiltro = { tipo:'', pdv:'', cerradas:false }, frescura = {};
   let personas = [];
+  const VISTA_KEY = 'pizarra_vista';
+  function vistaCentral() { try { return localStorage.getItem(VISTA_KEY) === 'libre' ? 'libre' : 'sucursal'; } catch (e) { return 'sucursal'; } }
+  function setVista(v) { try { localStorage.setItem(VISTA_KEY, v); } catch (e) {} renderCentral(); }
 
   function pdvNombre(id) { const p = pdvs.find(x => String(x.id) === String(id)); return p ? (p.nombre || p.name || id) : id; }
   function prodsDePdv(pdvId) {
@@ -863,7 +875,8 @@
         <select class="sel" onchange="cFiltro.pdv=this.value;renderCentral()">
           <option value="">Todas las sucursales</option>${pdvs.map(p => `<option value="${esc(p.id)}" ${cFiltro.pdv === String(p.id) ? 'selected' : ''}>${esc(p.nombre || p.name)}</option>`).join('')}</select>
         <label style="font-size:13px;color:var(--text-muted);display:flex;gap:6px;align-items:center"><input type="checkbox" ${cFiltro.cerradas ? 'checked' : ''} onchange="cFiltro.cerradas=this.checked;renderCentral()"> Ver resueltas (7 días)</label>
-        <button class="btn btn-sm" onclick="ordenarCentral()">Ordenar</button>
+        <span class="vista-sw"><button class="${vistaCentral() === 'sucursal' ? 'on' : ''}" onclick="setVista('sucursal')">Por sucursal</button><button class="${vistaCentral() === 'libre' ? 'on' : ''}" onclick="setVista('libre')">Libre</button></span>
+        ${vistaCentral() === 'libre' ? '<button class="btn btn-sm" onclick="ordenarCentral()">Ordenar</button>' : ''}
         <span style="font-size:13px;color:var(--text-muted)">${nNuevas ? `<b style="color:var(--accent)">${nNuevas} sin ver</b> · ` : ''}${notasFiltradas().length} notas</span>
         <div class="legend" style="margin-left:auto">
           <span><span class="lg" style="background:var(--nec-bd)"></span>Necesito</span><span><span class="lg" style="background:var(--ten-bd)"></span>Tengo</span><span><span class="lg" style="background:var(--avi-bd)"></span>Aviso</span>
@@ -887,21 +900,52 @@
     const board = document.getElementById('cboard');
     const lista = notasFiltradas();
     if (!lista.length) { board.innerHTML = '<div class="empty">No hay notas para mostrar.</div>'; return; }
+    if (vistaCentral() === 'sucursal') { renderColumnas(board, lista); return; }
     const cols = Math.max(1, Math.floor((board.clientWidth - 14) / 256));
     let auto = 0, maxY = 0;
     lista.forEach(n => {
       let x = n.pos_x, y = n.pos_y;
       if (x == null || y == null) { x = 14 + (auto % cols) * 256; y = 14 + Math.floor(auto / cols) * 210; auto++; }
-      const el = document.createElement('div');
-      el.className = `pit ${(TIPOS[n.tipo] || TIPOS.necesito).cls}${n.estado === 'nueva' ? ' nueva' : ''}`;
+      const el = crearPostit(n);
       el.style.left = x + 'px'; el.style.top = y + 'px';
-      el.innerHTML = htmlPostit(n);
       board.appendChild(el);
       maxY = Math.max(maxY, y + el.offsetHeight + 20);
       arrastrable(el, el, board, (nx, ny, movido) => {
         if (movido) { n.pos_x = nx; n.pos_y = ny; sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: nx, pos_y: ny }) }).catch(() => {}); }
         else abrirDetalle(n.id);
       }, true);
+    });
+    board.style.height = Math.max(560, maxY) + 'px';
+    board.scrollTop = scroll;
+  }
+
+  // Vista "Por sucursal": una columna por punto de venta (en el orden de los PDV),
+  // con sus notas de la más vieja a la más nueva. Clic abre el detalle.
+  function renderColumnas(board, lista) {
+    board.classList.add('cols');
+    const grupos = {};
+    lista.forEach(n => (grupos[String(n.pdv_id)] = grupos[String(n.pdv_id)] || []).push(n));
+    const orden = [...pdvs.map(p => String(p.id)).filter(id => grupos[id]), ...Object.keys(grupos).filter(id => !pdvs.some(p => String(p.id) === id))];
+    orden.forEach(pid => {
+      const notas = grupos[pid].sort((a, b) => (parseTs(a.created_at) || 0) - (parseTs(b.created_at) || 0));
+      const col = document.createElement('div');
+      col.className = 'ccol';
+      const sinVer = notas.filter(n => n.estado === 'nueva').length;
+      col.innerHTML = `<div class="ccol-hd"><span>${esc(notas[0].pdv_nombre || pdvNombre(pid))}</span><span class="num">${sinVer ? `<b style="color:var(--accent)">${sinVer} sin ver</b> · ` : ''}${notas.length}</span></div>`;
+      notas.forEach(n => {
+        const el = crearPostit(n);
+        el.addEventListener('click', e => { if (e.target.closest('button,input,select,textarea')) return; abrirDetalle(n.id); });
+        col.appendChild(el);
+      });
+      board.appendChild(col);
+    });
+  }
+
+  // Post-it con todos sus controles (nombres, tildes, visto); sirve para las dos vistas
+  function crearPostit(n) {
+      const el = document.createElement('div');
+      el.className = `pit ${(TIPOS[n.tipo] || TIPOS.necesito).cls}${n.estado === 'nueva' ? ' nueva' : ''}`;
+      el.innerHTML = htmlPostit(n);
       // Soltar un nombre encima → "Lo sigue"
       el.addEventListener('dragover', e => {
         if (![...e.dataTransfer.types].includes('application/x-persona')) return;
@@ -921,9 +965,7 @@
       const bv = el.querySelector('[data-visto]');
       if (bv) bv.addEventListener('pointerdown', e => e.stopPropagation());
       if (bv) bv.onclick = (e) => { e.stopPropagation(); marcarVisto(n.id); };
-    });
-    board.style.height = Math.max(560, maxY) + 'px';
-    board.scrollTop = scroll;
+      return el;
   }
 
   function htmlPostit(n) {
