@@ -33,13 +33,13 @@
   header { position: sticky; top: 0; z-index: 50; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   header h1 { font-size: 17px; font-weight: 900; margin-right: 6px; }
   .mes-nav { display: flex; align-items: center; gap: 6px; }
-  .mes-nav .titulo { font-size: 16px; font-weight: 800; min-width: 150px; text-align: center; }
+  .mes-nav .titulo { font-size: 15px; font-weight: 800; min-width: 150px; text-align: center; white-space: nowrap; }
   .spacer { flex: 1; }
   #user-lbl { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
   #cambiar-bar { display: none; background: #3b2a06; border-bottom: 1px solid #f59e0b; color: #fde68a; padding: 8px 14px; font-size: 13px; align-items: center; gap: 10px; }
 
   /* Personas */
-  #personas-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 54px; z-index: 40; }
+  #personas-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--bg); }
   #personas-bar .hint { font-size: 11px; color: var(--text-muted); margin-right: 4px; }
   .persona { display: inline-flex; align-items: center; gap: 4px; border-radius: 14px; padding: 3px 10px; font-size: 12px; font-weight: 700; color: #000; cursor: grab; user-select: none; }
   .leyenda { display: flex; gap: 10px; margin-left: auto; font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
@@ -129,6 +129,43 @@
   .qbox .res div { flex-direction: column; gap: 1px; align-items: stretch; }
   .qbox .res .l1 { display: flex; justify-content: space-between; gap: 8px; }
   .qbox .res .l2 { font-size: 11px; color: var(--text-muted); }
+  .vista-tg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .vista-tg button { background: var(--surface2); border: none; color: var(--text-muted); padding: 7px 12px; font-size: 13px; font-weight: 700; }
+  .vista-tg button.on { background: var(--accent); color: #000; }
+  #nav-fecha { width: auto; padding: 6px 8px; }
+  #vista-dia { padding: 10px 14px 30px; display: flex; flex-direction: column; gap: 10px; }
+  .semana { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; }
+  .sd { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+  .sd:hover { border-color: var(--text-muted); }
+  .sd .d1 { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-family: var(--mono); }
+  .sd .d2 { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; font-size: 16px; }
+  .sd .d2 .c { font-size: 12px; font-family: var(--mono); color: var(--pend); font-weight: 700; }
+  .sd.hoy .d1 { color: var(--accent); }
+  .sd.sel { border-color: var(--accent); background: #1a2410; }
+  .sd.drop { border-color: var(--accent); background: #22300f; }
+  .resumen { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; display: flex; flex-direction: column; min-width: 120px; }
+  .kpi .l { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; font-family: var(--mono); }
+  .kpi .v { font-size: 20px; font-weight: 900; font-family: var(--mono); }
+  .resumen .acc { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tablero { display: grid; grid-template-columns: minmax(0,1fr) 270px; gap: 12px; align-items: start; }
+  .cols { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; align-items: start; }
+  .col { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; min-height: 300px; }
+  .col .ch { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+  .col .ch .n { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+  .col .cb { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .col .vacio { color: var(--text-dim); font-size: 12px; text-align: center; padding: 20px 0; }
+  .card.entregado { opacity: .55; }
+  .card .hora { font-family: var(--mono); font-size: 18px; font-weight: 900; color: var(--c); }
+  .card .grip { cursor: grab; color: var(--text-muted); font-size: 16px; user-select: none; padding: 0 2px; }
+  .prod { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; position: sticky; top: 100px; }
+  .prod .ph2 { padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .prod .pbody { padding: 8px 12px 12px; font-size: 13px; max-height: 60vh; overflow-y: auto; }
+  .prod .pp { font-weight: 800; margin-top: 8px; }
+  .prod .pg { display: flex; justify-content: space-between; padding: 2px 0 2px 10px; color: var(--text-muted); }
+  .prod .pg b { color: var(--text); font-family: var(--mono); }
+  @media (max-width: 1100px) { .tablero { grid-template-columns: 1fr; } .prod { position: static; } }
+  @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } .semana { grid-template-columns: repeat(7, 80px); overflow-x: auto; } }
   #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 6px; align-items: center; }
   .t { background: var(--surface2); border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
   .t.success { border-color: var(--entr); color: var(--entr); }
@@ -148,19 +185,21 @@
   <h1>📅 Encargos</h1>
   <select id="pdv-sel" class="inp" style="width:auto;min-width:150px;" onchange="cambiarPdv(this.value)"></select>
   <div class="mes-nav">
-    <button class="btn" onclick="moverMes(-1)">‹</button>
-    <div class="titulo" id="mes-titulo"></div>
-    <button class="btn" onclick="moverMes(1)">›</button>
+    <button class="btn" onclick="navegar(-1)">‹</button>
+    <div class="titulo" id="nav-titulo"></div>
+    <button class="btn" onclick="navegar(1)">›</button>
     <button class="btn btn-sm" onclick="irHoy()">Hoy</button>
+    <input class="inp" type="date" id="nav-fecha" title="Ir a un día" onchange="if(this.value) irADia(this.value)">
   </div>
+  <div class="vista-tg"><button id="v-dia" onclick="setVista('dia')">Día</button><button id="v-mes" onclick="setVista('mes')">Mes</button></div>
   <div class="spacer"></div>
   <div class="qbox">
-    <input class="inp" id="q" placeholder="🔍 Buscar por nombre o teléfono" autocomplete="off" style="width:240px" oninput="buscarRapidoDeb()" onkeydown="if(event.key==='Escape'){this.value='';buscarRapidoDeb()}">
+    <input class="inp" id="q" placeholder="🔍 Buscar por nombre o teléfono" autocomplete="off" style="width:210px" oninput="buscarRapidoDeb()" onkeydown="if(event.key==='Escape'){this.value='';buscarRapidoDeb()}">
     <div class="res" id="q-res"></div>
   </div>
   <span id="user-lbl"></span>
-  <button class="btn" onclick="cargarMes()" title="Actualizar">↻</button>
-  <button class="btn btn-acc" onclick="nuevoEncargo()">+ Nuevo encargo</button>
+  <button class="btn" onclick="cargar()" title="Actualizar">↻</button>
+  <button class="btn btn-acc" onclick="nuevoEncargo()" title="Nuevo encargo">+ Encargo</button>
 </header>
 
 <div id="personas-bar">
@@ -174,17 +213,12 @@
   </div>
 </div>
 
-<div id="cal-wrap"><div class="cal" id="cal"></div></div>
-
-<div id="panel">
-  <div class="ph">
-    <h2 id="panel-titulo"></h2>
-    <button class="btn btn-acc btn-sm" onclick="nuevoEncargo(S.diaSel)">+ Encargo</button>
-    <button class="btn btn-sm" onclick="cerrarPanel()">✕</button>
-  </div>
-  <div class="personas-panel" id="personas-panel"></div>
-  <div class="pb" id="panel-body"></div>
+<div id="vista-dia">
+  <div class="semana" id="semana"></div>
+  <div class="resumen" id="resumen"></div>
+  <div class="tablero"><div class="cols" id="cols"></div><aside class="prod" id="produccion"></aside></div>
 </div>
+<div id="vista-mes" style="display:none"><div id="cal-wrap"><div class="cal" id="cal"></div></div></div>
 
 <div id="toast"></div>
 
@@ -204,7 +238,7 @@ const SESION_MAX_MS = 10 * 60 * 1000;
 const S = {
   user: null, empresa: null, central: false,
   pdvs: [], pdvsVisibles: [], pdvSel: '',
-  year: 0, month: 0, diaSel: null,
+  year: 0, month: 0, vista: 'dia', dia: '', verCancel: false,
   encargos: [], online: [], personas: [], prods: [],
   dragging: false
 };
@@ -328,7 +362,7 @@ async function init() {
     _bc = new BroadcastChannel('encargos_ma');
     _bc.onmessage = ev => {
       if (ev.data && ev.data.ir) { irADia(ev.data.ir); window.focus(); return; }
-      if (!document.querySelector('.ov')) cargarMes();
+      if (!document.querySelector('.ov')) cargar(true);
     };
   } catch (e) {}
 
@@ -346,15 +380,16 @@ async function init() {
   if (S.pdvsVisibles.length < 2) sel.disabled = true;
 
   const hoy = fechaHoyAR();
-  S.year = +hoy.slice(0, 4); S.month = +hoy.slice(5, 7) - 1;
+  const mDia = /dia=(\d{4}-\d{2}-\d{2})/.exec(location.hash || '');
+  if (mDia) history.replaceState(null, '', location.pathname);
+  S.dia = mDia ? mDia[1] : hoy;   // arranca en hoy
+  S.year = +S.dia.slice(0, 4); S.month = +S.dia.slice(5, 7) - 1;
   vigilarSesion();
   await Promise.all([cargarPersonas(), cargarProductos()]);
-  await cargarMes();
-  const mDia = /dia=(\d{4}-\d{2}-\d{2})/.exec(location.hash || '');
-  if (mDia) { history.replaceState(null, '', location.pathname); irADia(mDia[1]); }
+  await cargar();
   document.addEventListener('click', ev => { if (!ev.target.closest('.qbox')) document.getElementById('q-res').style.display = 'none'; });
   // Refresco automático (sin pisar lo que se está editando ni un arrastre)
-  setInterval(() => { if (!document.querySelector('.ov') && !S.dragging && !document.hidden) cargarMes(true); }, 30000);
+  setInterval(() => { if (!document.querySelector('.ov') && !S.dragging && !document.hidden) cargar(true); }, 30000);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -366,7 +401,6 @@ async function cargarPersonas() {
   const chips = S.personas.map(p => `<span class="persona" draggable="true" data-persona="${esc(p.nombre)}" style="background:${colorPersona(p.nombre)}">${esc(p.nombre)}</span>`).join(' ')
     || '<span style="font-size:12px;color:var(--text-dim)">No hay personas. Se cargan en index → Admin → Personas de la pizarra.</span>';
   document.getElementById('personas-chips').innerHTML = chips;
-  document.getElementById('personas-panel').innerHTML = chips;
   document.querySelectorAll('.persona').forEach(el => {
     el.addEventListener('dragstart', e => { S.dragging = true; e.dataTransfer.setData('text/persona', el.dataset.persona); e.dataTransfer.effectAllowed = 'copy'; });
     el.addEventListener('dragend', () => { S.dragging = false; });
@@ -421,31 +455,62 @@ function rangoGrilla() {
   return { desde, hasta: addDays(ultimo, 6 - dowU) };
 }
 
-async function cargarMes(silencioso) {
-  const { desde, hasta } = rangoGrilla();
+function lunesDe(iso) { const dow = (new Date(iso + 'T12:00:00Z').getUTCDay() + 6) % 7; return addDays(iso, -dow); }
+function rango() {
+  if (S.vista === 'mes') return rangoGrilla();
+  const desde = lunesDe(S.dia);
+  return { desde, hasta: addDays(desde, 6) };
+}
+let _rangoCargado = null;
+async function cargar(silencioso) {
+  const { desde, hasta } = rango();
   try {
     const [enc, onl] = await Promise.all([
       sbApi(`encargos?empresa_id=eq.${S.empresa}&pdv_id=eq.${encodeURIComponent(S.pdvSel)}&fecha=gte.${desde}&fecha=lte.${hasta}&select=*&order=fecha.asc,horario.asc,id.asc`),
       sbApi(`pedidos_online?empresa_id=eq.${S.empresa}&pdv_id=eq.${encodeURIComponent(S.pdvSel)}&fecha_entrega=gte.${desde}&fecha_entrega=lte.${hasta}&estado=neq.cancelado&select=*&order=fecha_entrega.asc`).catch(() => [])
     ]);
     S.encargos = enc || []; S.online = onl || [];
+    _rangoCargado = { desde, hasta };
   } catch (e) {
     if (!silencioso) toast('Error cargando encargos: ' + e.message + (/encargos/.test(e.message) ? ' (¿corriste el SQL?)' : ''), 'error');
     return;
   }
-  renderCal();
-  if (S.diaSel && document.getElementById('panel').classList.contains('open')) renderPanel();
+  render();
 }
-
+function render() {
+  document.getElementById('v-dia').classList.toggle('on', S.vista === 'dia');
+  document.getElementById('v-mes').classList.toggle('on', S.vista === 'mes');
+  document.getElementById('vista-dia').style.display = S.vista === 'dia' ? '' : 'none';
+  document.getElementById('vista-mes').style.display = S.vista === 'mes' ? '' : 'none';
+  document.getElementById('nav-fecha').value = S.dia;
+  if (S.vista === 'dia') {
+    document.getElementById('nav-titulo').textContent = fechaLarga(S.dia) + (S.dia === fechaHoyAR() ? ' · HOY' : '');
+    renderDia();
+  } else {
+    document.getElementById('nav-titulo').textContent = `${MESES[S.month]} ${S.year}`;
+    renderCal();
+  }
+}
+function setVista(v) {
+  S.vista = v;
+  if (v === 'mes') { S.year = +S.dia.slice(0, 4); S.month = +S.dia.slice(5, 7) - 1; }
+  cargar();
+}
+function navegar(d) {
+  if (S.vista === 'mes') { moverMes(d); return; }
+  irADia(addDays(S.dia, d));
+}
 function cambiarPdv(v) {
   S.pdvSel = String(v);
   try { localStorage.setItem('encargos_pdv_' + S.user.username, S.pdvSel); } catch (e) {}
-  cargarMes();
+  cargar();
 }
-function moverMes(d) { S.month += d; if (S.month < 0) { S.month = 11; S.year--; } if (S.month > 11) { S.month = 0; S.year++; } cargarMes(); }
+function moverMes(d) { S.month += d; if (S.month < 0) { S.month = 11; S.year--; } if (S.month > 11) { S.month = 0; S.year++; } cargar(); }
 async function irADia(f, focoId) {
-  if (+f.slice(0, 4) !== S.year || +f.slice(5, 7) - 1 !== S.month) { S.year = +f.slice(0, 4); S.month = +f.slice(5, 7) - 1; await cargarMes(); }
-  abrirDia(f, focoId);
+  S.vista = 'dia'; S.dia = f;
+  const r = rango();
+  if (!_rangoCargado || r.desde !== _rangoCargado.desde || r.hasta !== _rangoCargado.hasta) await cargar(); else render();
+  if (focoId) setTimeout(() => { const el = document.getElementById('card-' + focoId); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.animate([{ outline: '3px solid var(--accent)' }, { outline: '3px solid transparent' }], { duration: 1600 }); } }, 60);
 }
 
 // ── Buscador rápido: nombre o teléfono, todas las fechas, solo la sucursal elegida ──
@@ -484,7 +549,11 @@ function elegirBusqueda(i) {
   irADia(r.fecha, r.tipo === 'onl' ? 'onl-' + r.id : String(r.id));
 }
 
-function irHoy() { const h = fechaHoyAR(); S.year = +h.slice(0, 4); S.month = +h.slice(5, 7) - 1; cargarMes(); }
+function irHoy() {
+  const h = fechaHoyAR();
+  if (S.vista === 'mes') { S.dia = h; S.year = +h.slice(0, 4); S.month = +h.slice(5, 7) - 1; cargar(); }
+  else irADia(h);
+}
 
 // ════════════════════════════════════════════════════════════════════
 // CALENDARIO
@@ -493,7 +562,6 @@ function colorEstado(e) { return e === 'entregado' ? 'var(--entr)' : e === 'hech
 function horaOnline(p) { return String(p.envio_horario || '').replace('hasta-', '≤'); }
 
 function renderCal() {
-  document.getElementById('mes-titulo').textContent = `${MESES[S.month]} ${S.year}`;
   const { desde, hasta } = rangoGrilla();
   const hoy = fechaHoyAR();
   let html = DOW.map(d => `<div class="dow">${d}</div>`).join('');
@@ -507,7 +575,7 @@ function renderCal() {
     ].sort((a, b) => a.h.localeCompare(b.h));
     const max = 4;
     const pend = encs.filter(e => e.estado === 'pendiente' || e.estado === 'hecho').length;
-    html += `<div class="dia ${fuera ? 'fuera' : ''} ${f === hoy ? 'hoy' : ''} ${f === S.diaSel ? 'sel' : ''}" data-fecha="${f}" onclick="abrirDia('${f}')">
+    html += `<div class="dia ${fuera ? 'fuera' : ''} ${f === hoy ? 'hoy' : ''} ${f === S.dia ? 'sel' : ''}" data-fecha="${f}" onclick="irADia('${f}')">
       <div class="num"><span>${+f.slice(8)}</span>${items.length ? `<span class="tot">${items.length}${pend ? ' · ' + pend + ' pend.' : ''}</span>` : ''}</div>
       ${items.slice(0, max).map(i => i.html).join('')}
       ${items.length > max ? `<div class="mas">+${items.length - max} más</div>` : ''}
@@ -517,7 +585,7 @@ function renderCal() {
   cal.innerHTML = html;
   // Arrastrar encargos de un día a otro
   cal.querySelectorAll('.mini[draggable=true]').forEach(el => {
-    el.addEventListener('click', ev => { ev.stopPropagation(); abrirDia(el.closest('.dia').dataset.fecha, el.dataset.id); });
+    el.addEventListener('click', ev => { ev.stopPropagation(); irADia(el.closest('.dia').dataset.fecha, el.dataset.id); });
     el.addEventListener('dragstart', e => { S.dragging = true; e.dataTransfer.setData('text/encargo', el.dataset.id); e.dataTransfer.effectAllowed = 'move'; });
     el.addEventListener('dragend', () => { S.dragging = false; });
   });
@@ -548,45 +616,107 @@ async function reprogramar(id, fecha) {
   try {
     await sbApi(`encargos?id=eq.${e.id}`, { method: 'PATCH', body: JSON.stringify({ fecha, updated_at: new Date().toISOString() }) });
     toast(`Encargo #${e.id} movido al ${fechaLarga(fecha)}`, 'success');
-    avisarCambios(); cargarMes();
+    avisarCambios(); cargar();
   } catch (err) { toast('Error: ' + err.message, 'error'); }
 }
 
 // ════════════════════════════════════════════════════════════════════
-// PANEL DEL DÍA
+// PIZARRA DEL DÍA (columnas por horario)
 // ════════════════════════════════════════════════════════════════════
-function abrirDia(f, focoId) {
-  S.diaSel = f;
-  document.querySelectorAll('.dia.sel').forEach(d => d.classList.remove('sel'));
-  document.querySelector(`.dia[data-fecha="${f}"]`)?.classList.add('sel');
-  document.getElementById('panel').classList.add('open');
-  renderPanel();
-  if (focoId) setTimeout(() => document.getElementById('card-' + focoId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-}
-function cerrarPanel() {
-  document.getElementById('panel').classList.remove('open');
-  S.diaSel = null;
-  document.querySelectorAll('.dia.sel').forEach(d => d.classList.remove('sel'));
-}
+const FRANJAS = [
+  { k: 'man', t: '☀️ Mañana', sub: 'hasta 13:59' },
+  { k: 'tar', t: '🌇 Tarde', sub: 'desde 14:00' },
+  { k: 'sin', t: '🕓 Sin horario', sub: '' }
+];
+function primeraHora(txt) { const m = /(\d{1,2}):(\d{2})/.exec(String(txt || '')); return m ? m[1].padStart(2, '0') + ':' + m[2] : ''; }
+function franjaDe(hhmm) { if (!hhmm) return 'sin'; return (+hhmm.slice(0, 2)) < 14 ? 'man' : 'tar'; }
+const ACTIVO = e => e.estado === 'pendiente' || e.estado === 'hecho';
+const ONL_ACTIVO = p => !['entregado', 'cancelado'].includes(p.estado);
 
-function slotHtml(tipo, id, campo, etiqueta, valor) {
-  return `<div class="slot" data-tipo="${tipo}" data-id="${id}" data-campo="${campo}" onclick="menuSlot(event,'${tipo}','${id}','${campo}')">
-    ${etiqueta}<br>${valor ? `<span class="who" style="background:${colorPersona(valor)}">${esc(valor)}</span>` : '<span style="color:var(--text-dim)">— arrastrá —</span>'}</div>`;
-}
+function renderDia() {
+  const f = S.dia, hoy = fechaHoyAR();
+  // Tira de la semana
+  const lun = lunesDe(f);
+  let sem = '';
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(lun, i);
+    const n = S.encargos.filter(e => e.fecha === d && ACTIVO(e)).length + S.online.filter(p => p.fecha_entrega === d && ONL_ACTIVO(p)).length;
+    sem += `<div class="sd ${d === hoy ? 'hoy' : ''} ${d === f ? 'sel' : ''}" data-fecha="${d}" onclick="irADia('${d}')">
+      <span class="d1">${DOW[i]}${d === hoy ? ' · hoy' : ''}</span><span class="d2"><span>${+d.slice(8)}/${+d.slice(5, 7)}</span>${n ? `<span class="c">${n}</span>` : ''}</span></div>`;
+  }
+  const semEl = document.getElementById('semana');
+  semEl.innerHTML = sem;
+  semEl.querySelectorAll('.sd').forEach(d => {
+    d.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/encargo')) { e.preventDefault(); d.classList.add('drop'); } });
+    d.addEventListener('dragleave', () => d.classList.remove('drop'));
+    d.addEventListener('drop', e => { d.classList.remove('drop'); const id = e.dataTransfer.getData('text/encargo'); if (id) { e.preventDefault(); reprogramar(id, d.dataset.fecha); } });
+  });
 
-function renderPanel() {
-  const f = S.diaSel;
-  document.getElementById('panel-titulo').textContent = fechaLarga(f) + (f === fechaHoyAR() ? ' · HOY' : '');
-  const encs = S.encargos.filter(e => e.fecha === f)
-    .sort((a, b) => (a.estado === 'cancelado') - (b.estado === 'cancelado') || String(a.horario || '').localeCompare(String(b.horario || '')));
+  // Datos del día
+  const encs = S.encargos.filter(e => e.fecha === f && (S.verCancel || e.estado !== 'cancelado'));
   const onls = S.online.filter(p => p.fecha_entrega === f);
-  let html = '';
-  if (!encs.length && !onls.length) html = '<div style="color:var(--text-muted);text-align:center;padding:30px 0;">No hay encargos este día.</div>';
-  html += encs.map(cardEnc).join('');
-  if (onls.length) html += `<div style="font-size:11px;color:var(--online);font-weight:800;letter-spacing:.06em;margin-top:6px;">🛒 PEDIDOS DE LA TIENDA</div>` + onls.map(cardOnline).join('');
-  const body = document.getElementById('panel-body');
-  body.innerHTML = html;
-  body.querySelectorAll('.slot').forEach(sl => {
+  const act = encs.filter(ACTIVO);
+  const aCobrar = act.reduce((s, e) => s + (+e.total || 0) - (e.ticket_sena ? (+e.sena || 0) : 0), 0);
+  const senas = S.encargos.filter(e => e.fecha === f && e.estado !== 'cancelado' && e.ticket_sena).reduce((s, e) => s + (+e.sena || 0), 0);
+  const envios = act.filter(e => e.modalidad === 'envio').length;
+  const entregados = encs.filter(e => e.estado === 'entregado').length;
+  const cancelados = S.encargos.filter(e => e.fecha === f && e.estado === 'cancelado').length;
+  document.getElementById('resumen').innerHTML = `
+    <div class="kpi"><span class="l">Por entregar</span><span class="v" style="color:var(--pend)">${act.length}</span></div>
+    <div class="kpi"><span class="l">Entregados</span><span class="v" style="color:var(--entr)">${entregados}</span></div>
+    <div class="kpi"><span class="l">🛵 Envíos</span><span class="v">${envios}</span></div>
+    <div class="kpi"><span class="l">A cobrar</span><span class="v" style="color:var(--accent)">${fmt$(aCobrar)}</span></div>
+    <div class="kpi"><span class="l">Señas cobradas</span><span class="v" style="color:var(--hecho)">${fmt$(senas)}</span></div>
+    ${onls.length ? `<div class="kpi"><span class="l">🛒 Online</span><span class="v" style="color:var(--online)">${onls.length}</span></div>` : ''}
+    <div class="acc">
+      ${cancelados ? `<label style="font-size:12px;color:var(--text-muted);display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${S.verCancel ? 'checked' : ''} onchange="S.verCancel=this.checked;render()"> Ver cancelados (${cancelados})</label>` : ''}
+      <button class="btn" onclick="imprimirComandasDia()" ${act.length ? '' : 'disabled'}>🖨 Comandas del día</button>
+    </div>`;
+
+  // Columnas por horario
+  const items = [
+    ...encs.map(e => ({ h: e.horario || '', orden: e.estado === 'cancelado' ? 2 : e.estado === 'entregado' ? 1 : 0, html: cardEnc(e) })),
+    ...onls.map(p => ({ h: primeraHora(p.envio_horario), orden: ONL_ACTIVO(p) ? 0 : 1, html: cardOnline(p) }))
+  ];
+  document.getElementById('cols').innerHTML = FRANJAS.map(fr => {
+    const lista = items.filter(i => franjaDe(i.h) === fr.k).sort((a, b) => a.orden - b.orden || a.h.localeCompare(b.h));
+    const activos = lista.filter(i => i.orden === 0).length;
+    return `<div class="col"><div class="ch">${fr.t}${fr.sub ? `<span style="font-size:11px;color:var(--text-muted);font-weight:500">${fr.sub}</span>` : ''}<span class="n">${activos}</span></div>
+      <div class="cb">${lista.map(i => i.html).join('') || '<div class="vacio">Sin encargos</div>'}</div></div>`;
+  }).join('');
+  const cols = document.getElementById('cols');
+  bindSlots(cols);
+  cols.querySelectorAll('.grip').forEach(g => {
+    g.addEventListener('dragstart', e => { S.dragging = true; e.dataTransfer.setData('text/encargo', g.dataset.id); e.dataTransfer.effectAllowed = 'move'; });
+    g.addEventListener('dragend', () => { S.dragging = false; });
+  });
+  renderProduccion(encs, onls);
+}
+
+// Lo que hay que preparar: encargos pendientes + pedidos online sin entregar
+function produccionDe(encs, onls) {
+  const m = {};
+  const sumar = (prod, gusto, cant) => {
+    const kp = prod || '—';
+    if (!m[kp]) m[kp] = { prod: kp, gustos: {}, total: 0 };
+    m[kp].gustos[gusto || ''] = (m[kp].gustos[gusto || ''] || 0) + (+cant || 0);
+    m[kp].total += (+cant || 0);
+  };
+  encs.filter(e => e.estado === 'pendiente').forEach(e => (Array.isArray(e.items) ? e.items : []).forEach(it => sumar(it.prod_nombre, it.gusto_nombre, it.cantidad)));
+  onls.filter(p => ['nuevo', 'en_preparacion'].includes(p.estado)).forEach(p => (Array.isArray(p.items) ? p.items : []).forEach(it => sumar(it.prod_nombre, it.gusto_nombre, it.cantidad)));
+  return Object.values(m).sort((a, b) => a.prod.localeCompare(b.prod));
+}
+function renderProduccion(encs, onls) {
+  const lista = produccionDe(encs, onls);
+  document.getElementById('produccion').innerHTML = `<div class="ph2">🍝 Para preparar<button class="btn btn-sm" style="margin-left:auto" onclick="imprimirProduccion()" ${lista.length ? '' : 'disabled'}>🖨</button></div>
+    <div class="pbody">${lista.length ? lista.map(p => `<div class="pp">${esc(p.prod)} <span style="font-family:var(--mono);color:var(--accent)">${r2(p.total)}</span></div>
+      ${Object.entries(p.gustos).map(([g, c]) => `<div class="pg"><span>${esc(g || '—')}</span><b>${r2(c)}</b></div>`).join('')}`).join('')
+      : '<div style="color:var(--text-dim);padding:10px 0">Nada pendiente de preparar.</div>'}
+      <div style="font-size:11px;color:var(--text-dim);margin-top:10px">Encargos pendientes + pedidos online nuevos o en preparación.</div></div>`;
+}
+
+function bindSlots(root) {
+  root.querySelectorAll('.slot').forEach(sl => {
     sl.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/persona')) { e.preventDefault(); sl.classList.add('drop'); } });
     sl.addEventListener('dragleave', () => sl.classList.remove('drop'));
     sl.addEventListener('drop', e => {
@@ -597,15 +727,20 @@ function renderPanel() {
   });
 }
 
+function slotHtml(tipo, id, campo, etiqueta, valor) {
+  return `<div class="slot" data-tipo="${tipo}" data-id="${id}" data-campo="${campo}" onclick="menuSlot(event,'${tipo}','${id}','${campo}')">
+    ${etiqueta}<br>${valor ? `<span class="who" style="background:${colorPersona(valor)}">${esc(valor)}</span>` : '<span style="color:var(--text-dim)">— arrastrá —</span>'}</div>`;
+}
+
 function cardEnc(e) {
   const items = Array.isArray(e.items) ? e.items : [];
   const saldo = r2((+e.total || 0) - (+e.sena || 0));
   const activo = e.estado === 'pendiente' || e.estado === 'hecho';
   const tel = e.cliente_tel ? `<a href="https://wa.me/549${esc(e.cliente_tel)}" target="_blank">📱 ${esc(e.cliente_tel)}</a>` : '';
   const estadoTxt = e.estado === 'cancelado' ? `cancelado${e.sena_destino ? ' · seña ' + e.sena_destino : ''}` : e.estado;
-  return `<div class="card ${e.estado === 'cancelado' ? 'cancelado' : ''}" id="card-${e.id}" style="--c:${colorEstado(e.estado)}">
-    <div class="top"><span class="cli">${esc(e.cliente_nombre)}</span><span class="badge" style="--c:${colorEstado(e.estado)}">${esc(estadoTxt)}</span></div>
-    <div class="meta"><span>#${e.id}</span>${e.horario ? `<span>🕑 ${esc(e.horario)}</span>` : ''}<span>${e.modalidad === 'envio' ? '🛵 Envío' : '🏪 Retiro'}</span>${tel}${e.creado_por ? `<span>cargó ${esc(e.creado_por)}</span>` : ''}</div>
+  return `<div class="card ${e.estado === 'cancelado' ? 'cancelado' : ''} ${e.estado === 'entregado' ? 'entregado' : ''}" id="card-${e.id}" style="--c:${colorEstado(e.estado)}">
+    <div class="top">${activo ? `<span class="grip" draggable="true" data-id="${e.id}" title="Arrastrá a otro día de la semana para reprogramar">⠿</span>` : ''}${e.horario ? `<span class="hora">${esc(e.horario)}</span>` : ''}<span class="cli">${esc(e.cliente_nombre)}</span><span class="badge" style="--c:${colorEstado(e.estado)}">${esc(estadoTxt)}</span><button class="btn btn-sm" title="Imprimir comanda" onclick="imprimirComandas([${e.id}])">🖨</button></div>
+    <div class="meta"><span>#${e.id}</span><span>${e.modalidad === 'envio' ? '🛵 Envío' : '🏪 Retiro'}</span>${tel}${e.creado_por ? `<span>cargó ${esc(e.creado_por)}</span>` : ''}</div>
     ${e.modalidad === 'envio' && e.domicilio ? `<div class="meta">📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.domicilio)}" target="_blank" style="color:var(--text)">${esc(e.domicilio)}</a></div>` : ''}
     <div class="items">${items.map(it => `<div><span><span class="q">${it.cantidad}×</span>${esc(it.prod_nombre)}${it.gusto_nombre ? ' · ' + esc(it.gusto_nombre) : ''}</span><span class="h" style="font-family:var(--mono)">${fmt$(it.precio * it.cantidad)}</span></div>`).join('')}</div>
     ${e.nota ? `<div style="font-size:12px;background:var(--surface);border-radius:6px;padding:6px 8px;">📝 ${esc(e.nota)}</div>` : ''}
@@ -631,8 +766,8 @@ function cardEnc(e) {
 function cardOnline(p) {
   const items = Array.isArray(p.items) ? p.items : [];
   const tel = p.cliente_tel ? `<a href="https://wa.me/549${esc(normTelAR(p.cliente_tel))}" target="_blank">📱 ${esc(p.cliente_tel)}</a>` : '';
-  return `<div class="card online" id="card-onl-${esc(p.id)}" style="--c:var(--online)">
-    <div class="top"><span class="cli">🛒 ${esc(p.cliente_nombre || '')}</span><span class="badge" style="--c:var(--online);color:#fff">${esc(p.estado || '')}</span></div>
+  return `<div class="card online ${ONL_ACTIVO(p) ? '' : 'entregado'}" id="card-onl-${esc(p.id)}" style="--c:var(--online)">
+    <div class="top">${primeraHora(p.envio_horario) ? `<span class="hora">${esc(primeraHora(p.envio_horario))}</span>` : ''}<span class="cli">🛒 ${esc(p.cliente_nombre || '')}</span><span class="badge" style="--c:var(--online);color:#fff">${esc(p.estado || '')}</span></div>
     <div class="meta"><span>Online #${esc(p.nro_pedido || p.id)}</span>${horaOnline(p) ? `<span>🕑 ${esc(horaOnline(p))}</span>` : ''}<span>${p.modalidad === 'delivery' ? '🛵 Delivery' : '🏪 Retiro'}</span>${tel}</div>
     ${p.direccion ? `<div class="meta">📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" style="color:var(--text)">${esc(p.direccion)}</a></div>` : ''}
     <div class="items">${items.map(it => `<div><span><span class="q">${it.cantidad}×</span>${esc(it.prod_nombre || '')}${it.gusto_nombre ? ' · ' + esc(it.gusto_nombre) : ''}</span></div>`).join('')}</div>
@@ -654,7 +789,7 @@ async function asignarPersona(tipo, id, campo, nombre) {
     await sbApi(`${tabla}?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
     const lista = tipo === 'onl' ? S.online : S.encargos;
     const obj = lista.find(x => String(x.id) === String(id)); if (obj) obj[campo] = nombre || null;
-    renderPanel(); renderCal(); avisarCambios();
+    render(); avisarCambios();
   } catch (e) {
     toast('Error: ' + e.message + (tipo === 'onl' ? ' (¿corriste el ALTER de pedidos_online?)' : ''), 'error');
   }
@@ -686,7 +821,7 @@ async function cambiarEstado(id, estado) {
   try {
     const r = await sbApi(`encargos?id=eq.${id}&estado=in.(pendiente,hecho)`, { method: 'PATCH', body: JSON.stringify({ estado, updated_at: new Date().toISOString() }) });
     if (!r || !r.length) toast('El encargo ya no está activo', 'error');
-    avisarCambios(); cargarMes();
+    avisarCambios(); cargar();
   } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
@@ -694,7 +829,7 @@ async function borrarEncargo(id) {
   const e = S.encargos.find(x => x.id === id); if (!e) return;
   if (e.ticket_sena) { toast('Tiene seña cobrada: usá Cancelar', 'error'); return; }
   if (!confirm(`¿Borrar el encargo #${id} de ${e.cliente_nombre}? Usalo solo si se cargó por error.`)) return;
-  try { await sbApi(`encargos?id=eq.${id}&ticket_sena=is.null`, { method: 'DELETE' }); toast('Encargo borrado'); avisarCambios(); cargarMes(); }
+  try { await sbApi(`encargos?id=eq.${id}&ticket_sena=is.null`, { method: 'DELETE' }); toast('Encargo borrado'); avisarCambios(); cargar(); }
   catch (err) { toast('Error: ' + err.message, 'error'); }
 }
 
@@ -704,7 +839,7 @@ async function borrarEncargo(id) {
 let F = null; // estado del formulario abierto
 
 function nuevoEncargo(fecha) {
-  abrirForm({ id: null, fecha: fecha || S.diaSel || fechaHoyAR(), cliente_nombre: '', cliente_tel: '', horario: '', modalidad: 'retiro', domicilio: '', items: [], nota: '', ubicacion: '', tomado_por: '', hecho_por: '', sena: 0, ticket_sena: null });
+  abrirForm({ id: null, fecha: fecha || S.dia || fechaHoyAR(), cliente_nombre: '', cliente_tel: '', horario: '', modalidad: 'retiro', domicilio: '', items: [], nota: '', ubicacion: '', tomado_por: '', hecho_por: '', sena: 0, ticket_sena: null });
 }
 function editarEncargo(id) {
   const e = S.encargos.find(x => x.id === id); if (!e) return;
@@ -883,10 +1018,9 @@ async function guardarForm() {
       toast('Cambios guardados', 'success');
       if (!enc.ticket_sena && sena > 0) await cobrarSena(r[0], sena);
     }
-    // Ir al mes del encargo si quedó en otro
-    if (+fecha.slice(0, 4) !== S.year || +fecha.slice(5, 7) - 1 !== S.month) { S.year = +fecha.slice(0, 4); S.month = +fecha.slice(5, 7) - 1; }
-    avisarCambios(); await cargarMes();
-    abrirDia(fecha);
+    avisarCambios();
+    await irADia(fecha);
+    await cargar();
   } catch (e) { toast('Error: ' + e.message, 'error'); btn.disabled = false; }
 }
 
@@ -991,7 +1125,7 @@ async function cobrarSenaDe(id) {
   if (monto <= 0) { toast('Monto inválido', 'error'); return; }
   if (monto > +e.total) { toast('La seña es mayor que el total', 'error'); return; }
   await cobrarSena(e, monto);
-  avisarCambios(); cargarMes();
+  avisarCambios(); cargar();
 }
 async function cobrarSena(enc, monto) {
   const pago = await cobrar(monto, `Seña encargo #${enc.id}`);
@@ -1048,7 +1182,7 @@ async function entregar(id) {
   try {
     r = await sbApi(`encargos?id=eq.${e.id}&estado=in.(pendiente,hecho)`, { method: 'PATCH', body: JSON.stringify({ estado: 'entregado', ticket_entrega: ticket, entregado_at: new Date().toISOString(), entregado_por: quien || e.entregado_por || null, updated_at: new Date().toISOString() }) });
   } catch (err) { toast('Error: ' + err.message, 'error'); return; }
-  if (!r || !r.length) { toast('Ese encargo ya fue entregado o cancelado', 'error'); cargarMes(); return; }
+  if (!r || !r.length) { toast('Ese encargo ya fue entregado o cancelado', 'error'); cargar(); return; }
   const rows = items.map(it => filaVenta(e, ticket, it, pago));
   if (sena > 0) rows.push(filaVenta(e, ticket, { ...SENA_ITEM(e), precio: -sena }, pago));
   try {
@@ -1060,7 +1194,7 @@ async function entregar(id) {
   }
   if (pago.metodo === 'efectivo') sumarEfectivo(e.pdv_id, saldo);
   toast(`📦 Entregado · venta de ${fmt$(saldo)} registrada`, 'success');
-  avisarCambios(); cargarMes();
+  avisarCambios(); cargar();
 }
 
 // ── Cancelación: retener o devolver la seña ──
@@ -1089,7 +1223,7 @@ async function cancelarEncargo(id) {
   try {
     r = await sbApi(`encargos?id=eq.${e.id}&estado=in.(pendiente,hecho)`, { method: 'PATCH', body: JSON.stringify({ estado: 'cancelado', cancelado_motivo: dec.motivo || null, sena_destino: dec.destino, updated_at: new Date().toISOString() }) });
   } catch (err) { toast('Error: ' + err.message, 'error'); return; }
-  if (!r || !r.length) { toast('Ese encargo ya no estaba activo', 'error'); cargarMes(); return; }
+  if (!r || !r.length) { toast('Ese encargo ya no estaba activo', 'error'); cargar(); return; }
   if (dec.destino === 'devuelta') {
     const pago = { metodo: dec.met, efectivo: 0, tarjeta: 0 };
     try {
@@ -1102,11 +1236,78 @@ async function cancelarEncargo(id) {
     }
   }
   toast('Encargo cancelado' + (dec.destino ? ' · seña ' + dec.destino : ''), 'success');
-  avisarCambios(); cargarMes();
+  avisarCambios(); cargar();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// IMPRESIÓN EN TICKETERA (80 mm)
+// ════════════════════════════════════════════════════════════════════
+const TICKET_CSS = `body{font-family:'Courier New',monospace;font-size:13px;width:80mm;margin:0 auto;padding:8px;color:#000}
+  .centro{text-align:center}.linea{border-top:1px dashed #000;margin:6px 0}.grande{font-size:16px;font-weight:bold}.enorme{font-size:22px;font-weight:bold}
+  .negrita{font-weight:bold}.item{display:flex;justify-content:space-between;gap:6px}.ticket{page-break-after:always;padding-bottom:18px}
+  @media print{body{margin:0;padding:4px}}`;
+function abrirImpresion(titulo, cuerpo) {
+  const w = window.open('', '_blank', 'width=420,height=640');
+  if (!w) { toast('El navegador bloqueó la ventana de impresión', 'error'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(titulo)}</title><style>${TICKET_CSS}</style></head><body>${cuerpo}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  w.document.close();
+}
+function fechaTicket(iso) { const d = new Date(iso + 'T12:00:00Z'); return ['DOM','LUN','MAR','MIE','JUE','VIE','SAB'][d.getUTCDay()] + ' ' + iso.slice(8, 10) + '/' + iso.slice(5, 7); }
+function comandaHtml(e) {
+  const items = Array.isArray(e.items) ? e.items : [];
+  const sena = e.ticket_sena ? (+e.sena || 0) : 0;
+  const pdv = S.pdvs.find(p => String(p.id) === String(e.pdv_id));
+  return `<div class="ticket">
+    <div class="centro grande">MIGUEL ANGEL PASTAS</div>
+    <div class="centro">ENCARGO · ${esc(pdv?.nombre || e.pdv_nombre || '')}</div>
+    <div class="linea"></div>
+    <div class="centro enorme">#${e.id}</div>
+    <div class="centro grande">${fechaTicket(e.fecha)}${e.horario ? ' · ' + esc(e.horario) + ' hs' : ''}</div>
+    <div class="linea"></div>
+    <div class="negrita">${esc(e.cliente_nombre)}</div>
+    ${e.cliente_tel ? `<div>Tel: ${esc(e.cliente_tel)}</div>` : ''}
+    <div class="negrita">${e.modalidad === 'envio' ? 'ENVIO A DOMICILIO' : 'RETIRA EN EL LOCAL'}</div>
+    ${e.modalidad === 'envio' && e.domicilio ? `<div>${esc(e.domicilio)}</div>` : ''}
+    <div class="linea"></div>
+    ${items.map(it => `<div class="item"><span><b>${it.cantidad}x</b> ${esc(it.prod_nombre)}${it.gusto_nombre ? ' (' + esc(it.gusto_nombre) + ')' : ''}</span><span>$${Math.round(it.precio * it.cantidad).toLocaleString('es-AR')}</span></div>`).join('')}
+    <div class="linea"></div>
+    <div class="item"><span>TOTAL</span><span>$${Math.round(+e.total || 0).toLocaleString('es-AR')}</span></div>
+    ${sena ? `<div class="item"><span>SEÑA</span><span>-$${Math.round(sena).toLocaleString('es-AR')}</span></div>` : ''}
+    <div class="item grande"><span>A COBRAR</span><span>$${Math.round((+e.total || 0) - sena).toLocaleString('es-AR')}</span></div>
+    ${e.nota ? `<div class="linea"></div><div class="negrita">NOTA: ${esc(e.nota)}</div>` : ''}
+    ${e.ubicacion ? `<div>Guardado en: ${esc(e.ubicacion)}</div>` : ''}
+    ${e.tomado_por || e.hecho_por ? `<div class="linea"></div>${e.tomado_por ? `<div>Tomó: ${esc(e.tomado_por)}</div>` : ''}${e.hecho_por ? `<div>Hace: ${esc(e.hecho_por)}</div>` : ''}` : ''}
+    <br><br></div>`;
+}
+function imprimirComandas(ids) {
+  const lista = ids.map(id => S.encargos.find(e => e.id === id)).filter(Boolean);
+  if (!lista.length) return;
+  abrirImpresion('Comandas', lista.map(comandaHtml).join(''));
+}
+function imprimirComandasDia() {
+  const lista = S.encargos.filter(e => e.fecha === S.dia && ACTIVO(e)).sort((a, b) => String(a.horario || '99').localeCompare(String(b.horario || '99')));
+  if (!lista.length) { toast('No hay encargos por entregar este día', 'error'); return; }
+  imprimirComandas(lista.map(e => e.id));
+}
+function imprimirProduccion() {
+  const f = S.dia;
+  const lista = produccionDe(S.encargos.filter(e => e.fecha === f), S.online.filter(p => p.fecha_entrega === f));
+  const pdv = S.pdvs.find(p => String(p.id) === S.pdvSel);
+  abrirImpresion('Producción', `<div class="ticket">
+    <div class="centro grande">PARA PREPARAR</div>
+    <div class="centro">${esc(pdv?.nombre || '')} · ${fechaTicket(f)}</div>
+    <div class="linea"></div>
+    ${lista.map(p => `<div class="item negrita"><span>${esc(p.prod)}</span><span>${r2(p.total)}</span></div>
+      ${Object.entries(p.gustos).map(([g, c]) => `<div class="item"><span>&nbsp;&nbsp;${esc(g || '-')}</span><span>${r2(c)}</span></div>`).join('')}`).join('<div class="linea"></div>')}
+    <div class="linea"></div><div class="centro" style="font-size:11px">Impreso ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+    <br><br></div>`);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !document.querySelector('.ov')) cerrarPanel();
+  if (document.querySelector('.ov')) return;
+  if (e.target.closest('input,textarea,select')) return;
+  if (S.vista === 'dia' && e.key === 'ArrowLeft') navegar(-1);
+  if (S.vista === 'dia' && e.key === 'ArrowRight') navegar(1);
 });
 init();
 </script>
