@@ -99,15 +99,6 @@
   .cboard { position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:auto; min-height:560px; }
   .pit { position:absolute; width:240px; border:1px solid; border-radius:10px; padding:9px 11px; cursor:grab; user-select:none; touch-action:none; }
   .pit.nueva { border-width:3px; }
-  /* Vista por sucursal: una columna por PDV, tarjetas apiladas */
-  .cboard.cols { display:flex; gap:14px; padding:14px; overflow-x:auto; align-items:flex-start; }
-  .ccol { flex:0 0 250px; display:flex; flex-direction:column; gap:10px; }
-  .ccol-hd { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:13px; font-weight:700; padding:6px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; }
-  .ccol-hd .num { font-size:11px; color:var(--text-muted); font-weight:400; }
-  .cols .pit { position:relative; left:auto !important; top:auto !important; width:auto; cursor:pointer; }
-  .vista-sw { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-  .vista-sw button { background:none; border:none; color:var(--text-muted); padding:6px 12px; font-size:12px; }
-  .vista-sw button.on { background:var(--surface2); color:var(--text); font-weight:700; }
   .pit .top { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:13px; margin-bottom:6px; }
   .pit .it { font-size:12.5px; line-height:1.55; }
   .pit .tx { font-size:12.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -151,8 +142,11 @@
   .pchip { background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:14px; padding:4px 11px; font-size:12px; cursor:grab; user-select:none; }
   .pchip:hover { border-color:var(--accent); }
   .pit.drop-on { outline:2px dashed var(--accent); outline-offset:3px; }
-  .sigue { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:12px; font-weight:700; }
+  .sigue { display:flex; align-items:center; gap:6px; margin:-9px -11px 8px; padding:5px 11px; border-radius:8px 8px 0 0; font-size:12px; font-weight:700; color:#0b0f12; }
+  .pit.nueva .sigue { margin:-9px -11px 8px; }
+  .sigue .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sigue button { background:none; border:1px solid currentColor; color:inherit; border-radius:5px; padding:0 5px; font-size:11px; line-height:16px; }
+  .sigue-tag { font-size:12px; font-weight:700; color:#0b0f12; padding:1px 8px; border-radius:6px; }
   .tk { display:flex; align-items:flex-start; gap:6px; }
   .tk input[type=checkbox] { margin-top:3px; accent-color:var(--accent); cursor:pointer; flex-shrink:0; }
   .tk.hecho > span, .tkrow.hecho td span { text-decoration:line-through; opacity:.55; }
@@ -290,9 +284,7 @@
   // central
   let cNotas = [], cEnvios = {}, cFiltro = { tipo:'', pdv:'', cerradas:false }, frescura = {};
   let personas = [];
-  const VISTA_KEY = 'pizarra_vista';
-  function vistaCentral() { try { return localStorage.getItem(VISTA_KEY) === 'libre' ? 'libre' : 'sucursal'; } catch (e) { return 'sucursal'; } }
-  function setVista(v) { try { localStorage.setItem(VISTA_KEY, v); } catch (e) {} renderCentral(); }
+
 
   function pdvNombre(id) { const p = pdvs.find(x => String(x.id) === String(id)); return p ? (p.nombre || p.name || id) : id; }
   function prodsDePdv(pdvId) {
@@ -362,6 +354,14 @@
   // ── PERSONAS QUE SIGUEN LAS NOTAS ──
   async function cargarPersonas() {
     personas = await sbApi(`pizarra_personas?empresa_id=eq.${empresaActual}&order=orden.asc,nombre.asc&select=id,nombre`).catch(() => []) || [];
+  }
+  // Color propio para cada persona (distinto de naranja/verde/violeta de los tipos)
+  const COLORES_PERSONA = ['#5DCAF5', '#F28DC0', '#F5D547', '#4FD1C5', '#FF8A80', '#6E9BFF', '#E3E7EB', '#FFB38A'];
+  function colorPersona(nombre) {
+    if (!nombre) return '';
+    let ix = personas.findIndex(p => p.nombre === nombre);
+    if (ix < 0) { ix = 0; for (const c of String(nombre)) ix = (ix * 31 + c.charCodeAt(0)) >>> 0; }
+    return COLORES_PERSONA[ix % COLORES_PERSONA.length];
   }
   async function asignarSigue(id, nombre) {
     const n = cNotas.find(x => String(x.id) === String(id)); if (!n) return;
@@ -784,7 +784,7 @@
       return `<div class="mn ${t.cls}">
         <div class="top"><b>${t.label}</b>${etiquetaFecha(n.created_at)}<span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}</span>
           ${n.visto_por ? `<span style="font-size:12px;opacity:.8">visto por ${esc(n.visto_por)}</span>` : ''}
-          ${n.sigue ? `<span style="font-size:12px;font-weight:700">👤 Lo sigue ${esc(n.sigue)}</span>` : ''}
+          ${n.sigue ? `<span class="sigue-tag" style="background:${colorPersona(n.sigue)}">👤 Lo sigue ${esc(n.sigue)}</span>` : ''}
           ${avancePill(n)}
           ${n.novedad_sucursal ? '<span class="nuevo-tag">Novedad</span>' : ''}
           ${puedeRecibir ? `<button class="btn btn-sm btn-acc" style="margin-left:auto" onclick="abrirRecibir('${esc(n.id)}')">Recibido</button>` : ''}</div>
@@ -875,8 +875,7 @@
         <select class="sel" onchange="cFiltro.pdv=this.value;renderCentral()">
           <option value="">Todas las sucursales</option>${pdvs.map(p => `<option value="${esc(p.id)}" ${cFiltro.pdv === String(p.id) ? 'selected' : ''}>${esc(p.nombre || p.name)}</option>`).join('')}</select>
         <label style="font-size:13px;color:var(--text-muted);display:flex;gap:6px;align-items:center"><input type="checkbox" ${cFiltro.cerradas ? 'checked' : ''} onchange="cFiltro.cerradas=this.checked;renderCentral()"> Ver resueltas (7 días)</label>
-        <span class="vista-sw"><button class="${vistaCentral() === 'sucursal' ? 'on' : ''}" onclick="setVista('sucursal')">Por sucursal</button><button class="${vistaCentral() === 'libre' ? 'on' : ''}" onclick="setVista('libre')">Libre</button></span>
-        ${vistaCentral() === 'libre' ? '<button class="btn btn-sm" onclick="ordenarCentral()">Ordenar</button>' : ''}
+        <button class="btn btn-sm" onclick="ordenarCentral()" title="Una columna por sucursal, en el orden en que llegaron">Ordenar por sucursal</button>
         <span style="font-size:13px;color:var(--text-muted)">${nNuevas ? `<b style="color:var(--accent)">${nNuevas} sin ver</b> · ` : ''}${notasFiltradas().length} notas</span>
         <div class="legend" style="margin-left:auto">
           <span><span class="lg" style="background:var(--nec-bd)"></span>Necesito</span><span><span class="lg" style="background:var(--ten-bd)"></span>Tengo</span><span><span class="lg" style="background:var(--avi-bd)"></span>Aviso</span>
@@ -885,7 +884,7 @@
       </div>
       <div class="fresh-strip">${pdvs.map(p => `<span class="fs">${esc(p.nombre || p.name)} ${frescuraPill(frescura[String(p.id)] ? frescura[String(p.id)].toISOString() : null)}</span>`).join('')}</div>
       <div class="personas-bar">${personas.length
-        ? `<span>👤 Arrastrá un nombre a la nota que sigue:</span>${personas.map(p => `<span class="pchip" draggable="true" data-persona="${esc(p.nombre)}">${esc(p.nombre)}</span>`).join('')}`
+        ? `<span>👤 Arrastrá un nombre a la nota que sigue:</span>${personas.map(p => `<span class="pchip" draggable="true" data-persona="${esc(p.nombre)}" style="border-color:${colorPersona(p.nombre)};box-shadow:inset 4px 0 0 ${colorPersona(p.nombre)}">${esc(p.nombre)}</span>`).join('')}`
         : '<span>👤 Para asignar quién sigue cada nota, cargá las personas en el sistema (Usuarios → Personas de la pizarra).</span>'}</div>
       <div class="cboard" id="cboard"></div>`;
     app.querySelectorAll('.pchip').forEach(ch => {
@@ -900,48 +899,53 @@
     const board = document.getElementById('cboard');
     const lista = notasFiltradas();
     if (!lista.length) { board.innerHTML = '<div class="empty">No hay notas para mostrar.</div>'; return; }
-    if (vistaCentral() === 'sucursal') { renderColumnas(board, lista); return; }
-    const cols = Math.max(1, Math.floor((board.clientWidth - 14) / 256));
-    let auto = 0, maxY = 0;
-    lista.forEach(n => {
-      let x = n.pos_x, y = n.pos_y;
-      if (x == null || y == null) { x = 14 + (auto % cols) * 256; y = 14 + Math.floor(auto / cols) * 210; auto++; }
+    // Las tarjetas se mueven libres con el mouse (posición guardada para todos).
+    // Las que todavía no tienen posición se apilan en la columna de su sucursal,
+    // debajo de la última, en el orden en que llegaron, y esa posición se guarda.
+    const els = {};
+    const poner = (n, x, y) => {
       const el = crearPostit(n);
       el.style.left = x + 'px'; el.style.top = y + 'px';
-      board.appendChild(el);
-      maxY = Math.max(maxY, y + el.offsetHeight + 20);
+      board.appendChild(el); els[n.id] = el;
       arrastrable(el, el, board, (nx, ny, movido) => {
-        if (movido) { n.pos_x = nx; n.pos_y = ny; sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: nx, pos_y: ny }) }).catch(() => {}); }
+        if (movido) { n.pos_x = nx; n.pos_y = ny; sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: nx, pos_y: ny }) }).catch(() => {}); ajustarAlto(board); }
         else abrirDetalle(n.id);
       }, true);
+    };
+    lista.filter(n => n.pos_x != null && n.pos_y != null).forEach(n => poner(n, n.pos_x, n.pos_y));
+    const nuevas = lista.filter(n => n.pos_x == null || n.pos_y == null)
+      .sort((a, b) => (parseTs(a.created_at) || 0) - (parseTs(b.created_at) || 0));
+    nuevas.forEach(n => {
+      const x = colX(n.pdv_id), y = fondoColumna(board, x);
+      n.pos_x = x; n.pos_y = y;
+      poner(n, x, y);
+      sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: x, pos_y: y }) }).catch(() => {});
     });
-    board.style.height = Math.max(560, maxY) + 'px';
+    ajustarAlto(board);
     board.scrollTop = scroll;
   }
 
-  // Vista "Por sucursal": una columna por punto de venta (en el orden de los PDV),
-  // con sus notas de la más vieja a la más nueva. Clic abre el detalle.
-  function renderColumnas(board, lista) {
-    board.classList.add('cols');
-    const grupos = {};
-    lista.forEach(n => (grupos[String(n.pdv_id)] = grupos[String(n.pdv_id)] || []).push(n));
-    const orden = [...pdvs.map(p => String(p.id)).filter(id => grupos[id]), ...Object.keys(grupos).filter(id => !pdvs.some(p => String(p.id) === id))];
-    orden.forEach(pid => {
-      const notas = grupos[pid].sort((a, b) => (parseTs(a.created_at) || 0) - (parseTs(b.created_at) || 0));
-      const col = document.createElement('div');
-      col.className = 'ccol';
-      const sinVer = notas.filter(n => n.estado === 'nueva').length;
-      col.innerHTML = `<div class="ccol-hd"><span>${esc(notas[0].pdv_nombre || pdvNombre(pid))}</span><span class="num">${sinVer ? `<b style="color:var(--accent)">${sinVer} sin ver</b> · ` : ''}${notas.length}</span></div>`;
-      notas.forEach(n => {
-        const el = crearPostit(n);
-        el.addEventListener('click', e => { if (e.target.closest('button,input,select,textarea')) return; abrirDetalle(n.id); });
-        col.appendChild(el);
-      });
-      board.appendChild(col);
+  const COL_W = 256, Y0 = 14, GAP = 10;
+  // Columna fija de cada sucursal según el orden de los PDV
+  function colX(pdvId) {
+    const ix = pdvs.findIndex(p => String(p.id) === String(pdvId));
+    return 14 + (ix < 0 ? pdvs.length : ix) * COL_W;
+  }
+  // Primer lugar libre debajo de la última tarjeta que ocupa esa columna
+  function fondoColumna(board, x) {
+    let y = Y0;
+    board.querySelectorAll('.pit').forEach(el => {
+      if (Math.abs(el.offsetLeft - x) < COL_W / 2) y = Math.max(y, el.offsetTop + el.offsetHeight + GAP);
     });
+    return y;
+  }
+  function ajustarAlto(board) {
+    let maxY = 0;
+    board.querySelectorAll('.pit').forEach(el => { maxY = Math.max(maxY, el.offsetTop + el.offsetHeight + 20); });
+    board.style.height = Math.max(560, maxY) + 'px';
   }
 
-  // Post-it con todos sus controles (nombres, tildes, visto); sirve para las dos vistas
+  // Post-it con todos sus controles (nombres, tildes, visto)
   function crearPostit(n) {
       const el = document.createElement('div');
       el.className = `pit ${(TIPOS[n.tipo] || TIPOS.necesito).cls}${n.estado === 'nueva' ? ' nueva' : ''}`;
@@ -976,10 +980,10 @@
     const lt = lineasTexto(d.texto);
     const texto = lt.length ? `<div class="tx">${lt.slice(0, 7).map(x => tkHtml(n, 't' + x.ix, esc(x.l.length > 70 ? x.l.slice(0, 70) + '…' : x.l))).join('')}${lt.length > 7 ? `<div>+ ${lt.length - 7} renglones más…</div>` : ''}</div>` : '';
     const env = cEnvios[n.id] || [];
-    return `<div class="top"><b>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))}</b>${etiquetaFecha(n.created_at)}</div>
+    return `${n.sigue ? `<div class="sigue" style="background:${colorPersona(n.sigue)}"><span class="nm">👤 ${esc(n.sigue)}</span><button data-quitar-sigue title="Quitar">✕</button></div>` : ''}
+      <div class="top"><b>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))}</b>${etiquetaFecha(n.created_at)}</div>
       <div style="font-size:11px;opacity:.85;margin-bottom:4px">${t.label}${n.usuario ? ' · ' + esc(n.usuario) : ''}</div>
       ${lineas}${texto}${n.respuesta ? `<div class="resp">💬 ${esc(n.respuesta)}</div>` : ''}
-      ${n.sigue ? `<div class="sigue">👤 Lo sigue ${esc(n.sigue)} <button data-quitar-sigue title="Quitar">✕</button></div>` : ''}
       <div class="ft"><span style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}${env.length ? ' · ' + env.length + ' env.' : ''}</span>${avancePill(n)}</span>
         ${n.estado === 'nueva' ? '<button data-visto>Visto</button>' : '<span style="font-size:11px;opacity:.7">clic para abrir</span>'}</div>`;
   }
@@ -992,14 +996,12 @@
     } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 
-  async function ordenarCentral() {
+  function ordenarCentral() {
     const lista = notasFiltradas(); if (!lista.length) return;
-    const board = document.getElementById('cboard');
-    const cols = Math.max(1, Math.floor((board.clientWidth - 14) / 256));
-    const orden = [...lista].sort((a, b) => String(a.pdv_nombre || '').localeCompare(String(b.pdv_nombre || '')) || (parseTs(a.created_at) - parseTs(b.created_at)));
-    orden.forEach((n, i) => { n.pos_x = 14 + (i % cols) * 256; n.pos_y = 14 + Math.floor(i / cols) * 210; });
+    if (!confirm('Se van a acomodar las tarjetas en una columna por sucursal, en el orden en que llegaron. ¿Seguir?')) return;
+    // Sin posición → renderCentral las apila por sucursal y guarda la nueva ubicación
+    lista.forEach(n => { n.pos_x = null; n.pos_y = null; });
     renderCentral();
-    await Promise.all(orden.map(n => sbApi(`pedidos_envio?id=eq.${n.id}`, { method: 'PATCH', body: JSON.stringify({ pos_x: n.pos_x, pos_y: n.pos_y }) }).catch(() => {})));
     toast('Pizarra ordenada por sucursal');
   }
 
