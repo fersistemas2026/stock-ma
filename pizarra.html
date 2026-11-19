@@ -78,6 +78,11 @@
   .card .rw input { width:62px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--text); padding:4px 6px; font-family:var(--mono); font-size:13px; outline:none; }
   .card .rw .hint { font-size:11px; font-family:var(--mono); min-width:46px; text-align:right; opacity:.85; }
   .card .rw .sug { cursor:pointer; text-decoration:underline dotted; }
+  .card .rw.hdr { font-size:10px; text-transform:uppercase; letter-spacing:.05em; opacity:.75; padding-top:0; padding-bottom:0; font-family:var(--mono); }
+  .card .rw.hdr span:not(.g) { width:52px; text-align:center; }
+  .card .rw input.n2 { width:52px; }
+  .card .rw input.pide { border-color:currentColor; font-weight:700; }
+  .card .rw input.pide.manual { border-style:dashed; }
   .card .ft { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 10px 0; font-size:11px; opacity:.9; }
   .card .ft button { background:none; border:1px solid currentColor; color:inherit; border-radius:6px; padding:2px 8px; font-size:11px; }
   .card textarea { width:calc(100% - 20px); margin:0 10px; min-height:80px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--text); padding:6px 8px; font-size:13px; resize:vertical; outline:none; }
@@ -281,6 +286,7 @@
   let modalAbierto = false, arrastrando = false, pollTimer = null;
   // sucursal
   let sCards = [], sZ = 10, sSeq = 0, stockMap = {}, refMap = {};
+  let ventaRef = {}, ventaRefFecha = '';   // vendido el mismo día de la semana anterior (sin encargos)
   // central
   let cNotas = [], cEnvios = {}, cFiltro = { tipo:'', pdv:'', cerradas:false }, frescura = {};
   let personas = [];
@@ -550,12 +556,24 @@
     renderSucursal();
   }
 
+  function fechaMenosDias(iso, n) { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); }
+  function fechaCorta(iso) {
+    const d = new Date(iso + 'T12:00:00Z');
+    return ['dom','lun','mar','mié','jue','vie','sáb'][d.getUTCDay()] + ' ' + iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  }
   async function cargarStockPdv() {
-    stockMap = {}; refMap = {};
-    const [st, cfg] = await Promise.all([
+    stockMap = {}; refMap = {}; ventaRef = {};
+    ventaRefFecha = fechaMenosDias(fechaHoyAR(), 7);
+    const [st, cfg, vt] = await Promise.all([
       sbApi(`stock?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&select=prod_id,gusto_id,cantidad,updated_at`).catch(() => []),
-      sbApi(`stock_config?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&dia=eq.${todayKey()}&select=prod_id,gusto_id,referencia`).catch(() => [])
+      sbApi(`stock_config?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&dia=eq.${todayKey()}&select=prod_id,gusto_id,referencia`).catch(() => []),
+      // Ventas del mismo día de la semana anterior, sin los encargos (ticket ENC_…)
+      sbApi(`ventas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&fecha=eq.${ventaRefFecha}&or=(ticket_id.is.null,ticket_id.not.like.ENC_*)&select=prod_id,gusto_id,cantidad`).catch(() => [])
     ]);
+    (vt || []).forEach(r => {
+      const k = `${r.prod_id}_${r.gusto_id || ''}`;
+      ventaRef[k] = (ventaRef[k] || 0) + (parseFloat(r.cantidad) || 0);
+    });
     let ult = null;
     (st || []).forEach(r => {
       stockMap[`${r.prod_id}_${r.gusto_id}`] = { cant: parseInt(r.cantidad) || 0, ts: r.updated_at };
@@ -566,6 +584,8 @@
     if (f) f.innerHTML = frescuraPill(ult ? ult.toISOString() : null);
   }
 
+  function vendidoRef(prodId, gustoId) { return Math.round(ventaRef[`${prodId}_${gustoId}`] || 0); }
+  function sugeridoPide(prodId, gustoId, tiene) { return Math.max(vendidoRef(prodId, gustoId) - (parseInt(tiene) || 0), 0); }
   function sugerido(tipo, prodId, gustoId) {
     const k = `${prodId}_${gustoId}`;
     if (!(k in refMap)) return null;
@@ -636,11 +656,34 @@
         const act = stockMap[k];
         return `<div class="rw"><span class="g">${esc(g.nombre)}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" value="${act ? act.cant : ''}" placeholder="0"><span class="hint">${act ? 'antes ' + act.cant : 'sin dato'}</span></div>`;
       }
+      if (card.tipo === 'necesito') {
+        const vend = vendidoRef(prod.id, g.id), sug = sugeridoPide(prod.id, g.id, 0);
+        const act = stockMap[k];
+        return `<div class="rw" title="Vendió ${vend} el ${fechaCorta(ventaRefFecha)}${act ? ' · stock anterior ' + act.cant : ''}"><span class="g">${esc(g.nombre || 'Cantidad')}</span><input class="n2" type="number" min="0" step="1" data-t="${esc(g.id)}" placeholder="${act ? act.cant : '0'}"><input class="n2 pide" type="number" min="0" step="1" data-g="${esc(g.id)}" data-vend="${vend}" value="${sug || ''}" placeholder="0"></div>`;
+      }
       const s = sugerido(card.tipo, prod.id, g.id);
       return `<div class="rw"><span class="g">${esc(g.nombre || 'Cantidad')}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" placeholder="0"><span class="hint">${s != null ? `<span class="sug" data-s="${s}" title="Usar sugerido">sug. ${s}</span>` : ''}</span></div>`;
     }).join('');
     rows.querySelectorAll('.sug').forEach(sp => sp.onclick = () => { sp.closest('.rw').querySelector('input').value = sp.dataset.s; resumenSucursal(); });
     rows.querySelectorAll('input').forEach(i => i.oninput = resumenSucursal);
+    if (card.tipo === 'necesito') {
+      rows.insertAdjacentHTML('afterbegin', '<div class="rw hdr"><span class="g"></span><span>Tiene</span><span>Pide</span></div>');
+      rows.querySelectorAll('input[data-t]').forEach(t => {
+        const pide = t.closest('.rw').querySelector('input.pide');
+        // Al cargar lo que tiene, el sugerido se recalcula (salvo que el operador lo haya cambiado a mano)
+        t.oninput = () => {
+          if (!pide.classList.contains('manual')) { const v = Math.max((parseInt(pide.dataset.vend) || 0) - (parseInt(t.value) || 0), 0); pide.value = v || ''; }
+          resumenSucursal();
+        };
+      });
+      rows.querySelectorAll('input.pide').forEach(i => i.oninput = () => { i.classList.add('manual'); resumenSucursal(); });
+      ft.innerHTML = `<span>Sugerido: vendido el ${fechaCorta(ventaRefFecha)} − lo que tiene${u ? ' ·' + u : ''}</span><button title="Volver al sugerido">↺</button>`;
+      ft.querySelector('button').onclick = () => {
+        rows.querySelectorAll('input.pide').forEach(i => { i.classList.remove('manual'); const t = i.closest('.rw').querySelector('input[data-t]'); const v = Math.max((parseInt(i.dataset.vend) || 0) - (parseInt(t.value) || 0), 0); i.value = v || ''; });
+        resumenSucursal();
+      };
+      return;
+    }
     if (card.tipo === 'stock') {
       ft.innerHTML = `<span>Se guarda al enviar${u ? ' ·' + u : ''}</span>`;
     } else {
@@ -675,16 +718,36 @@
     resumenSucursal();
   }
 
+  // Lo que el operador cargó en "Tiene" en una tarjeta Necesito (se guarda como stock)
+  function tieneDeCard(card) {
+    const out = [];
+    if (card.kind !== 'prod' || card.tipo !== 'necesito') return out;
+    card.el.querySelectorAll('.rows input[data-t]').forEach(i => {
+      if (i.value === '') return;
+      const v = parseInt(i.value);
+      if (isNaN(v) || v < 0) return;
+      out.push({ prod_id: card.prodId, gusto_id: String(i.dataset.t), cant: String(v) });
+    });
+    return out;
+  }
   function itemsDeCard(card) {
     const prod = prods.find(p => String(p.id) === card.prodId);
     const items = [];
-    card.el.querySelectorAll('.rows input').forEach(i => {
+    card.el.querySelectorAll('.rows input:not([data-t])').forEach(i => {
       if (i.value === '') return;
       const v = parseInt(i.value);
       if (isNaN(v) || v < 0) return;
       if (card.tipo !== 'stock' && v === 0) return;
       const g = prod.gustos.find(x => String(x.id) === i.dataset.g);
-      items.push({ prod: prod.nombre, gusto: g ? g.nombre : '', cant: String(v), obs: '', obsProd: '', prod_id: String(prod.id), gusto_id: String(i.dataset.g), unidad: prod.unidad || '' });
+      const it = { prod: prod.nombre, gusto: g ? g.nombre : '', cant: String(v), obs: '', obsProd: '', prod_id: String(prod.id), gusto_id: String(i.dataset.g), unidad: prod.unidad || '' };
+      if (card.tipo === 'necesito') {
+        const t = i.closest('.rw').querySelector('input[data-t]');
+        if (t && t.value !== '') it.tiene = String(parseInt(t.value) || 0);
+        it.vendio = String(parseInt(i.dataset.vend) || 0);
+        it.sugerido = String(Math.max((parseInt(i.dataset.vend) || 0) - (parseInt(t?.value) || 0), 0));
+        it.ref_fecha = ventaRefFecha;
+      }
+      items.push(it);
     });
     return items;
   }
@@ -695,7 +758,7 @@
     sCards.forEach(c => {
       if (c.kind === 'nota') { if (c.el.querySelector('textarea').value.trim()) notas++; return; }
       const n = itemsDeCard(c).length;
-      if (c.tipo === 'necesito') nec += n; else if (c.tipo === 'tengo') ten += n; else stk += n;
+      if (c.tipo === 'necesito') { nec += n; stk += tieneDeCard(c).length; } else if (c.tipo === 'tengo') ten += n; else stk += n;
     });
     el.textContent = `${sCards.length} tarjetas abiertas · ${nec} necesito · ${ten} tengo · ${stk} stock · ${notas} notas`;
     prodsDePdv(pdvActual).forEach(p => {
@@ -733,9 +796,13 @@
       } else {
         const items = itemsDeCard(c);
         if (items.length) filas.push({ tipo: c.tipo, items, texto: '' });
+        tieneDeCard(c).forEach(it => { if (!stockItems.some(x => x.prod_id === it.prod_id && x.gusto_id === it.gusto_id)) stockItems.push(it); });
       }
     }
     if (!filas.length && !stockItems.length) { toast('Cargá al menos una cantidad o escribí una nota', 'error'); return; }
+    // Si tiene tarjetas Necesito con "Tiene" vacío en algún gusto, avisar (ese gusto no actualiza stock)
+    const sinTiene = sCards.filter(c => c.kind === 'prod' && c.tipo === 'necesito').reduce((s, c) => s + [...c.el.querySelectorAll('.rows input[data-t]')].filter(i => i.value === '').length, 0);
+    if (sinTiene && !confirm(`Hay ${sinTiene} gustos sin cargar en "Tiene". Esos no actualizan el stock. ¿Enviar igual?`)) return;
     btn.disabled = true; btn.textContent = 'Enviando…';
     try {
       const fecha = fechaHoyAR(), hora = horaAR(), pdvN = pdvNombre(pdvActual);
@@ -774,7 +841,7 @@
     cont.innerHTML = notas.map(n => {
       const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
       const env = porNota[n.id] || [];
-      const items = (d.items || []).map(i => `<div class="it">• ${esc(nomItem(i))} · <b>${esc(i.cant)}</b>${i.unidad ? ' ' + esc(i.unidad) : ''}</div>`).join('');
+      const items = (d.items || []).map(i => `<div class="it">• ${esc(nomItem(i))} · <b>${esc(i.cant)}</b>${i.unidad ? ' ' + esc(i.unidad) : ''}${i.tiene != null ? ` <span style="opacity:.7">(tiene ${esc(i.tiene)})</span>` : ''}</div>`).join('');
       const tablaEnv = env.length ? `<table><tr><th>Enviado</th><th>Cant.</th><th>Recibido</th></tr>${env.map(e => {
         const it = (d.items || []).find(i => String(i.prod_id) === String(e.prod_id) && String(i.gusto_id) === String(e.gusto_id));
         const nom = it ? `${it.prod} ${it.gusto}` : nombreProdGusto(e.prod_id, e.gusto_id);
@@ -975,7 +1042,7 @@
   function htmlPostit(n) {
     const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
     const items = d.items || [];
-    const lineas = items.slice(0, 7).map((i, ix) => `<div class="it">${tkHtml(n, 'i' + ix, `${esc(nomItem(i))} · <b>${esc(i.cant)}</b>`)}</div>`).join('')
+    const lineas = items.slice(0, 7).map((i, ix) => `<div class="it">${tkHtml(n, 'i' + ix, `${esc(nomItem(i))} · <b>${esc(i.cant)}</b>${i.tiene != null ? ` <span style="opacity:.7">· tiene ${esc(i.tiene)}</span>` : ''}`)}</div>`).join('')
       + (items.length > 7 ? `<div class="it">+ ${items.length - 7} más… (abrila para tildar)</div>` : '');
     const lt = lineasTexto(d.texto);
     const texto = lt.length ? `<div class="tx">${lt.slice(0, 7).map(x => tkHtml(n, 't' + x.ix, esc(x.l.length > 70 ? x.l.slice(0, 70) + '…' : x.l))).join('')}${lt.length > 7 ? `<div>+ ${lt.length - 7} renglones más…</div>` : ''}</div>` : '';
@@ -1012,12 +1079,14 @@
     const env = cEnvios[n.id] || [];
     const abierta = ABIERTOS.includes(n.estado);
     const puedeEnviar = n.tipo === 'necesito' && items.length && !env.length && abierta;
-    const tabla = items.length ? `<table><tr><th title="Tildar al armar">✓</th><th>Producto</th><th>Pidió</th>${puedeEnviar ? '<th>Envío</th><th></th>' : ''}${env.length ? '<th>Enviado</th><th>Recibido</th>' : ''}</tr>
+    const conRef = items.some(i => i.vendio != null || i.tiene != null);
+    const refF = items.find(i => i.ref_fecha)?.ref_fecha;
+    const tabla = items.length ? `<table><tr><th title="Tildar al armar">✓</th><th>Producto</th>${conRef ? `<th>Tiene</th><th title="${refF ? 'Vendido el ' + fechaCorta(refF) : ''}">Vendió${refF ? ' ' + fechaCorta(refF) : ''}</th>` : ''}<th>Pidió</th>${puedeEnviar ? '<th>Envío</th><th></th>' : ''}${env.length ? '<th>Enviado</th><th>Recibido</th>' : ''}</tr>
       ${items.map((i, ix) => {
         const e = env.find(x => String(x.prod_id) === String(i.prod_id) && String(x.gusto_id) === String(i.gusto_id));
         const tOn = tildesDe(n).includes('i' + ix);
-        return `<tr class="tkrow${tOn ? ' hecho' : ''}"><td style="width:22px"><input type="checkbox" data-tk="${esc(n.id)}|i${ix}" ${tOn ? 'checked' : ''}></td><td><span>${esc(nomItem(i))}</span></td><td class="num">${esc(i.cant)}${i.unidad ? ' ' + esc(i.unidad) : ''}</td>
-          ${puedeEnviar ? `<td><input class="inp" type="number" min="0" step="1" data-ix="${ix}" placeholder="—" oninput="difEnvio(this,${parseInt(i.cant) || 0})"></td><td class="dcell"></td>` : ''}
+        return `<tr class="tkrow${tOn ? ' hecho' : ''}"><td style="width:22px"><input type="checkbox" data-tk="${esc(n.id)}|i${ix}" ${tOn ? 'checked' : ''}></td><td><span>${esc(nomItem(i))}</span></td>${conRef ? `<td class="num">${i.tiene != null ? esc(i.tiene) : '—'}</td><td class="num">${i.vendio != null ? esc(i.vendio) : '—'}</td>` : ''}<td class="num">${esc(i.cant)}${i.unidad ? ' ' + esc(i.unidad) : ''}${i.sugerido != null && String(i.sugerido) !== String(i.cant) ? ` <span style="font-size:11px;color:var(--text-muted)" title="Sugerido del sistema">(sug. ${esc(i.sugerido)})</span>` : ''}</td>
+          ${puedeEnviar ? `<td><input class="inp" type="number" min="0" step="1" data-ix="${ix}" value="${conRef ? (parseInt(i.cant) || '') : ''}" placeholder="—" oninput="difEnvio(this,${parseInt(i.cant) || 0})"></td><td class="dcell"></td>` : ''}
           ${env.length ? `<td class="num">${e ? esc(e.cantidad) : '—'}</td><td class="num">${e && e.confirmado ? esc(e.cantidad_recibida) + (parseInt(e.cantidad_recibida) !== parseInt(e.cantidad) ? ` <span class="dif">(${parseInt(e.cantidad_recibida) - parseInt(e.cantidad)})</span>` : '') : '—'}</td>` : ''}</tr>`;
       }).join('')}</table>` : '';
     const linea = (lbl, quien, cuando) => quien ? `<div>${lbl}: <b>${esc(quien)}</b>${cuando ? ' · ' + esc(parseTs(cuando)?.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) || '') : ''}</div>` : '';
@@ -1030,7 +1099,9 @@
         <select class="sel" id="m-sigue"><option value="">— nadie —</option>${[...new Set([...(n.sigue ? [n.sigue] : []), ...personas.map(p => p.nombre)])].map(nm => `<option value="${esc(nm)}" ${nm === n.sigue ? 'selected' : ''}>${esc(nm)}</option>`).join('')}</select>
         ${(() => { const a = avanceDe(n); return a.total ? `<span class="avance${a.hechos === a.total && a.hechos ? ' full' : ''}" id="m-avance" style="margin-left:auto">✓ ${a.hechos}/${a.total} armado</span>` : ''; })()}
       </div>
-      ${puedeEnviar ? '<div style="font-size:12px;color:var(--text-muted)">La columna Envío es opcional. Si la completás, se registra el envío y la sucursal confirma lo recibido.</div>' : ''}
+      ${puedeEnviar ? (conRef
+        ? '<div style="font-size:12px;color:var(--text-muted)">Envío viene cargado con lo que pidió la sucursal: cambialo si querés. Al guardar, poner En camino o Resuelta se registra el envío con esas cantidades (dejá vacío lo que no mandás) y la sucursal confirma lo recibido.</div>'
+        : '<div style="font-size:12px;color:var(--text-muted)">La columna Envío es opcional. Si la completás, se registra el envío y la sucursal confirma lo recibido.</div>') : ''}
       <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">
         ${linea('Vista por', n.visto_por, n.visto_at)}${linea('Respondida por', n.respondido_por, n.respondido_at)}${linea('Resuelta por', n.resuelta_por, n.resuelta_at)}${linea('Recibida por', n.recibida_por, n.recibida_at)}
       </div>
