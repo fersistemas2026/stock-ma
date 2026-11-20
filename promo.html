@@ -442,11 +442,11 @@ async function abrirEnServidor() {
     render();
     mostrarPremio(r);
     confeti();
-  } catch (e) { hojaError('No pudimos abrir la puerta. Revisá tu conexión y probá de nuevo.'); }
+  } catch (e) { hojaError('No pudimos abrir la puerta. Revisá tu conexión y probá de nuevo.', e.message); }
 }
 
 function hoja(html) { $('sheet').innerHTML = '<button class="x" id="cerrar">×</button>' + html; $('ov').classList.add('show'); $('cerrar').onclick = cerrar; }
-function hojaError(t) { hoja(`<div class="premio"><div class="em">😕</div><h2>Ups</h2><p>${esc(t)}</p></div><button class="btn borde" id="ok2">Cerrar</button>`); $('ok2').onclick = cerrar; }
+function hojaError(t, det) { hoja(`<div class="premio"><div class="em">😕</div><h2>Ups</h2><p>${esc(t)}</p>${det ? `<div class="mini-nota" style="opacity:.7">Detalle: ${esc(det)}</div>` : ''}</div><button class="btn borde" id="ok2">Cerrar</button>`); $('ok2').onclick = cerrar; }
 function cerrar() { $('ov').classList.remove('show'); render(); }
 $('ov').onclick = ev => { if (ev.target.id === 'ov') cerrar(); };
 
