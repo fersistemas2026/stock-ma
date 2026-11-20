@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎯 Campañas · Stock MA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10; --surface: #111518; --surface2: #181d22;
+    --border: #232a32; --accent: #c8f04a; --accent-dim: #a8cc30;
+    --text: #eef2f6; --text-muted: #7a8899; --text-dim: #3d4d5c;
+    --danger: #ff5a5a; --radius: 12px;
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+    --ok: #4ade80; --warn: #fbbf24; --info: #38bdf8; --promo: #f472b6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+  button { font-family: var(--font); cursor: pointer; }
+  input, select, textarea { font-family: var(--font); }
+  .btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--text-muted); }
+  .btn-acc { background: var(--accent); color: #000; border-color: var(--accent); }
+  .btn-acc:hover { background: var(--accent-dim); }
+  .btn-danger { color: var(--danger); border-color: rgba(255,90,90,.4); background: none; }
+  .btn-sm { padding: 4px 9px; font-size: 12px; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .inp { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 14px; outline: none; }
+  .inp:focus { border-color: var(--accent); }
+  label.lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 4px; font-family: var(--mono); }
+  .ayuda { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  header { position: sticky; top: 0; z-index: 50; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  header h1 { font-size: 17px; font-weight: 900; }
+  .spacer { flex: 1; }
+  #user-lbl { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+
+  .wrap { display: grid; grid-template-columns: 300px 1fr; gap: 14px; padding: 14px; max-width: 1300px; margin: 0 auto; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } }
+
+  .lista { display: flex; flex-direction: column; gap: 8px; }
+  .camp { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; }
+  .camp:hover { border-color: var(--text-muted); }
+  .camp.sel { border-color: var(--accent); }
+  .camp .nom { font-weight: 800; font-size: 15px; }
+  .camp .fec { font-size: 12px; color: var(--text-muted); font-family: var(--mono); margin-top: 3px; }
+  .pill { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 99px; padding: 2px 8px; margin-top: 6px; border: 1px solid; }
+  .p-activa { color: var(--ok); border-color: var(--ok); }
+  .p-prog { color: var(--info); border-color: var(--info); }
+  .p-term { color: var(--text-muted); border-color: var(--text-dim); }
+  .p-borr { color: var(--warn); border-color: var(--warn); }
+  .vacio { color: var(--text-muted); text-align: center; padding: 30px 10px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-height: 300px; }
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin: -4px 0 16px; padding-bottom: 10px; flex-wrap: wrap; }
+  .tab { background: none; border: 1px solid transparent; color: var(--text-muted); border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 13px; }
+  .tab.on { background: var(--surface2); border-color: var(--border); color: var(--text); }
+  .fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .linkbox { background: var(--surface2); border: 1px dashed var(--border); border-radius: 10px; padding: 12px; margin: 6px 0 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .linkbox code { font-family: var(--mono); font-size: 12px; color: var(--accent); word-break: break-all; flex: 1; min-width: 220px; }
+  .acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .chk { display: flex; gap: 8px; align-items: center; font-weight: 700; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; color: var(--text-muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: .05em; padding: 6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  td .inp { padding: 6px 8px; font-size: 13px; }
+  td.f { font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--text-muted); }
+  td.f b { color: var(--text); font-size: 14px; }
+  .t-emoji { width: 56px; text-align: center; font-size: 18px !important; }
+  .t-val { width: 100px; }
+  .t-tipo { width: 120px; }
+  .tabla-scroll { overflow-x: auto; }
+  tr.hoy td { background: rgba(200,240,74,.06); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .stat .v { font-size: 26px; font-weight: 900; }
+  .stat .l { font-size: 11px; color: var(--text-muted); font-family: var(--mono); text-transform: uppercase; }
+  h3.sec { font-size: 14px; margin: 18px 0 8px; }
+  .barra { display: grid; grid-template-columns: 110px 1fr 70px; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 4px; }
+  .barra .b { height: 10px; background: var(--surface2); border-radius: 5px; overflow: hidden; }
+  .barra .b i { display: block; height: 100%; background: var(--promo); }
+  .barra .n { font-family: var(--mono); text-align: right; color: var(--text-muted); }
+  .ganador { background: linear-gradient(135deg, rgba(244,114,182,.15), rgba(200,240,74,.12)); border: 1px solid var(--promo); border-radius: 12px; padding: 16px; margin: 10px 0; text-align: center; }
+  .ganador .nm { font-size: 22px; font-weight: 900; margin: 4px 0; }
+
+  .blocker { position: fixed; inset: 0; background: var(--bg); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 20px; }
+  .blocker .ic { font-size: 48px; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .t { background: var(--surface2); border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+  .t.success { border-color: var(--ok); } .t.error { border-color: var(--danger); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 Campañas</h1>
+  <button class="btn btn-acc" id="btn-nueva">+ Nueva campaña</button>
+  <div class="spacer"></div>
+  <span id="user-lbl"></span>
+</header>
+
+<div class="wrap">
+  <div class="lista" id="lista"></div>
+  <div class="panel" id="panel"><div class="vacio">Elegí una campaña o creá una nueva.</div></div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════════
+// CAMPAÑAS — arma las promos que ve el cliente en promo.html (Stock MA)
+// Se abre desde index.html (botón 🎯 Campañas, solo admin) con la sesión de la Pizarra.
+// ════════════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://brcnctdfbdffxmdypnrh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyY25jdGRmYmRmZnhtZHlwbnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3OTYzMzIsImV4cCI6MjA5NDM3MjMzMn0.t8Ot0v465qdHshX-Ridce42iPpytYjoMoHxR_mBytZQ';
+const BASE_URL = 'https://fersistemas2026.github.io/stock-ma/';
+const SESION_KEY = 'ma_pizarra_sesion';
+const SESION_MAX_MS = 10 * 60 * 1000;
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const DOW = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const TEMAS = { navidad: '🎄 Navidad (estrellas, palos, ravioles, regalos)', generico: '🍝 Genérico (palos y ravioles)' };
+const TIPOS = { pct: '% descuento', monto: '$ descuento', receta: 'Receta / tip', sorteo: 'Sorteo' };
+
+const S = { user: null, empresa: '1', camps: [], sel: null, tab: 'datos', premios: [], resultados: null, ganador: null };
+
+// ── Utilidades ──
+function $(id) { return document.getElementById(id); }
+function esc(x) { return String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fechaHoyAR() {
+  return new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+}
+function addDays(iso, n) { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function fCorta(iso) { if (!iso) return ''; const d = new Date(iso + 'T12:00:00Z'); return d.getUTCDate() + ' ' + MESES[d.getUTCMonth()]; }
+function fDow(iso) { return DOW[new Date(iso + 'T12:00:00Z').getUTCDay()]; }
+function diasEntre(desde, hasta) { const out = []; let d = desde; while (d && hasta && d <= hasta && out.length < 62) { out.push(d); d = addDays(d, 1); } return out; }
+function slugify(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 30); }
+function toast(msg, tipo) {
+  const el = document.createElement('div'); el.className = 't ' + (tipo || ''); el.textContent = msg;
+  $('toast').appendChild(el); setTimeout(() => el.remove(), tipo === 'error' ? 6000 : 3000);
+}
+function estadoCamp(c) {
+  const hoy = fechaHoyAR();
+  if (!c.activa) return c.hasta < hoy ? ['term', 'Terminada'] : ['borr', 'Borrador'];
+  if (hoy < c.desde) return ['prog', 'Programada'];
+  if (hoy > c.hasta) return ['term', 'Terminada'];
+  return ['activa', 'Activa'];
+}
+
+// sbApi: mismo comportamiento que index (GET paginado por Range, nunca limit+offset)
+async function sbApi(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+  if (method === 'GET') {
+    headers['Prefer'] = 'count=none'; headers['Range-Unit'] = 'items';
+    const PAGE = 1000; let offset = 0, all = [];
+    while (true) {
+      headers['Range'] = `${offset}-${offset + PAGE - 1}`;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `Error ${res.status}`); }
+      const t = await res.text();
+      const page = t ? JSON.parse(t) : [];
+      if (!Array.isArray(page)) return page;
+      all = all.concat(page);
+      if (page.length < PAGE) break;
+      offset += PAGE;
+    }
+    return all;
+  }
+  headers['Prefer'] = options.prefer || 'return=representation';
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers, body: options.body || undefined });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || `Error ${res.status}`); }
+  const t = await res.text();
+  return t ? JSON.parse(t) : null;
+}
+
+// ── Sesión (la deja index.html, igual que para la Pizarra) ──
+function leerSesion() { try { return JSON.parse(localStorage.getItem(SESION_KEY) || 'null'); } catch (e) { return null; } }
+function bloquear(msg) {
+  const b = document.createElement('div'); b.className = 'blocker';
+  b.innerHTML = `<div class="ic">🎯</div><div style="font-size:18px;font-weight:800;">${esc(msg)}</div>
+    <div style="color:var(--text-muted);font-size:13px;">Abrí Campañas con el botón <b>🎯 Campañas</b> de la pantalla principal.</div>
+    <button class="btn" onclick="location.reload()">Reintentar</button>`;
+  document.body.appendChild(b);
+}
+
+async function init() {
+  const s = leerSesion();
+  if (!s || !s.username) { bloquear('No hay una sesión abierta'); return; }
+  if (Date.now() - (s.ts || 0) > SESION_MAX_MS) { bloquear('La sesión venció'); return; }
+  S.empresa = String(s.empresa || '1');
+  try {
+    const u = await sbApi(`usuarios?username=eq.${encodeURIComponent(s.username)}&select=username,display_name,role`);
+    if (!u || !u.length) { bloquear('Usuario no encontrado'); return; }
+    S.user = u[0];
+  } catch (e) { bloquear('No se pudo conectar: ' + e.message); return; }
+  if (S.user.role !== 'admin') { bloquear('Campañas es solo para administradores'); return; }
+  $('user-lbl').textContent = '👤 ' + (S.user.display_name || S.user.username);
+  $('btn-nueva').onclick = nueva;
+  await cargarCampanias();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// LISTA
+// ════════════════════════════════════════════════════════════════════
+async function cargarCampanias(selId) {
+  try { S.camps = await sbApi(`promo_campanias?empresa_id=eq.${S.empresa}&order=desde.desc&select=*`) || []; }
+  catch (e) { $('lista').innerHTML = `<div class="vacio">No se pudieron leer las campañas.<br><small>${esc(e.message)}</small><br><br>¿Ya corriste el SQL de campañas?</div>`; return; }
+  renderLista();
+  const id = selId || (S.sel && S.sel.id);
+  if (id) { const c = S.camps.find(x => x.id === id); if (c) { await abrir(c); return; } }
+  if (!S.sel && S.camps.length) await abrir(S.camps[0]);
+}
+function renderLista() {
+  if (!S.camps.length) { $('lista').innerHTML = '<div class="vacio">Todavía no hay campañas.<br>Creá la primera con <b>+ Nueva campaña</b>.</div>'; return; }
+  $('lista').innerHTML = S.camps.map(c => {
+    const [k, t] = estadoCamp(c);
+    return `<div class="camp ${S.sel && S.sel.id === c.id ? 'sel' : ''}" data-id="${c.id}">
+      <div class="nom">${esc(c.nombre)}</div>
+      <div class="fec">${fCorta(c.desde)} → ${fCorta(c.hasta)} · ${diasEntre(c.desde, c.hasta).length} puertas</div>
+      <span class="pill p-${k}">${t}</span></div>`;
+  }).join('');
+  $('lista').querySelectorAll('.camp').forEach(el => el.onclick = () => abrir(S.camps.find(c => c.id === +el.dataset.id)));
+}
+
+function nueva() {
+  const y = new Date().getFullYear();
+  S.sel = { id: null, nombre: '', subtitulo: '', slug: '', desde: `${y}-12-01`, hasta: `${y}-12-24`, tema: 'navidad', prefijo: 'NAV', sorteo_texto: '', sorteo_minimo: null, activa: false };
+  S.tab = 'datos'; S.premios = []; S.resultados = null; S.ganador = null;
+  renderLista(); renderPanel();
+}
+
+async function abrir(c) {
+  S.sel = Object.assign({}, c); S.ganador = null; S.resultados = null;
+  renderLista();
+  try { S.premios = await sbApi(`promo_premios?campania_id=eq.${c.id}&order=fecha.asc&select=*`) || []; }
+  catch (e) { S.premios = []; toast('No se pudieron leer las puertas: ' + e.message, 'error'); }
+  renderPanel();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PANEL
+// ════════════════════════════════════════════════════════════════════
+function renderPanel() {
+  const c = S.sel;
+  if (!c) { $('panel').innerHTML = '<div class="vacio">Elegí una campaña o creá una nueva.</div>'; return; }
+  const tabs = c.id ? [['datos', '⚙️ Datos'], ['puertas', '🚪 Puertas'], ['resultados', '📊 Resultados y sorteo']] : [['datos', '⚙️ Datos']];
+  $('panel').innerHTML = `<div class="tabs">${tabs.map(([k, t]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-t="${k}">${t}</button>`).join('')}</div><div id="tab-body"></div>`;
+  $('panel').querySelectorAll('.tab').forEach(b => b.onclick = () => { S.tab = b.dataset.t; renderPanel(); });
+  if (S.tab === 'puertas' && c.id) renderPuertas();
+  else if (S.tab === 'resultados' && c.id) renderResultados();
+  else renderDatos();
+}
+
+// ── Datos ─────────────────────────────────────────────────────────
+function renderDatos() {
+  const c = S.sel;
+  const link = BASE_URL + 'promo.html';
+  const linkC = BASE_URL + 'promo.html?c=' + encodeURIComponent(c.slug || '');
+  $('tab-body').innerHTML = `
+    <div class="fila">
+      <div><label class="lbl">Título</label><input class="inp" id="d-nombre" value="${esc(c.nombre)}" placeholder="Calendario de Adviento"></div>
+      <div><label class="lbl">Subtítulo</label><input class="inp" id="d-sub" value="${esc(c.subtitulo || '')}" placeholder="24 días, 24 sorpresas. Abrí una puerta por día 🎄"></div>
+    </div>
+    <div class="fila">
+      <div><label class="lbl">Desde</label><input class="inp" type="date" id="d-desde" value="${esc(c.desde)}"></div>
+      <div><label class="lbl">Hasta</label><input class="inp" type="date" id="d-hasta" value="${esc(c.hasta)}"><div class="ayuda" id="d-cant"></div></div>
+      <div><label class="lbl">Tema</label><select class="inp" id="d-tema">${Object.entries(TEMAS).map(([k, t]) => `<option value="${k}" ${c.tema === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="fila">
+      <div><label class="lbl">Nombre corto (para el link)</label><input class="inp" id="d-slug" value="${esc(c.slug)}" placeholder="navidad${new Date().getFullYear()}"><div class="ayuda">Solo letras y números. No se repite entre campañas.</div></div>
+      <div><label class="lbl">Prefijo del código</label><input class="inp" id="d-pref" value="${esc(c.prefijo)}" maxlength="5" placeholder="NAV"><div class="ayuda">Los códigos salen como <b id="d-ej"></b></div></div>
+    </div>
+    <div class="fila">
+      <div><label class="lbl">Sorteo (vacío = sin sorteo)</label><input class="inp" id="d-sorteo" value="${esc(c.sorteo_texto || '')}" placeholder="Gran Sorteo de Navidad"></div>
+      <div><label class="lbl">Puertas mínimas para el sorteo</label><input class="inp" type="number" min="1" id="d-min" value="${c.sorteo_minimo || ''}" placeholder="Vacío = todas"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="d-activa" ${c.activa ? 'checked' : ''}> Publicada (es la que muestra promo.html)</label>
+    <div class="ayuda">Solo puede haber una publicada: al publicar esta, las demás se despublican.</div>
+    ${c.id ? `
+    <h3 class="sec">Links</h3>
+    <div class="linkbox"><code>${esc(link)}</code><button class="btn btn-sm" data-copy="${esc(link)}">📋 Copiar</button><span class="ayuda" style="width:100%;margin:0">Link fijo para la bio de Instagram: muestra la campaña publicada.</span></div>
+    <div class="linkbox"><code>${esc(linkC)}</code><button class="btn btn-sm" data-copy="${esc(linkC)}">📋 Copiar</button><span class="ayuda" style="width:100%;margin:0">Link directo a esta campaña.</span></div>
+    <div class="acciones">
+      <a class="btn" target="_blank" href="promo.html?c=${encodeURIComponent(c.slug)}&ver=${esc(c.desde)}">👁️ Vista previa</a>
+      <a class="btn" target="_blank" href="promo.html?c=${encodeURIComponent(c.slug)}&historias=1">📱 Historias para Instagram</a>
+    </div>` : ''}
+    <div class="acciones" style="margin-top:20px">
+      <button class="btn btn-acc" id="d-guardar">💾 Guardar${c.id ? '' : ' y seguir con las puertas'}</button>
+      ${c.id ? '<button class="btn btn-danger" id="d-borrar">🗑️ Eliminar campaña</button>' : ''}
+    </div>`;
+  const upd = () => {
+    const n = diasEntre($('d-desde').value, $('d-hasta').value).length;
+    $('d-cant').textContent = n ? `${n} puertas` : 'Revisá las fechas';
+    const d = $('d-desde').value ? $('d-desde').value.slice(8, 10) : '05';
+    $('d-ej').textContent = ($('d-pref').value || 'PROMO').toUpperCase() + d + '-A7K2';
+  };
+  const autoSlug = () => { if (!c.id && !$('d-slug').dataset.tocado) $('d-slug').value = slugify($('d-nombre').value) + ($('d-desde').value || '').slice(0, 4); };
+  ['d-desde', 'd-hasta', 'd-pref'].forEach(id => $(id).oninput = () => { upd(); autoSlug(); });
+  $('d-nombre').oninput = autoSlug;
+  $('d-slug').oninput = () => { $('d-slug').dataset.tocado = '1'; };
+  upd();
+  $('tab-body').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('¡Link copiado!', 'success')));
+  $('d-guardar').onclick = guardarDatos;
+  if ($('d-borrar')) $('d-borrar').onclick = borrarCampania;
+}
+
+async function guardarDatos() {
+  const c = S.sel;
+  const d = {
+    empresa_id: S.empresa,
+    nombre: $('d-nombre').value.trim(),
+    subtitulo: $('d-sub').value.trim() || null,
+    desde: $('d-desde').value, hasta: $('d-hasta').value,
+    tema: $('d-tema').value,
+    slug: slugify($('d-slug').value),
+    prefijo: ($('d-pref').value.trim() || 'PROMO').toUpperCase().replace(/[^A-Z0-9]/g, ''),
+    sorteo_texto: $('d-sorteo').value.trim() || null,
+    sorteo_minimo: parseInt($('d-min').value, 10) || null,
+    activa: $('d-activa').checked
+  };
+  if (!d.nombre) { toast('Poné un título', 'error'); return; }
+  if (!d.desde || !d.hasta || d.hasta < d.desde) { toast('Revisá las fechas', 'error'); return; }
+  if (diasEntre(d.desde, d.hasta).length > 31) { toast('Máximo 31 puertas por campaña', 'error'); return; }
+  if (!d.slug) { toast('Poné un nombre corto para el link', 'error'); return; }
+  if (S.camps.some(x => x.slug === d.slug && x.id !== c.id)) { toast('Ese nombre corto ya lo usa otra campaña', 'error'); return; }
+  const fuera = c.id ? S.premios.filter(p => p.fecha < d.desde || p.fecha > d.hasta) : [];
+  if (fuera.length && !confirm(`Con las fechas nuevas quedan afuera ${fuera.length} puertas ya cargadas. Se van a borrar. ¿Seguimos?`)) return;
+  const btn = $('d-guardar'); btn.disabled = true;
+  try {
+    let id = c.id;
+    if (id) await sbApi(`promo_campanias?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(d) });
+    else { const r = await sbApi('promo_campanias', { method: 'POST', body: JSON.stringify(d) }); id = r[0].id; }
+    if (fuera.length) await sbApi(`promo_premios?campania_id=eq.${id}&id=in.(${fuera.map(p => p.id).join(',')})`, { method: 'DELETE' });
+    if (d.activa) await sbApi(`promo_campanias?empresa_id=eq.${S.empresa}&id=neq.${id}&activa=eq.true`, { method: 'PATCH', body: JSON.stringify({ activa: false }) });
+    toast('Campaña guardada', 'success');
+    if (!c.id) S.tab = 'puertas';
+    S.sel = null;
+    await cargarCampanias(id);
+  } catch (e) { toast('No se pudo guardar: ' + e.message, 'error'); btn.disabled = false; }
+}
+
+async function borrarCampania() {
+  const c = S.sel;
+  if (!confirm(`¿Eliminar "${c.nombre}"? Se borran también sus puertas y el registro de quién las abrió. Los códigos ya entregados siguen valiendo.`)) return;
+  try {
+    await sbApi(`promo_campanias?id=eq.${c.id}`, { method: 'DELETE' });
+    toast('Campaña eliminada', 'success');
+    S.sel = null; S.tab = 'datos';
+    await cargarCampanias();
+    if (!S.camps.length) renderPanel();
+  } catch (e) { toast('No se pudo eliminar: ' + e.message, 'error'); }
+}
+
+// ── Puertas ───────────────────────────────────────────────────────
+function renderPuertas() {
+  const c = S.sel, ds = diasEntre(c.desde, c.hasta), hoy = fechaHoyAR();
+  const porFecha = {}; S.premios.forEach(p => porFecha[p.fecha] = p);
+  const otras = S.camps.filter(x => x.id !== c.id);
+  const filas = ds.map(f => {
+    const p = porFecha[f] || {};
+    const tipo = p.tipo || 'pct';
+    const val = tipo === 'monto' ? (p.monto_fijo || '') : (tipo === 'pct' ? (p.pct || '') : '');
+    return `<tr data-f="${f}" class="${f === hoy ? 'hoy' : ''}">
+      <td class="f">${fDow(f)}<br><b>${fCorta(f)}</b></td>
+      <td><input class="inp t-emoji" data-k="emoji" value="${esc(p.emoji || '')}" placeholder="🎁"></td>
+      <td><input class="inp" data-k="titulo" value="${esc(p.titulo || '')}" placeholder="Ej: 15% en tu compra"></td>
+      <td><input class="inp" data-k="descripcion" value="${esc(p.descripcion || '')}" placeholder="Texto chico (opcional)"></td>
+      <td><select class="inp t-tipo" data-k="tipo">${Object.entries(TIPOS).map(([k, t]) => `<option value="${k}" ${tipo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
+      <td><input class="inp t-val" data-k="valor" type="number" min="0" value="${val}" placeholder="${tipo === 'monto' ? '$' : '%'}" ${tipo === 'pct' || tipo === 'monto' ? '' : 'disabled'}></td>
+    </tr>`;
+  }).join('');
+  const cargadas = ds.filter(f => porFecha[f]).length;
+  $('tab-body').innerHTML = `
+    <div class="acciones" style="margin:0 0 12px;align-items:center">
+      <span style="font-weight:800">${cargadas} de ${ds.length} puertas cargadas</span>
+      <div class="spacer" style="flex:1"></div>
+      ${otras.length ? `<select class="inp" id="p-origen" style="width:auto">${otras.map(o => `<option value="${o.id}">${esc(o.nombre)} (${fCorta(o.desde)})</option>`).join('')}</select>
+      <button class="btn" id="p-copiar">📄 Copiar puertas de esa campaña</button>` : ''}
+    </div>
+    <div class="ayuda" style="margin-bottom:10px">El <b>título</b> es lo que se lee grande al abrir la puerta. Los descuentos (% o $) son sobre <b>toda la compra</b>, solo retirando en sucursal, y valen solo ese día. "Receta / tip" no genera código. Las filas sin título no se guardan.</div>
+    <div class="tabla-scroll"><table>
+      <thead><tr><th>Día</th><th>Emoji</th><th>Título</th><th>Descripción</th><th>Tipo</th><th>Valor</th></tr></thead>
+      <tbody id="p-body">${filas}</tbody></table></div>
+    <div class="acciones">
+      <button class="btn btn-acc" id="p-guardar">💾 Guardar puertas</button>
+      <a class="btn" target="_blank" href="promo.html?c=${encodeURIComponent(c.slug)}&ver=${esc(ds.includes(hoy) ? hoy : c.desde)}">👁️ Vista previa</a>
+    </div>`;
+  $('p-body').querySelectorAll('select[data-k="tipo"]').forEach(s => s.onchange = () => {
+    const v = s.closest('tr').querySelector('[data-k="valor"]');
+    const usa = s.value === 'pct' || s.value === 'monto';
+    v.disabled = !usa; v.placeholder = s.value === 'monto' ? '$' : '%'; if (!usa) v.value = '';
+  });
+  $('p-guardar').onclick = guardarPuertas;
+  if ($('p-copiar')) $('p-copiar').onclick = copiarPuertas;
+}
+
+function leerFilas() {
+  return [...$('p-body').querySelectorAll('tr')].map(tr => {
+    const g = k => tr.querySelector(`[data-k="${k}"]`).value.trim();
+    const tipo = g('tipo'), val = parseFloat(g('valor')) || 0;
+    return { fecha: tr.dataset.f, emoji: g('emoji') || null, titulo: g('titulo'), descripcion: g('descripcion') || null, tipo,
+             pct: tipo === 'pct' ? val : 0, monto_fijo: tipo === 'monto' ? val : 0 };
+  });
+}
+
+async function guardarPuertas() {
+  const c = S.sel, filas = leerFilas();
+  const llenas = filas.filter(f => f.titulo);
+  const malas = llenas.filter(f => (f.tipo === 'pct' && !(f.pct > 0 && f.pct <= 100)) || (f.tipo === 'monto' && !(f.monto_fijo > 0)));
+  if (malas.length) { toast(`Revisá el valor del ${fCorta(malas[0].fecha)}: falta el % o el monto`, 'error'); return; }
+  const vacias = filas.filter(f => !f.titulo).map(f => f.fecha);
+  const borrar = S.premios.filter(p => vacias.includes(p.fecha));
+  const btn = $('p-guardar'); btn.disabled = true;
+  try {
+    if (llenas.length) await sbApi('promo_premios?on_conflict=campania_id,fecha', {
+      method: 'POST', prefer: 'resolution=merge-duplicates,return=representation',
+      body: JSON.stringify(llenas.map(f => Object.assign({ campania_id: c.id }, f)))
+    });
+    if (borrar.length) await sbApi(`promo_premios?id=in.(${borrar.map(p => p.id).join(',')})`, { method: 'DELETE' });
+    S.premios = await sbApi(`promo_premios?campania_id=eq.${c.id}&order=fecha.asc&select=*`) || [];
+    toast(`Puertas guardadas (${llenas.length} de ${filas.length})`, 'success');
+    renderPuertas();
+  } catch (e) { toast('No se pudo guardar: ' + e.message, 'error'); btn.disabled = false; }
+}
+
+async function copiarPuertas() {
+  const origen = S.camps.find(x => x.id === +$('p-origen').value);
+  if (!origen) return;
+  try {
+    const ps = await sbApi(`promo_premios?campania_id=eq.${origen.id}&order=fecha.asc&select=*`) || [];
+    if (!ps.length) { toast('Esa campaña no tiene puertas cargadas', 'error'); return; }
+    // Se copian en orden: 1ª puerta → 1ª puerta, etc. (no se guarda hasta tocar Guardar)
+    const dsO = diasEntre(origen.desde, origen.hasta);
+    const trs = [...$('p-body').querySelectorAll('tr')];
+    trs.forEach((tr, i) => {
+      const p = ps.find(x => x.fecha === dsO[i]); if (!p) return;
+      const set = (k, v) => { tr.querySelector(`[data-k="${k}"]`).value = v ?? ''; };
+      set('emoji', p.emoji); set('titulo', p.titulo); set('descripcion', p.descripcion); set('tipo', p.tipo);
+      tr.querySelector('[data-k="tipo"]').onchange();
+      set('valor', p.tipo === 'monto' ? p.monto_fijo : (p.tipo === 'pct' ? p.pct : ''));
+    });
+    toast('Puertas copiadas. Revisalas y tocá Guardar.', 'success');
+  } catch (e) { toast('No se pudo copiar: ' + e.message, 'error'); }
+}
+
+// ── Resultados y sorteo ───────────────────────────────────────────
+async function renderResultados() {
+  const c = S.sel;
+  $('tab-body').innerHTML = '<div class="vacio">Cargando resultados…</div>';
+  let aps = [], vs = [];
+  try {
+    aps = await sbApi(`promo_aperturas?campania_id=eq.${c.id}&order=created_at.asc&select=*`) || [];
+    const cods = new Set(aps.map(a => a.voucher_codigo).filter(Boolean));
+    if (cods.size) {
+      const todos = await sbApi(`vouchers?empresa_id=eq.${S.empresa}&codigo=like.${encodeURIComponent(c.prefijo)}*&select=codigo,usado,usado_pdv,usado_fecha`) || [];
+      vs = todos.filter(v => cods.has(v.codigo));
+    }
+  } catch (e) { $('tab-body').innerHTML = `<div class="vacio">No se pudieron leer los resultados: ${esc(e.message)}</div>`; return; }
+
+  const ds = diasEntre(c.desde, c.hasta);
+  const personas = {};
+  aps.forEach(a => {
+    const p = personas[a.cliente_tel] || (personas[a.cliente_tel] = { tel: a.cliente_tel, nombre: a.cliente_nombre, pdv: a.pdv_nombre, n: 0 });
+    p.n++; if (a.cliente_nombre) p.nombre = a.cliente_nombre; if (a.pdv_nombre) p.pdv = a.pdv_nombre;
+  });
+  const lista = Object.values(personas);
+  const usados = vs.filter(v => v.usado);
+  const minimo = Math.min(c.sorteo_minimo || ds.length, ds.length);
+  const enSorteo = lista.filter(p => p.n >= minimo).sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+
+  const porDia = ds.map(f => ({ f, n: aps.filter(a => a.fecha === f).length, u: usados.filter(v => aps.some(a => a.fecha === f && a.voucher_codigo === v.codigo)).length }));
+  const maxDia = Math.max(1, ...porDia.map(x => x.n));
+  const porPdv = {}; lista.forEach(p => { const k = p.pdv || 'Sin sucursal'; porPdv[k] = (porPdv[k] || 0) + 1; });
+  const pdvOrden = Object.entries(porPdv).sort((a, b) => b[1] - a[1]);
+  const maxPdv = Math.max(1, ...pdvOrden.map(x => x[1]));
+  const canjePdv = {}; usados.forEach(v => { const k = (v.usado_pdv || '—'); canjePdv[k] = (canjePdv[k] || 0) + 1; });
+
+  $('tab-body').innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="v">${lista.length}</div><div class="l">Participantes</div></div>
+      <div class="stat"><div class="v">${aps.length}</div><div class="l">Puertas abiertas</div></div>
+      <div class="stat"><div class="v">${aps.filter(a => a.voucher_codigo).length}</div><div class="l">Códigos entregados</div></div>
+      <div class="stat"><div class="v">${usados.length}</div><div class="l">Códigos canjeados</div></div>
+      ${c.sorteo_texto ? `<div class="stat"><div class="v">${enSorteo.length}</div><div class="l">En el sorteo</div></div>` : ''}
+    </div>
+    <h3 class="sec">Por día (abiertas · canjeadas)</h3>
+    ${porDia.map(x => `<div class="barra"><span>${fDow(x.f)} ${fCorta(x.f)}</span><div class="b"><i style="width:${x.n / maxDia * 100}%"></i></div><span class="n">${x.n} · ${x.u}</span></div>`).join('')}
+    <h3 class="sec">Participantes por sucursal más cercana</h3>
+    ${pdvOrden.length ? pdvOrden.map(([k, n]) => `<div class="barra"><span>${esc(k)}</span><div class="b"><i style="width:${n / maxPdv * 100}%"></i></div><span class="n">${n}</span></div>`).join('') : '<div class="ayuda">Todavía no hay participantes.</div>'}
+    ${usados.length ? `<h3 class="sec">Dónde se canjearon</h3>${Object.entries(canjePdv).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="barra"><span>${esc(k)}</span><div class="b"><i style="width:${n / usados.length * 100}%"></i></div><span class="n">${n}</span></div>`).join('')}` : ''}
+    ${c.sorteo_texto ? `
+      <h3 class="sec">🎁 ${esc(c.sorteo_texto)} — ${minimo >= ds.length ? 'abrieron todas las puertas' : 'abrieron al menos ' + minimo + ' puertas'}</h3>
+      <div id="ganador">${S.ganador ? htmlGanador(S.ganador) : ''}</div>
+      <div class="acciones" style="margin:0 0 10px">
+        <button class="btn btn-acc" id="r-sortear" ${enSorteo.length ? '' : 'disabled'}>🎲 Sortear</button>
+        <button class="btn" id="r-copiar" ${enSorteo.length ? '' : 'disabled'}>📋 Copiar lista</button>
+      </div>
+      ${enSorteo.length ? `<div class="tabla-scroll"><table><thead><tr><th>Nombre</th><th>Celular</th><th>Sucursal</th><th>Puertas</th></tr></thead><tbody>
+        ${enSorteo.map(p => `<tr><td>${esc(p.nombre || '—')}</td><td style="font-family:var(--mono)">${esc(p.tel)}</td><td>${esc(p.pdv || '')}</td><td>${p.n}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="ayuda">Todavía nadie llegó a las puertas necesarias.</div>'}` : ''}
+    <div class="acciones"><button class="btn" id="r-refrescar">🔄 Actualizar</button></div>`;
+
+  $('r-refrescar').onclick = renderResultados;
+  if ($('r-sortear')) $('r-sortear').onclick = () => {
+    if (S.ganador && !confirm('Ya hay un ganador sorteado. ¿Sortear de nuevo?')) return;
+    S.ganador = enSorteo[Math.floor(Math.random() * enSorteo.length)];
+    $('ganador').innerHTML = htmlGanador(S.ganador);
+  };
+  if ($('r-copiar')) $('r-copiar').onclick = () => navigator.clipboard.writeText(enSorteo.map(p => `${p.nombre || ''}\t${p.tel}\t${p.pdv || ''}\t${p.n}`).join('\n')).then(() => toast('Lista copiada', 'success'));
+}
+function htmlGanador(p) {
+  const msg = `¡Hola ${p.nombre || ''}! 🎉 Ganaste el ${S.sel.sorteo_texto} de Miguel Ángel Pastas. Escribinos para coordinar la entrega de tu premio.`;
+  return `<div class="ganador"><div style="font-size:30px">🏆</div><div class="nm">${esc(p.nombre || '—')}</div>
+    <div style="font-family:var(--mono);color:var(--text-muted)">${esc(p.tel)} · ${esc(p.pdv || '')}</div>
+    <div class="acciones" style="justify-content:center"><a class="btn btn-acc" target="_blank" href="https://wa.me/549${esc(p.tel)}?text=${encodeURIComponent(msg)}">💬 Avisarle por WhatsApp</a></div></div>`;
+}
+
+init();
+</script>
+</body>
+</html>

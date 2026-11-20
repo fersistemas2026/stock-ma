@@ -316,6 +316,7 @@
       <button id="btn-proveedores-link" onclick="window.open('proveedores.html','_blank')" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir módulo de Proveedores">🚚 Proveedores</button>
       <button id="btn-pizarra-link" onclick="abrirPizarra()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir la pizarra de mercadería">🧾 Pizarra<span id="pizarra-badge" style="display:none;background:#ff5a5a;color:#fff;font-size:11px;font-weight:700;border-radius:9px;padding:1px 6px;margin-left:6px;font-family:var(--mono);"></span></button>
       <button id="btn-encargos-link" onclick="abrirEncargos()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Abrir el calendario de encargos">📅 Encargos<span id="encargos-badge" style="display:none;background:#fbbf24;color:#000;font-size:11px;font-weight:700;border-radius:9px;padding:1px 6px;margin-left:6px;font-family:var(--mono);"></span></button>
+      <button id="btn-campanias-link" onclick="abrirCampanias()" style="display:none;background:none;border:1px solid var(--border);color:var(--text-muted);padding:6px 14px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s;" title="Armar las campañas y promos (promo.html)">🎯 Campañas</button>
       <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </header>
@@ -3015,6 +3016,14 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     } catch(e) { window.open(dest, 'encargos_ma'); }
   }
   window.abrirEncargos = abrirEncargos;
+  // ── CAMPAÑAS (módulo campanias.html, solo admin) — usa la misma sesión que la pizarra ──
+  function abrirCampanias() {
+    guardarSesionPizarra();
+    const w = window.open('campanias.html', 'campanias_ma');
+    if (!w) { toast('El navegador bloqueó la ventana. Permití ventanas emergentes para este sitio.','error'); return; }
+    w.focus();
+  }
+  window.abrirCampanias = abrirCampanias;
   // ── Alerta de encargos para el operador de ventas ──
   // 1) Al entrar a Ventas (una vez por día y usuario en esta sesión): hoy + atrasados.
   // 2) 30 minutos antes del horario de cada encargo de hoy (una vez por encargo).
@@ -3101,6 +3110,8 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   }
   async function iniciarPizarra() {
     guardarSesionPizarra();
+    const btnCamp = document.getElementById('btn-campanias-link');
+    if (btnCamp) btnCamp.style.display = currentUser?.role === 'admin' ? '' : 'none';
     const btn = document.getElementById('btn-pizarra-link');
     const tienePdv = (currentUser?.pdvs||[]).length > 0;
     let central = false;
@@ -3174,6 +3185,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     const btn = document.getElementById('btn-pizarra-link'); if (btn) btn.style.display = 'none';
     const badge = document.getElementById('pizarra-badge'); if (badge) badge.style.display = 'none';
     const btnEnc = document.getElementById('btn-encargos-link'); if (btnEnc) btnEnc.style.display = 'none';
+    const btnCamp = document.getElementById('btn-campanias-link'); if (btnCamp) btnCamp.style.display = 'none';
     const badgeEnc = document.getElementById('encargos-badge'); if (badgeEnc) badgeEnc.style.display = 'none';
   }
 
