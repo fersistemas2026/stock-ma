@@ -121,7 +121,7 @@ const SESION_KEY = 'ma_pizarra_sesion';
 const SESION_MAX_MS = 10 * 60 * 1000;
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DOW = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-const TEMAS = { navidad: '🎄 Navidad (estrellas, palos, ravioles, regalos)', generico: '🍝 Genérico (palos y ravioles)' };
+const TEMAS = { navidad: '🎄 Navidad (estrellas, palos, ravioles, regalos)', blackfriday: '🖤 Black Friday (negro y dorado, etiquetas de %)', generico: '🍝 Genérico (palos y ravioles)' };
 const TIPOS = { pct: '% descuento', monto: '$ descuento', receta: 'Receta / tip', sorteo: 'Sorteo' };
 
 const S = { user: null, empresa: '1', camps: [], sel: null, tab: 'datos', premios: [], resultados: null, ganador: null };
@@ -277,8 +277,8 @@ function renderDatos() {
       <div><label class="lbl">Sorteo (vacío = sin sorteo)</label><input class="inp" id="d-sorteo" value="${esc(c.sorteo_texto || '')}" placeholder="Gran Sorteo de Navidad"></div>
       <div><label class="lbl">Puertas mínimas para el sorteo</label><input class="inp" type="number" min="1" id="d-min" value="${c.sorteo_minimo || ''}" placeholder="Vacío = todas"></div>
     </div>
-    <label class="chk"><input type="checkbox" id="d-activa" ${c.activa ? 'checked' : ''}> Publicada (es la que muestra promo.html)</label>
-    <div class="ayuda">Solo puede haber una publicada: al publicar esta, las demás se despublican.</div>
+    <label class="chk"><input type="checkbox" id="d-activa" ${c.activa ? 'checked' : ''}> Publicada</label>
+    <div class="ayuda">Puede haber varias publicadas: promo.html muestra sola la que está en curso; si no hay ninguna, la próxima que empieza. Las publicadas no pueden superponerse en fechas.</div>
     ${c.id ? `
     <h3 class="sec">Links</h3>
     <div class="linkbox"><code>${esc(link)}</code><button class="btn btn-sm" data-copy="${esc(link)}">📋 Copiar</button><span class="ayuda" style="width:100%;margin:0">Link fijo para la bio de Instagram: muestra la campaña publicada.</span></div>
@@ -326,6 +326,10 @@ async function guardarDatos() {
   if (diasEntre(d.desde, d.hasta).length > 31) { toast('Máximo 31 puertas por campaña', 'error'); return; }
   if (!d.slug) { toast('Poné un nombre corto para el link', 'error'); return; }
   if (S.camps.some(x => x.slug === d.slug && x.id !== c.id)) { toast('Ese nombre corto ya lo usa otra campaña', 'error'); return; }
+  if (d.activa) {
+    const choca = S.camps.find(x => x.id !== c.id && x.activa && x.desde <= d.hasta && x.hasta >= d.desde);
+    if (choca) { toast(`Se superpone con "${choca.nombre}" (${fCorta(choca.desde)} → ${fCorta(choca.hasta)}), que también está publicada`, 'error'); return; }
+  }
   const fuera = c.id ? S.premios.filter(p => p.fecha < d.desde || p.fecha > d.hasta) : [];
   if (fuera.length && !confirm(`Con las fechas nuevas quedan afuera ${fuera.length} puertas ya cargadas. Se van a borrar. ¿Seguimos?`)) return;
   const btn = $('d-guardar'); btn.disabled = true;
@@ -334,7 +338,6 @@ async function guardarDatos() {
     if (id) await sbApi(`promo_campanias?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(d) });
     else { const r = await sbApi('promo_campanias', { method: 'POST', body: JSON.stringify(d) }); id = r[0].id; }
     if (fuera.length) await sbApi(`promo_premios?campania_id=eq.${id}&id=in.(${fuera.map(p => p.id).join(',')})`, { method: 'DELETE' });
-    if (d.activa) await sbApi(`promo_campanias?empresa_id=eq.${S.empresa}&id=neq.${id}&activa=eq.true`, { method: 'PATCH', body: JSON.stringify({ activa: false }) });
     toast('Campaña guardada', 'success');
     if (!c.id) S.tab = 'puertas';
     S.sel = null;
