@@ -129,6 +129,7 @@ body.tema-generico .door.c1 .front,body.tema-generico .door.c4 .front{background
 .door.past .inside::after{content:"VENCIDA";position:absolute;bottom:4px;font-size:8px;letter-spacing:.1em;color:#8a6b55;font-weight:700}
 .door.past.claimed .inside{opacity:1}
 .door.past.claimed .inside::after{content:"✔ ABIERTA";color:var(--verde2)}
+body.tema-blackfriday .door.past.claimed .inside::after{content:"✔ LA TUVISTE";color:#8a6a22}
 .door.today{cursor:pointer;z-index:2}
 .door.today .front{background:linear-gradient(145deg,var(--oro2),var(--oro));border:2px solid #fff3cf;animation:pulse 1.6s infinite}
 .door.today .front .n{color:var(--rojo2)}
@@ -337,6 +338,41 @@ function sinCampania() {
     '<a class="cta" href="pedidos.html">🛒 Ir a la tienda online</a>';
 }
 
+// ── Textos según el tema: puertas (Navidad / Genérico) u ofertas (Black Friday) ──
+const TEXTOS = {
+  puertas: {
+    una: 'puerta', varias: 'puertas', de: 'Puerta del', ic: '🎁',
+    yaAbriste: 'Ya abriste la puerta de hoy.',
+    lista: '<b>tu puerta ya está lista</b>. Tocala para abrirla.',
+    arranca: f => `La promo arranca el <b>${f}</b>. ¡Volvé ese día!`,
+    paso1: 'Entrá todos los días: solo se abre la puerta <b>de hoy</b>.',
+    abris: 'abrís la puerta', abran: 'abran',
+    abriendo: 'Abriendo tu puerta… 🎁', sinHoy: 'Hoy no hay puerta para abrir.',
+    preparando: 'La puerta de hoy todavía se está preparando. Probá en un rato.',
+    noPudimos: 'No pudimos abrir la puerta.', sinCargar: 'Esta puerta todavía no tiene premio cargado.',
+    abiertaLbl: 'ABIERTA', abiertaPasada: '✔ ABIERTA', abriste: 'Abriste',
+    compartir: 'Todos los días una puerta con sorpresa 🎁',
+    igTexto: 'abrí una puerta por día y<br>descubrí tu sorpresa 🎁', igSticker: '🔗 ABRÍ TU PUERTA', igTodas: 'Abrí todas',
+    igHoy: '<b>La puerta de hoy ya está abierta.</b><br>¿Qué hay adentro? Entrá y descubrilo.', igHoySticker: '🔗 VER PUERTA DE HOY'
+  },
+  ofertas: {
+    una: 'oferta', varias: 'ofertas', de: 'Oferta del', ic: '🏷️',
+    yaAbriste: 'Ya tenés la oferta de hoy.',
+    lista: '<b>la oferta de hoy ya está lista</b>. Tocá la tarjeta para descubrirla.',
+    arranca: f => `Las ofertas arrancan el <b>${f}</b>. ¡Volvé ese día!`,
+    paso1: 'Entrá todos los días: cada día hay <b>una oferta nueva</b>, que vale solo ese día.',
+    abris: 'descubrís la oferta', abran: 'descubran',
+    abriendo: 'Buscando tu oferta… 🖤', sinHoy: 'Hoy no hay oferta.',
+    preparando: 'La oferta de hoy todavía se está preparando. Probá en un rato.',
+    noPudimos: 'No pudimos mostrar la oferta.', sinCargar: 'Esta oferta todavía no está cargada.',
+    abiertaLbl: 'TUYA', abiertaPasada: '✔ LA TUVISTE', abriste: 'Descubriste',
+    compartir: 'Cada día una oferta nueva 🖤',
+    igTexto: 'cada día una oferta nueva.<br>¡Entrá y descubrila! 🖤', igSticker: '🔗 VER OFERTAS', igTodas: 'Descubrí todas',
+    igHoy: '<b>La oferta de hoy ya está disponible.</b><br>¿Cuánto descuento hay? Entrá y descubrilo.', igHoySticker: '🔗 VER OFERTA DE HOY'
+  }
+};
+function T() { return (E && E.campania && E.campania.tema === 'blackfriday') ? TEXTOS.ofertas : TEXTOS.puertas; }
+
 // ── Datos derivados ────────────────────────────────────────────────
 function dias() {
   const out = []; let d = E.campania.desde;
@@ -378,10 +414,11 @@ function render() {
 
   // Estado
   let est;
-  if (hoy < c.desde) est = `<span class="ic">⏳</span><div>La promo arranca el <b>${fechaTxt(c.desde)}</b>. ¡Volvé ese día!</div>`;
+  const t = T();
+  if (hoy < c.desde) est = `<span class="ic">⏳</span><div>${t.arranca(fechaTxt(c.desde))}</div>`;
   else if (hoy > c.hasta) est = `<span class="ic">🎉</span><div>¡Gracias por participar! <b>La promo terminó.</b></div>`;
-  else if (abiertas.has(hoy)) est = `<span class="ic">✅</span><div>Ya abriste la puerta de hoy. ${hoy === c.hasta ? '<b>¡Era la última!</b>' : '<b>¡Volvé mañana!</b>'}</div>`;
-  else est = `<span class="ic">🎁</span><div>Hoy es ${diaSemana(hoy)} ${diaNum(hoy)}: <b>tu puerta ya está lista</b>. Tocala para abrirla.</div>`;
+  else if (abiertas.has(hoy)) est = `<span class="ic">✅</span><div>${t.yaAbriste} ${hoy === c.hasta ? '<b>¡Era la última!</b>' : '<b>¡Volvé mañana!</b>'}</div>`;
+  else est = `<span class="ic">${t.ic}</span><div>Hoy es ${diaSemana(hoy)} ${diaNum(hoy)}: ${t.lista}</div>`;
 
   // Progreso
   let prog = '';
@@ -389,12 +426,12 @@ function render() {
     const seg = ds.map(f => `<i class="${abiertas.has(f) ? 'ok' : (f < hoy ? 'miss' : (f === hoy ? 'hoy' : ''))}"></i>`).join('');
     let msg = '';
     if (c.sorteo_texto) {
-      const regla = pr.minimo >= pr.total ? 'todas las puertas' : `al menos ${pr.minimo} puertas`;
+      const regla = pr.minimo >= pr.total ? 'todas las ' + t.varias : `al menos ${pr.minimo} ${t.varias}`;
       if (pr.adentro) msg = `<p>🎉 <b>¡Ya estás participando del ${esc(c.sorteo_texto)}!</b></p>`;
       else if (pr.posible) msg = `<p>Abrí ${regla} y entrás al <b>${esc(c.sorteo_texto)}</b> 🎁</p>`;
-      else msg = `<p class="mal">Te perdiste ${pr.miss} ${pr.miss === 1 ? 'puerta' : 'puertas'}: ya no llegás al ${esc(c.sorteo_texto)}, pero seguís ganando los premios de cada día.</p>`;
+      else msg = `<p class="mal">Te perdiste ${pr.miss} ${pr.miss === 1 ? t.una : t.varias}: ya no llegás al ${esc(c.sorteo_texto)}, pero seguís ganando los premios de cada día.</p>`;
     }
-    prog = `<div class="prog"><div class="top"><b>${pr.ok} de ${pr.total} puertas</b><span>${esc(c.sorteo_texto || '')}</span></div>
+    prog = `<div class="prog"><div class="top"><b>${pr.ok} de ${pr.total} ${t.varias}</b><span>${esc(c.sorteo_texto || '')}</span></div>
       <div class="seg" style="grid-template-columns:repeat(${pr.total},1fr)">${seg}</div>${msg}</div>`;
   }
 
@@ -418,25 +455,25 @@ function render() {
       cls.push('today'); if (abiertas.has(f)) cls.push('open');
       if (premioHoy) inside = `<div class="em">${esc(premioHoy.premio.emoji || '🎁')}</div><div class="tx">${esc(premioHoy.premio.titulo)}</div>`;
     } else cls.push('future');
-    const lk = f === hoy ? (abiertas.has(f) ? 'ABIERTA' : '¡HOY!') : (f > hoy ? '🔒' : '');
+    const lk = f === hoy ? (abiertas.has(f) ? t.abiertaLbl : '¡HOY!') : (f > hoy ? '🔒' : '');
     const gs = (f === ultimo && c.sorteo_texto && conBig) ? '<div class="gs">SORTEO</div>' : '';
     html += `<div class="${cls.join(' ')}" data-f="${f}"><div class="inside">${inside}</div>
       <div class="front"><div class="n">${diaNum(f)}</div>${gs}<div class="lk">${lk}</div></div></div>`;
   });
 
   const pasos = [
-    'Entrá todos los días: solo se abre la puerta <b>de hoy</b>.',
+    t.paso1,
     'La primera vez dejás tu <b>nombre, celular</b> y la <b>sucursal que te queda más cerca</b>.',
     'Usá tu premio <b>ese mismo día</b>, <b>solo retirando en sucursal</b>: comprás en el local o pedís online con retiro.'
   ];
-  if (c.sorteo_texto) pasos.push(`¿Abriste ${pr.minimo >= pr.total ? '<b>todas las puertas</b>' : '<b>al menos ' + pr.minimo + ' puertas</b>'}? Participás del <b>${esc(c.sorteo_texto)}</b> 🎁`);
+  if (c.sorteo_texto) pasos.push(`¿${t.abriste} ${pr.minimo >= pr.total ? '<b>todas las ' + t.varias + '</b>' : '<b>al menos ' + pr.minimo + ' ' + t.varias + '</b>'}? Participás del <b>${esc(c.sorteo_texto)}</b> 🎁`);
 
   $('cuerpo').innerHTML =
     `<div class="estado">${est}</div>${prog}
      <div class="grid${conBig ? '' : ' pocas'}" id="grid" ${conBig ? '' : `style="grid-template-columns:repeat(${ds.length},1fr)"`}>${html}</div>
      <div class="como"><h3>¿Cómo funciona?</h3>${pasos.map((t, i) => `<div class="paso"><div class="num">${i + 1}</div><div>${t}</div></div>`).join('')}</div>
      <a class="cta" href="pedidos.html">🛒 Ir a la tienda online</a>
-     <p class="legal">Un premio por celular por día, válido solo el día en que abrís la puerta y solo retirando en sucursal (compra en el local o pedido online con retiro; no válido para delivery). No acumulable con otras promociones: se aplica la de mayor ahorro.${c.sorteo_texto ? ' ' + esc(c.sorteo_texto) + ': participan quienes abran ' + (pr.minimo >= pr.total ? 'todas las puertas' : 'al menos ' + pr.minimo + ' puertas') + ' con el mismo celular.' : ''} Válido del ${fechaTxt(c.desde)} al ${fechaTxt(c.hasta)}.</p>
+     <p class="legal">Un premio por celular por día, válido solo el día en que ${t.abris} y solo retirando en sucursal (compra en el local o pedido online con retiro; no válido para delivery). No acumulable con otras promociones: se aplica la de mayor ahorro.${c.sorteo_texto ? ' ' + esc(c.sorteo_texto) + ': participan quienes ' + t.abran + ' ' + (pr.minimo >= pr.total ? 'todas las ' + t.varias : 'al menos ' + pr.minimo + ' ' + t.varias) + ' con el mismo celular.' : ''} Válido del ${fechaTxt(c.desde)} al ${fechaTxt(c.hasta)}.</p>
      ${cliente && !PREVIA ? `<div class="quien">¿No sos ${esc(cliente.nombre)}? <button id="noSoy">Cambiar</button></div>` : ''}`;
 
   const hoyEl = document.querySelector('.door.today');
@@ -454,7 +491,7 @@ async function abrirHoy(el) {
     hoja('<div class="cargando">Abriendo…</div>');
     try {
       const p = await get(`promo_premios?campania_id=eq.${E.campania.id}&fecha=eq.${E.hoy}&select=*`);
-      if (!p.length) { hojaError('Esta puerta todavía no tiene premio cargado.'); return; }
+      if (!p.length) { hojaError(T().sinCargar); return; }
       const conCod = p[0].tipo === 'pct' || p[0].tipo === 'monto';
       mostrarPremio({ previa: true, fecha: E.hoy, codigo: conCod ? 'VISTA-PREVIA' : null, premio: p[0] });
       confeti();
@@ -466,12 +503,12 @@ async function abrirHoy(el) {
 }
 
 async function abrirEnServidor() {
-  hoja('<div class="cargando">Abriendo tu puerta… 🎁</div>');
+  hoja(`<div class="cargando">${T().abriendo}</div>`);
   try {
     const r = await rpc('promo_abrir', { p_slug: E.campania.slug, p_tel: cliente.tel, p_nombre: cliente.nombre, p_pdv: cliente.pdv });
     if (!r.ok) {
-      const m = { fuera_de_fecha: 'Hoy no hay puerta para abrir.', sin_premio: 'La puerta de hoy todavía se está preparando. Probá en un rato.', telefono: 'Revisá tu celular.', sin_campania: 'La promo no está activa.' };
-      hojaError(m[r.error] || 'No pudimos abrir la puerta.');
+      const m = { fuera_de_fecha: T().sinHoy, sin_premio: T().preparando, telefono: 'Revisá tu celular.', sin_campania: 'La promo no está activa.' };
+      hojaError(m[r.error] || T().noPudimos);
       return;
     }
     (r.abiertas || []).forEach(f => abiertas.add(f));
@@ -479,7 +516,7 @@ async function abrirEnServidor() {
     render();
     mostrarPremio(r);
     confeti();
-  } catch (e) { hojaError('No pudimos abrir la puerta. Revisá tu conexión y probá de nuevo.', e.message); }
+  } catch (e) { hojaError(T().noPudimos + ' Revisá tu conexión y probá de nuevo.', e.message); }
 }
 
 function hoja(html) { $('sheet').innerHTML = '<button class="x" id="cerrar">×</button>' + html; $('ov').classList.add('show'); $('cerrar').onclick = cerrar; }
@@ -498,7 +535,7 @@ function activarChips(cb) {
 }
 
 function pedirDatos() {
-  hoja(`<div class="dia">Puerta del ${fechaTxt(E.hoy)}</div>
+  hoja(`<div class="dia">${T().de} ${fechaTxt(E.hoy)}</div>
     <h2>¡Casi! Falta un paso 🎁</h2>
     <p>Dejanos tu nombre y celular <b>(solo esta vez)</b>. Con tu celular te reconocemos en el local, en la tienda online${E.campania.sorteo_texto ? ' y en el sorteo' : ''}.</p>
     <div class="inp"><label>Tu nombre</label><input id="nom" type="text" placeholder="Ej: María" autocomplete="given-name"></div>
@@ -530,12 +567,12 @@ function mostrarPremio(r) {
   if (r.fecha === c.hasta && c.sorteo_texto && !r.previa) {
     const pr = progreso();
     cuerpo += pr.adentro
-      ? `<p style="margin-top:8px"><b>¡Abriste ${pr.ok} de ${pr.total} puertas!</b> Ya estás participando del ${esc(c.sorteo_texto)}. Si ganás, te avisamos por WhatsApp.</p>`
-      : `<p style="margin-top:8px">Abriste ${pr.ok} de ${pr.total} puertas, así que esta vez no entrás al ${esc(c.sorteo_texto)}. ¡Gracias por acompañarnos!</p>`;
+      ? `<p style="margin-top:8px"><b>¡${T().abriste} ${pr.ok} de ${pr.total} ${T().varias}!</b> Ya estás participando del ${esc(c.sorteo_texto)}. Si ganás, te avisamos por WhatsApp.</p>`
+      : `<p style="margin-top:8px">${T().abriste} ${pr.ok} de ${pr.total} ${T().varias}, así que esta vez no entrás al ${esc(c.sorteo_texto)}. ¡Gracias por acompañarnos!</p>`;
   }
   hoja(`<div class="premio">
       ${cliente && !r.previa ? `<div class="hola">¡Bien, ${esc(cliente.nombre)}!</div>` : ''}
-      <div class="dia">Puerta del ${fechaTxt(r.fecha)}</div>
+      <div class="dia">${T().de} ${fechaTxt(r.fecha)}</div>
       <div class="em">${esc(p.emoji || '🎁')}</div>
       <h2>${esc(p.titulo)}</h2>${cuerpo}
       ${conCodigo ? `<div class="code">${esc(r.codigo)}</div><div class="vence">Válido solo hoy hasta las 23:59</div>` : ''}
@@ -558,13 +595,13 @@ function mostrarPremio(r) {
 
 function compartir() {
   const url = location.origin + location.pathname;
-  const txt = `¡Mirá la promo de Miguel Ángel Pastas! Todos los días una puerta con sorpresa 🎁 ${url}`;
+  const txt = `¡Mirá la promo de Miguel Ángel Pastas! ${T().compartir} ${url}`;
   if (navigator.share) navigator.share({ title: E.campania.nombre, text: txt, url }).catch(() => {});
   else location.href = 'https://wa.me/?text=' + encodeURIComponent(txt);
 }
 
 function confeti() {
-  const cols = ['#d6a640','#f3d48a','#c42a31','#2d6a4c','#fbf4e6'];
+  const cols = (E && E.campania && E.campania.tema === 'blackfriday') ? ['#d6a640','#f3d48a','#111111','#ffffff','#8a6a22'] : ['#d6a640','#f3d48a','#c42a31','#2d6a4c','#fbf4e6'];
   for (let i = 0; i < 60; i++) {
     const c = document.createElement('div');
     c.className = 'confeti';
@@ -589,17 +626,17 @@ function renderHistorias() {
       <img class="logo" src="${$('vistaPagina').querySelector('.logo').src}" alt="">
       <h2 class="titulo">${tituloHTML(c.nombre)}</h2>
       <div class="mini" style="grid-template-columns:repeat(${Math.min(ds.length, 6)},${ds.length < 6 ? '56px' : '1fr'});justify-content:center">${ds.map((f, i) => `<div class="${i === 0 ? 'hl' : ''}">${diaNum(f)}</div>`).join('')}</div>
-      <p class="txt">Del <b>${fechaTxt(c.desde)}</b> al <b>${fechaTxt(c.hasta)}</b><br>abrí una puerta por día y<br>descubrí tu sorpresa 🎁</p>
-      ${c.sorteo_texto ? `<p class="txt" style="margin-top:10px;font-size:13px">Abrí todas y participás del<br><b>${esc(c.sorteo_texto.toUpperCase())}</b></p>` : ''}
-      <div class="sticker">🔗 ABRÍ TU PUERTA</div>
+      <p class="txt">Del <b>${fechaTxt(c.desde)}</b> al <b>${fechaTxt(c.hasta)}</b><br>${T().igTexto}</p>
+      ${c.sorteo_texto ? `<p class="txt" style="margin-top:10px;font-size:13px">${T().igTodas} y participás del<br><b>${esc(c.sorteo_texto.toUpperCase())}</b></p>` : ''}
+      <div class="sticker">${T().igSticker}</div>
       <div class="fecha">Link en la historia</div>
     </div><div class="cap">Historia de lanzamiento</div></div>
     <div><div class="story dia">
       <div class="sub">${esc(c.nombre)}</div>
       <div class="big">${diaNum(nd)}</div>
-      <div class="reg">${esc(p && p.emoji ? p.emoji : '🎁')}</div>
-      <p class="txt"><b>La puerta de hoy ya está abierta.</b><br>¿Qué hay adentro? Entrá y descubrilo.</p>
-      <div class="sticker">🔗 VER PUERTA DE HOY</div>
+      <div class="reg">${esc(p && p.emoji ? p.emoji : T().ic)}</div>
+      <p class="txt">${T().igHoy}</p>
+      <div class="sticker">${T().igHoySticker}</div>
       <div class="fecha">Solo por hoy</div>
     </div><div class="cap">Historia diaria (cambia el número)</div></div>`;
   iniciarEfectos();
