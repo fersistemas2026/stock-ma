@@ -83,6 +83,12 @@
   .card .rw input.n2 { width:52px; }
   .card .rw input.pide { border-color:currentColor; font-weight:700; }
   .card .rw input.pide.manual { border-style:dashed; }
+  .card .rw input[data-t]::placeholder { font-size:10px; font-style:italic; opacity:.55; }
+  .lbl { font-size:11px; opacity:.75; }
+  .pit .top .sacar { background:none; border:1px solid currentColor; color:inherit; border-radius:5px; padding:0 5px; font-size:11px; line-height:16px; opacity:.7; }
+  .pit .top .sacar:hover { opacity:1; }
+  .toast { display:flex; align-items:center; gap:10px; }
+  .toast button { background:none; border:1px solid var(--accent); color:var(--accent); border-radius:6px; padding:2px 8px; font-size:12px; white-space:nowrap; }
   .card .ft { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 10px 0; font-size:11px; opacity:.9; }
   .card .ft button { background:none; border:1px solid currentColor; color:inherit; border-radius:6px; padding:2px 8px; font-size:11px; }
   .card textarea { width:calc(100% - 20px); margin:0 10px; min-height:80px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--text); padding:6px 8px; font-size:13px; resize:vertical; outline:none; }
@@ -262,12 +268,47 @@
     return `<span class="pill ${cls}">Stock ${haceTxt(ts)}</span>`;
   }
   function hace7dias() { return new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 19) + 'Z'; }
-  function toast(msg, type = 'success') {
+  // accion opcional: { label, fn } → botón dentro del aviso (ej. "Deshacer")
+  function toast(msg, type = 'success', accion = null) {
     const el = document.createElement('div');
     el.className = 'toast' + (type === 'error' ? ' error' : '');
-    el.textContent = msg;
+    const sp = document.createElement('span'); sp.textContent = msg; el.appendChild(sp);
+    if (accion) {
+      const b = document.createElement('button'); b.textContent = accion.label;
+      b.onclick = () => { el.remove(); accion.fn(); };
+      el.appendChild(b);
+    }
     document.getElementById('toasts').appendChild(el);
-    setTimeout(() => el.remove(), 4000);
+    setTimeout(() => el.remove(), accion ? 8000 : 4000);
+  }
+  // ── Avisos con la ventana minimizada: título + sonido ──
+  const TITULO_BASE = 'Pizarra · Stock MA';
+  function ponerTitulo(n, txt) { document.title = n ? `(${n}) ${txt} · ${TITULO_BASE}` : TITULO_BASE; }
+  function ventanaActiva() { return document.visibilityState === 'visible' && document.hasFocus(); }
+  // Si el sistema (index.html) está abierto, el sonido lo da el panel principal.
+  // La pizarra suena sola solo cuando index está cerrado, para no sonar doble.
+  function beep() {
+    if (localStorage.getItem(SONIDO_KEY) === 'off' || leerSesion()) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.18].forEach(t0 => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 880;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime + t0);
+        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + 0.15);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(ctx.currentTime + t0); o.stop(ctx.currentTime + t0 + 0.16);
+      });
+      setTimeout(() => ctx.close(), 600);
+    } catch (e) {}
+  }
+  // Texto de cada ítem dejando claro qué es cada número
+  function cantTxt(tipo, i) {
+    const u = i.unidad ? ' ' + esc(i.unidad) : '';
+    if (tipo === 'tengo') return `<span class="lbl">sobra</span> <b>${esc(i.cant)}</b>${u}`;
+    if (tipo === 'necesito') return `<span class="lbl">pide</span> <b>${esc(i.cant)}</b>${u}${i.tiene != null ? ` <span class="lbl">· tiene ${esc(i.tiene)}${u}</span>` : ''}`;
+    return `<b>${esc(i.cant)}</b>${u}`;
   }
   function parseDatos(n) {
     if (!n.datos) return {};
@@ -277,6 +318,9 @@
   function todayKey() { const d = new Date().getDay(); return DIA_KEYS[d === 0 ? 6 : d - 1]; }
   const bc = ('BroadcastChannel' in window) ? new BroadcastChannel('pizarra_ma') : null;
   function avisarCambio() { try { bc && bc.postMessage({ tipo:'update' }); } catch (e) {} }
+  // Otra ventana de la pizarra avisó un cambio → refrescar ya (sin esperar los 20 s)
+  let bcTimer = null;
+  if (bc) bc.onmessage = () => { clearTimeout(bcTimer); bcTimer = setTimeout(() => { if (user) poll(); }, 400); };
 
   // ── ESTADO ──────────────────────────────────────────────────────────
   let empresaActual = '1';
@@ -286,10 +330,17 @@
   let modalAbierto = false, arrastrando = false, pollTimer = null;
   // sucursal
   let sCards = [], sZ = 10, sSeq = 0, stockMap = {}, refMap = {};
-  let ventaRef = {}, ventaRefFecha = '';   // vendido el mismo día de la semana anterior (sin encargos)
+  // Sugerido: promedio de lo vendido los últimos REF_SEMANAS días iguales al de MAÑANA
+  // (el pedido se hace a la noche para vender al día siguiente). Sin encargos.
+  // Se saltean los días en que la sucursal no vendió nada (feriado / cerrado).
+  const REF_SEMANAS = 4;
+  let ventaRef = {}, ventaRefFechas = [], ventaRefTxt = '';
   // central
   let cNotas = [], cEnvios = {}, cFiltro = { tipo:'', pdv:'', cerradas:false }, frescura = {};
   let personas = [];
+  let cIdsVistos = null;          // ids de notas ya conocidas (para avisar las nuevas)
+  let sNovedadVistas = new Set(); // novedades de la sucursal ya avisadas con sonido
+  let restaurando = false;
 
 
   function pdvNombre(id) { const p = pdvs.find(x => String(x.id) === String(id)); return p ? (p.nombre || p.name || id) : id; }
@@ -431,7 +482,7 @@
       const [pd, pr, gs, as] = await Promise.all([
         sbApi(`pdvs?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`),
         sbApi(`productos?empresa_id=eq.${empresaActual}&order=orden.asc,created_at.asc&select=*`),
-        sbApi(`gustos?select=id,producto_id,nombre,orden&order=orden.asc&limit=1000`),
+        sbApi(`gustos?select=id,producto_id,nombre,orden&order=orden.asc`),
         sbApi(`asignaciones?empresa_id=eq.${empresaActual}&select=*`),
         cargarPersonas()
       ]);
@@ -457,6 +508,13 @@
     pollTimer = setInterval(poll, POLL_MS);
     window.addEventListener('storage', e => { if (e.key === SES_KEY) chequearSesion(); });
     chequearSesion();
+    // Al volver a la ventana: en la sucursal se dan por vistas las novedades; en la central se limpia el aviso
+    const alVolver = () => {
+      if (!ventanaActiva()) return;
+      if (tabActual === 'sucursal' && !modalAbierto) cargarMisNotas().catch(() => {});
+    };
+    window.addEventListener('focus', alVolver);
+    document.addEventListener('visibilitychange', alVolver);
   }
 
   // Nunca bloquea: si index está cerrado o sin sesión, la pizarra sigue con su usuario.
@@ -476,7 +534,7 @@
   }
   function cambiarUsuario() {
     if (!sesOtra) return;
-    if (sCards.length && !confirm('Tenés tarjetas abiertas sin enviar y se van a perder. ¿Cambiar de usuario igual?')) return;
+    if (sCards.length && !confirm('Tenés tarjetas sin enviar. Quedan guardadas como borrador de este usuario. ¿Cambiar de usuario?')) return;
     guardarSesionVentana(sesOtra);
     window.location.reload();
   }
@@ -493,6 +551,7 @@
 
   function irTab(k) {
     tabActual = k;
+    ponerTitulo(0);
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + k));
     if (k === 'sucursal') renderSucursal();
     if (k === 'central') cargarCentral();
@@ -546,11 +605,12 @@
       <div class="sec-title">Mis notas <span style="font-size:12px;color:var(--text-muted);font-weight:400">abiertas y de los últimos 7 días</span></div>
       <div id="misnotas"><div class="empty">Cargando…</div></div>`;
     await Promise.all([cargarStockPdv(), cargarMisNotas()]);
+    restaurarBorrador();
     resumenSucursal();
   }
 
   function cambiarPdv(id) {
-    if (sCards.length && !confirm('Tenés tarjetas abiertas sin enviar. ¿Cambiar de sucursal igual?')) { renderSucursal(); return; }
+    // Las tarjetas sin enviar quedan en el borrador de la sucursal anterior
     pdvActual = id;
     document.getElementById('user-badge').innerHTML = `<b>${esc(user.displayName)}</b> · ${esc(pdvNombre(pdvActual))}`;
     renderSucursal();
@@ -563,17 +623,27 @@
   }
   async function cargarStockPdv() {
     stockMap = {}; refMap = {}; ventaRef = {};
-    ventaRefFecha = fechaMenosDias(fechaHoyAR(), 7);
+    // Mañana menos 7, 14, 21, 28 días = hoy − 6, − 13, − 20, − 27
+    const hoy = fechaHoyAR();
+    const candidatas = Array.from({ length: REF_SEMANAS }, (_, i) => fechaMenosDias(hoy, 6 + 7 * i));
     const [st, cfg, vt] = await Promise.all([
       sbApi(`stock?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&select=prod_id,gusto_id,cantidad,updated_at`).catch(() => []),
       sbApi(`stock_config?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&dia=eq.${todayKey()}&select=prod_id,gusto_id,referencia`).catch(() => []),
-      // Ventas del mismo día de la semana anterior, sin los encargos (ticket ENC_…)
-      sbApi(`ventas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&fecha=eq.${ventaRefFecha}&or=(ticket_id.is.null,ticket_id.not.like.ENC_*)&select=prod_id,gusto_id,cantidad`).catch(() => [])
+      // Ventas de esos días, sin los encargos (ticket ENC_…)
+      sbApi(`ventas?empresa_id=eq.${empresaActual}&pdv_id=eq.${pdvActual}&fecha=in.(${candidatas.join(',')})&or=(ticket_id.is.null,ticket_id.not.like.ENC_*)&select=fecha,prod_id,gusto_id,cantidad`).catch(() => [])
     ]);
+    // Solo cuentan los días en que hubo ventas (si estuvo cerrado no baja el promedio)
+    const conVentas = new Set((vt || []).filter(r => (parseFloat(r.cantidad) || 0) > 0).map(r => String(r.fecha).slice(0, 10)));
+    ventaRefFechas = candidatas.filter(f => conVentas.has(f));
+    const nDias = ventaRefFechas.length;
     (vt || []).forEach(r => {
+      if (!conVentas.has(String(r.fecha).slice(0, 10))) return;
       const k = `${r.prod_id}_${r.gusto_id || ''}`;
       ventaRef[k] = (ventaRef[k] || 0) + (parseFloat(r.cantidad) || 0);
     });
+    if (nDias) Object.keys(ventaRef).forEach(k => { ventaRef[k] = ventaRef[k] / nDias; });
+    const diaNom = fechaCorta(candidatas[0]).split(' ')[0];
+    ventaRefTxt = nDias ? `prom. ${nDias} ${diaNom}` : `sin ventas los ${diaNom}`;
     let ult = null;
     (st || []).forEach(r => {
       stockMap[`${r.prod_id}_${r.gusto_id}`] = { cant: parseInt(r.cantidad) || 0, ts: r.updated_at };
@@ -609,7 +679,7 @@
     el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.zIndex = ++sZ;
     el.innerHTML = inner;
     document.getElementById('sboard').appendChild(el);
-    arrastrable(el, el.querySelector('.hd'), document.getElementById('sboard'));
+    arrastrable(el, el.querySelector('.hd'), document.getElementById('sboard'), () => guardarBorrador());
     return el;
   }
 
@@ -620,10 +690,11 @@
     return null;
   }
 
-  function abrirTarjeta(prodId) {
-    const prod = prods.find(p => String(p.id) === String(prodId)); if (!prod) return;
-    const tipo = tipoLibre(String(prodId));
-    if (!tipo) { toast('Esa tarjeta ya está abierta en todos los tipos', 'error'); return; }
+  function abrirTarjeta(prodId, tipoForzado) {
+    const prod = prods.find(p => String(p.id) === String(prodId)); if (!prod) return null;
+    const tipo = (tipoForzado && tiposDe(prod).includes(tipoForzado) && !sCards.some(c => c.kind === 'prod' && c.prodId === String(prodId) && c.tipo === tipoForzado))
+      ? tipoForzado : tipoLibre(String(prodId));
+    if (!tipo) { toast('Esa tarjeta ya está abierta en todos los tipos', 'error'); return null; }
     const id = 'c' + (++sSeq);
     const el = crearCardEl(TIPOS[tipo].cls, `
       <div class="hd"><span class="nm" title="${esc(prod.nombre)}">${esc(prod.nombre)}</span>
@@ -643,7 +714,8 @@
     el.querySelector('.x').onclick = () => cerrarCard(card);
     pintarFilas(card);
     resumenSucursal();
-    el.querySelector('input')?.focus();
+    if (!restaurando) el.querySelector('input')?.focus();
+    return card;
   }
 
   function pintarFilas(card) {
@@ -659,7 +731,8 @@
       if (card.tipo === 'necesito') {
         const vend = vendidoRef(prod.id, g.id), sug = sugeridoPide(prod.id, g.id, 0);
         const act = stockMap[k];
-        return `<div class="rw" title="Vendió ${vend} el ${fechaCorta(ventaRefFecha)}${act ? ' · stock anterior ' + act.cant : ''}"><span class="g">${esc(g.nombre || 'Cantidad')}</span><input class="n2" type="number" min="0" step="1" data-t="${esc(g.id)}" placeholder="${act ? act.cant : '0'}"><input class="n2 pide" type="number" min="0" step="1" data-g="${esc(g.id)}" data-vend="${vend}" value="${sug || ''}" placeholder="0"></div>`;
+        // El gris de fondo de "Tiene" es el stock anterior ("ant."), no un valor cargado
+        return `<div class="rw" title="Vendió ${vend} (${ventaRefTxt})${act ? ' · stock anterior ' + act.cant : ''}"><span class="g">${esc(g.nombre || 'Cantidad')}</span><input class="n2" type="number" min="0" step="1" data-t="${esc(g.id)}" placeholder="${act ? 'ant.' + act.cant : '—'}"><input class="n2 pide" type="number" min="0" step="1" data-g="${esc(g.id)}" data-vend="${vend}" value="${sug || ''}" placeholder="0"></div>`;
       }
       const s = sugerido(card.tipo, prod.id, g.id);
       return `<div class="rw"><span class="g">${esc(g.nombre || 'Cantidad')}</span><input type="number" min="0" step="1" data-g="${esc(g.id)}" placeholder="0"><span class="hint">${s != null ? `<span class="sug" data-s="${s}" title="Usar sugerido">sug. ${s}</span>` : ''}</span></div>`;
@@ -677,7 +750,7 @@
         };
       });
       rows.querySelectorAll('input.pide').forEach(i => i.oninput = () => { i.classList.add('manual'); resumenSucursal(); });
-      ft.innerHTML = `<span>Sugerido: vendido el ${fechaCorta(ventaRefFecha)} − lo que tiene${u ? ' ·' + u : ''}</span><button title="Volver al sugerido">↺</button>`;
+      ft.innerHTML = `<span>Sugerido: vendido (${esc(ventaRefTxt)}) − lo que tiene${u ? ' ·' + u : ''}</span><button title="Volver al sugerido">↺</button>`;
       ft.querySelector('button').onclick = () => {
         rows.querySelectorAll('input.pide').forEach(i => { i.classList.remove('manual'); const t = i.closest('.rw').querySelector('input[data-t]'); const v = Math.max((parseInt(i.dataset.vend) || 0) - (parseInt(t.value) || 0), 0); i.value = v || ''; });
         resumenSucursal();
@@ -694,21 +767,75 @@
     }
   }
 
-  function abrirNota() {
+  function abrirNota(tipoIni, textoIni) {
     const id = 'c' + (++sSeq);
-    const el = crearCardEl(TIPOS.aviso.cls, `
+    const tipo0 = ['necesito', 'tengo', 'aviso'].includes(tipoIni) ? tipoIni : 'aviso';
+    const el = crearCardEl(TIPOS[tipo0].cls, `
       <div class="hd"><span class="nm">Nota</span>
-        <select aria-label="Tipo de nota">${['necesito', 'tengo', 'aviso'].map(t => `<option value="${t}" ${t === 'aviso' ? 'selected' : ''}>${TIPOS[t].label}</option>`).join('')}</select>
+        <select aria-label="Tipo de nota">${['necesito', 'tengo', 'aviso'].map(t => `<option value="${t}" ${t === tipo0 ? 'selected' : ''}>${TIPOS[t].label}</option>`).join('')}</select>
         <button class="x" title="Cerrar" aria-label="Cerrar">✕</button></div>
-      <textarea placeholder="Escribí lo que necesites avisar"></textarea>`);
-    const card = { id, kind: 'nota', tipo: 'aviso', el };
+      <textarea placeholder="Escribí lo que necesites avisar">${esc(textoIni || '')}</textarea>`);
+    const card = { id, kind: 'nota', tipo: tipo0, el };
     sCards.push(card);
     const sel = el.querySelector('select');
     sel.onchange = () => { card.tipo = sel.value; el.className = 'card ' + TIPOS[sel.value].cls; resumenSucursal(); };
     el.querySelector('.x').onclick = () => cerrarCard(card);
     el.querySelector('textarea').oninput = resumenSucursal;
-    el.querySelector('textarea').focus();
+    if (!restaurando) el.querySelector('textarea').focus();
     resumenSucursal();
+    return card;
+  }
+
+  // ── BORRADOR: las tarjetas sin enviar se guardan en este navegador ──
+  // Por usuario y sucursal. Si se cierra la ventana o se aprieta F5, se recuperan.
+  // Un borrador de otro día se descarta (las cantidades ya no sirven).
+  function claveBorrador() { return `pizarra_borrador_${empresaActual}_${user?.username}_${pdvActual}`; }
+  function guardarBorrador() {
+    if (restaurando || !user || !pdvActual) return;
+    const cards = sCards.map(c => {
+      const base = { kind: c.kind, tipo: c.tipo, x: c.el.offsetLeft, y: c.el.offsetTop };
+      if (c.kind === 'nota') return { ...base, texto: c.el.querySelector('textarea').value };
+      const vals = {};
+      c.el.querySelectorAll('.rows input[data-g]').forEach(i => {
+        const t = c.el.querySelector(`.rows input[data-t="${CSS.escape(i.dataset.g)}"]`);
+        vals[i.dataset.g] = { p: i.value, m: i.classList.contains('manual'), t: t ? t.value : '' };
+      });
+      return { ...base, prodId: c.prodId, vals };
+    });
+    try {
+      if (cards.length) localStorage.setItem(claveBorrador(), JSON.stringify({ fecha: fechaHoyAR(), hora: horaAR(), cards }));
+      else localStorage.removeItem(claveBorrador());
+    } catch (e) {}
+  }
+  function borrarBorrador() { try { localStorage.removeItem(claveBorrador()); } catch (e) {} }
+  function restaurarBorrador() {
+    let b = null;
+    try { b = JSON.parse(localStorage.getItem(claveBorrador()) || 'null'); } catch (e) {}
+    if (!b || !Array.isArray(b.cards) || !b.cards.length) return;
+    if (b.fecha !== fechaHoyAR()) { borrarBorrador(); return; }
+    restaurando = true;
+    try {
+      b.cards.forEach(bc => {
+        const card = bc.kind === 'nota' ? abrirNota(bc.tipo, bc.texto) : abrirTarjeta(bc.prodId, bc.tipo);
+        if (!card) return;
+        if (bc.x != null) { card.el.style.left = bc.x + 'px'; card.el.style.top = bc.y + 'px'; }
+        if (card.kind !== 'prod') return;
+        card.el.querySelectorAll('.rows input[data-g]').forEach(i => {
+          const v = bc.vals?.[i.dataset.g]; if (!v) return;
+          const t = card.el.querySelector(`.rows input[data-t="${CSS.escape(i.dataset.g)}"]`);
+          if (t) t.value = v.t || '';
+          if (card.tipo === 'necesito' && !v.m) {
+            // Sugerido recalculado con lo que tiene (el promedio puede haber cambiado)
+            const s = Math.max((parseInt(i.dataset.vend) || 0) - (parseInt(t?.value) || 0), 0);
+            i.value = s || '';
+          } else {
+            i.value = v.p || '';
+            if (v.m) i.classList.add('manual');
+          }
+        });
+      });
+    } finally { restaurando = false; }
+    if (sCards.length) toast(`📝 Se recuperaron ${sCards.length} tarjetas sin enviar (${b.hora})`);
   }
 
   function cerrarCard(card) {
@@ -745,11 +872,28 @@
         if (t && t.value !== '') it.tiene = String(parseInt(t.value) || 0);
         it.vendio = String(parseInt(i.dataset.vend) || 0);
         it.sugerido = String(Math.max((parseInt(i.dataset.vend) || 0) - (parseInt(t?.value) || 0), 0));
-        it.ref_fecha = ventaRefFecha;
+        it.ref_txt = ventaRefTxt;
+        it.ref_fechas = ventaRefFechas;
       }
       items.push(it);
     });
     return items;
+  }
+
+  // Gustos de una tarjeta Necesito con "Tiene" cargado pero sin pedido:
+  // no van como ítem a armar, pero viajan en la nota para que la central los vea.
+  function informaDeCard(card) {
+    if (card.kind !== 'prod' || card.tipo !== 'necesito') return [];
+    const prod = prods.find(p => String(p.id) === card.prodId);
+    const out = [];
+    card.el.querySelectorAll('.rows input[data-t]').forEach(t => {
+      if (t.value === '') return;
+      const pide = t.closest('.rw').querySelector('input.pide');
+      if (pide && (parseInt(pide.value) || 0) > 0) return;
+      const g = prod.gustos.find(x => String(x.id) === String(t.dataset.t));
+      out.push({ prod: prod.nombre, gusto: g ? g.nombre : '', tiene: String(parseInt(t.value) || 0), unidad: prod.unidad || '' });
+    });
+    return out;
   }
 
   function resumenSucursal() {
@@ -761,6 +905,7 @@
       if (c.tipo === 'necesito') { nec += n; stk += tieneDeCard(c).length; } else if (c.tipo === 'tengo') ten += n; else stk += n;
     });
     el.textContent = `${sCards.length} tarjetas abiertas · ${nec} necesito · ${ten} tengo · ${stk} stock · ${notas} notas`;
+    guardarBorrador();
     prodsDePdv(pdvActual).forEach(p => {
       const m = document.getElementById('mz-' + p.id);
       if (m) { const n = sCards.filter(c => c.kind === 'prod' && c.prodId === String(p.id)).length; m.textContent = n ? '● ' + n : ''; }
@@ -771,12 +916,20 @@
     // Misma lógica que setStock() de index.html (DELETE + INSERT) + historial con usuario y origen
     const eId = String(empresaActual), pdvStr = String(pdvActual), cant = parseInt(cantidad) || 0;
     const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
-    await fetch(`${SUPABASE_URL}/rest/v1/stock?empresa_id=eq.${eId}&pdv_id=eq.${pdvStr}&prod_id=eq.${prodId}&gusto_id=eq.${gustoId}`, { method: 'DELETE', headers: H });
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/stock`, {
-      method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ empresa_id: eId, pdv_id: pdvStr, prod_id: String(prodId), gusto_id: String(gustoId), cantidad: cant, updated_at: new Date().toISOString() })
-    });
-    if (!res.ok) throw new Error(await res.text());
+    const del = await fetch(`${SUPABASE_URL}/rest/v1/stock?empresa_id=eq.${eId}&pdv_id=eq.${pdvStr}&prod_id=eq.${prodId}&gusto_id=eq.${gustoId}`, { method: 'DELETE', headers: H });
+    if (!del.ok) throw new Error('No se pudo borrar el stock anterior: ' + await del.text());
+    // Si el INSERT falla después del DELETE, ese gusto quedaría sin stock → se reintenta
+    const body = JSON.stringify({ empresa_id: eId, pdv_id: pdvStr, prod_id: String(prodId), gusto_id: String(gustoId), cantidad: cant, updated_at: new Date().toISOString() });
+    let ultErr = '';
+    for (let intento = 0; intento < 3; intento++) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/stock`, { method: 'POST', headers: { ...H, 'Prefer': 'return=minimal' }, body });
+        if (res.ok) { ultErr = ''; break; }
+        ultErr = await res.text();
+      } catch (e) { ultErr = e.message; }
+      await new Promise(r => setTimeout(r, 500 * (intento + 1)));
+    }
+    if (ultErr) throw new Error(ultErr);
     try {
       const pdv = pdvs.find(p => String(p.id) === pdvStr || String(p.orden) === pdvStr);
       await sbApi('stock_historial', { method: 'POST', body: JSON.stringify({
@@ -786,19 +939,21 @@
   }
 
   async function enviarPizarra(btn) {
-    const filas = [], stockItems = [];
+    const filas = [];
+    // Stock a guardar: primero lo de "Tiene" y después la tarjeta Stock, que manda si están los dos
+    const stockPorClave = new Map();
     for (const c of sCards) {
       if (c.kind === 'nota') {
         const t = c.el.querySelector('textarea').value.trim();
         if (t) filas.push({ tipo: c.tipo, items: [], texto: t });
-      } else if (c.tipo === 'stock') {
-        itemsDeCard(c).forEach(it => stockItems.push(it));
-      } else {
+      } else if (c.tipo !== 'stock') {
         const items = itemsDeCard(c);
-        if (items.length) filas.push({ tipo: c.tipo, items, texto: '' });
-        tieneDeCard(c).forEach(it => { if (!stockItems.some(x => x.prod_id === it.prod_id && x.gusto_id === it.gusto_id)) stockItems.push(it); });
+        if (items.length) filas.push({ tipo: c.tipo, items, texto: '', informa: informaDeCard(c) });
+        tieneDeCard(c).forEach(it => stockPorClave.set(`${it.prod_id}_${it.gusto_id}`, it));
       }
     }
+    sCards.filter(c => c.kind === 'prod' && c.tipo === 'stock').forEach(c => itemsDeCard(c).forEach(it => stockPorClave.set(`${it.prod_id}_${it.gusto_id}`, it)));
+    const stockItems = [...stockPorClave.values()];
     if (!filas.length && !stockItems.length) { toast('Cargá al menos una cantidad o escribí una nota', 'error'); return; }
     // Si tiene tarjetas Necesito con "Tiene" vacío en algún gusto, avisar (ese gusto no actualiza stock)
     const sinTiene = sCards.filter(c => c.kind === 'prod' && c.tipo === 'necesito').reduce((s, c) => s + [...c.el.querySelectorAll('.rows input[data-t]')].filter(i => i.value === '').length, 0);
@@ -810,12 +965,19 @@
         const body = filas.map(f => ({
           empresa_id: String(empresaActual), pdv_id: String(pdvActual), pdv_nombre: pdvN, fecha, archivado: false,
           tipo: f.tipo, estado: 'nueva', usuario: user.username,
-          datos: JSON.stringify({ pdv_id: String(pdvActual), pdv_nombre: pdvN, fecha, hora, usuario: user.username, items: f.items, texto: f.texto, origen: 'pizarra' })
+          datos: JSON.stringify({ pdv_id: String(pdvActual), pdv_nombre: pdvN, fecha, hora, usuario: user.username, items: f.items, texto: f.texto, informa: f.informa || [], origen: 'pizarra' })
         }));
         await sbApi('pedidos_envio', { method: 'POST', body: JSON.stringify(body) });
       }
+      // Stock de a tandas de 5 en paralelo (antes era de a uno)
       let errStock = 0;
-      for (const it of stockItems) { try { await setStockPizarra(it.prod_id, it.gusto_id, it.cant); } catch (e) { errStock++; console.error(e); } }
+      for (let i = 0; i < stockItems.length; i += 5) {
+        const tanda = stockItems.slice(i, i + 5);
+        btn.textContent = `Guardando stock ${Math.min(i + 5, stockItems.length)}/${stockItems.length}…`;
+        const res = await Promise.allSettled(tanda.map(it => setStockPizarra(it.prod_id, it.gusto_id, it.cant)));
+        res.forEach(r => { if (r.status === 'rejected') { errStock++; console.error(r.reason); } });
+      }
+      borrarBorrador();
       const partes = [];
       if (filas.length) partes.push(`${filas.length} ${filas.length === 1 ? 'nota enviada' : 'notas enviadas'}`);
       if (stockItems.length) partes.push(`stock de ${stockItems.length - errStock} gustos guardado`);
@@ -841,7 +1003,7 @@
     cont.innerHTML = notas.map(n => {
       const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
       const env = porNota[n.id] || [];
-      const items = (d.items || []).map(i => `<div class="it">• ${esc(nomItem(i))} · <b>${esc(i.cant)}</b>${i.unidad ? ' ' + esc(i.unidad) : ''}${i.tiene != null ? ` <span style="opacity:.7">(tiene ${esc(i.tiene)})</span>` : ''}</div>`).join('');
+      const items = (d.items || []).map(i => `<div class="it">• ${esc(nomItem(i))} · ${cantTxt(n.tipo, i)}</div>`).join('');
       const tablaEnv = env.length ? `<table><tr><th>Enviado</th><th>Cant.</th><th>Recibido</th></tr>${env.map(e => {
         const it = (d.items || []).find(i => String(i.prod_id) === String(e.prod_id) && String(i.gusto_id) === String(e.gusto_id));
         const nom = it ? `${it.prod} ${it.gusto}` : nombreProdGusto(e.prod_id, e.gusto_id);
@@ -860,9 +1022,16 @@
       </div>`;
     }).join('');
     window._misNotas = { notas, porNota };
-    if (conNovedad.length) {
+    // Con la ventana minimizada la "Novedad" queda marcada y se avisa en el título (y sonido).
+    // Recién cuando el operador vuelve a la ventana se da por vista.
+    if (conNovedad.length && ventanaActiva()) {
+      ponerTitulo(0);
       sbApi(`pedidos_envio?id=in.(${conNovedad.join(',')})`, { method: 'PATCH', body: JSON.stringify({ novedad_sucursal: false }) })
         .then(avisarCambio).catch(() => {});
+    } else {
+      ponerTitulo(conNovedad.length, conNovedad.length === 1 ? 'Novedad' : 'Novedades');
+      const nuevas = conNovedad.filter(id => !sNovedadVistas.has(String(id)));
+      if (nuevas.length) { beep(); nuevas.forEach(id => sNovedadVistas.add(String(id))); }
     }
   }
 
@@ -910,6 +1079,19 @@
     const envios = ids.length ? (await sbApi(`pedidos?empresa_id=eq.${empresaActual}&nota_id=in.(${ids.join(',')})&select=*`) || []) : [];
     cEnvios = {}; envios.forEach(e => (cEnvios[e.nota_id] = cEnvios[e.nota_id] || []).push(e));
     cNotas = notas;
+    // Aviso de notas nuevas (no en la primera carga)
+    const idsSet = new Set(notas.map(n => String(n.id)));
+    if (cIdsVistos) {
+      const llegaron = notas.filter(n => n.estado === 'nueva' && !cIdsVistos.has(String(n.id)));
+      if (llegaron.length) {
+        beep();
+        const suc = [...new Set(llegaron.map(n => n.pdv_nombre || pdvNombre(n.pdv_id)))].join(', ');
+        toast(`📌 ${llegaron.length === 1 ? 'Nota nueva' : llegaron.length + ' notas nuevas'} de ${suc}`);
+      }
+    }
+    cIdsVistos = idsSet;
+    const nNuevas = notas.filter(n => n.estado === 'nueva').length;
+    ponerTitulo(nNuevas, nNuevas === 1 ? 'nota sin ver' : 'notas sin ver');
     await cargarPersonas();
     const st = await sbApi(`stock?empresa_id=eq.${empresaActual}&select=pdv_id,updated_at`).catch(() => []) || [];
     frescura = {};
@@ -943,6 +1125,7 @@
           <option value="">Todas las sucursales</option>${pdvs.map(p => `<option value="${esc(p.id)}" ${cFiltro.pdv === String(p.id) ? 'selected' : ''}>${esc(p.nombre || p.name)}</option>`).join('')}</select>
         <label style="font-size:13px;color:var(--text-muted);display:flex;gap:6px;align-items:center"><input type="checkbox" ${cFiltro.cerradas ? 'checked' : ''} onchange="cFiltro.cerradas=this.checked;renderCentral()"> Ver resueltas (7 días)</label>
         <button class="btn btn-sm" onclick="ordenarCentral()" title="Una columna por sucursal, en el orden en que llegaron">Ordenar por sucursal</button>
+        ${(() => { const nc = cNotas.filter(n => !ABIERTOS.includes(n.estado)).length; return nc ? `<button class="btn btn-sm" onclick="sacarCerradas()" title="Saca de la pizarra todas las resueltas y recibidas">Sacar resueltas (${nc})</button>` : ''; })()}
         <span style="font-size:13px;color:var(--text-muted)">${nNuevas ? `<b style="color:var(--accent)">${nNuevas} sin ver</b> · ` : ''}${notasFiltradas().length} notas</span>
         <div class="legend" style="margin-left:auto">
           <span><span class="lg" style="background:var(--nec-bd)"></span>Necesito</span><span><span class="lg" style="background:var(--ten-bd)"></span>Tengo</span><span><span class="lg" style="background:var(--avi-bd)"></span>Aviso</span>
@@ -1030,6 +1213,8 @@
         e.preventDefault(); arrastrando = false;
         if (nom !== n.sigue) asignarSigue(n.id, nom);
       });
+      const bs = el.querySelector('[data-sacar]');
+      if (bs) { bs.addEventListener('pointerdown', e => e.stopPropagation()); bs.onclick = e => { e.stopPropagation(); sacarNotas([n.id]); }; }
       const bq = el.querySelector('[data-quitar-sigue]');
       if (bq) { bq.addEventListener('pointerdown', e => e.stopPropagation()); bq.onclick = e => { e.stopPropagation(); asignarSigue(n.id, null); }; }
       engancharTildes(el);
@@ -1042,13 +1227,13 @@
   function htmlPostit(n) {
     const d = parseDatos(n), t = TIPOS[n.tipo] || TIPOS.necesito;
     const items = d.items || [];
-    const lineas = items.slice(0, 7).map((i, ix) => `<div class="it">${tkHtml(n, 'i' + ix, `${esc(nomItem(i))} · <b>${esc(i.cant)}</b>${i.tiene != null ? ` <span style="opacity:.7">· tiene ${esc(i.tiene)}</span>` : ''}`)}</div>`).join('')
+    const lineas = items.slice(0, 7).map((i, ix) => `<div class="it">${tkHtml(n, 'i' + ix, `${esc(nomItem(i))} · ${cantTxt(n.tipo, i)}`)}</div>`).join('')
       + (items.length > 7 ? `<div class="it">+ ${items.length - 7} más… (abrila para tildar)</div>` : '');
     const lt = lineasTexto(d.texto);
     const texto = lt.length ? `<div class="tx">${lt.slice(0, 7).map(x => tkHtml(n, 't' + x.ix, esc(x.l.length > 70 ? x.l.slice(0, 70) + '…' : x.l))).join('')}${lt.length > 7 ? `<div>+ ${lt.length - 7} renglones más…</div>` : ''}</div>` : '';
     const env = cEnvios[n.id] || [];
     return `${n.sigue ? `<div class="sigue" style="background:${colorPersona(n.sigue)}"><span class="nm">👤 ${esc(n.sigue)}</span><button data-quitar-sigue title="Quitar">✕</button></div>` : ''}
-      <div class="top"><b>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))}</b>${etiquetaFecha(n.created_at)}</div>
+      <div class="top"><b>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))}</b><span style="display:flex;gap:5px;align-items:center">${etiquetaFecha(n.created_at)}<button class="sacar" data-sacar title="Sacar de la pizarra">✕</button></span></div>
       <div style="font-size:11px;opacity:.85;margin-bottom:4px">${t.label}${n.usuario ? ' · ' + esc(n.usuario) : ''}</div>
       ${lineas}${texto}${n.respuesta ? `<div class="resp">💬 ${esc(n.respuesta)}</div>` : ''}
       <div class="ft"><span style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}${env.length ? ' · ' + env.length + ' env.' : ''}</span>${avancePill(n)}</span>
@@ -1061,6 +1246,36 @@
       const n = cNotas.find(x => String(x.id) === String(id)); if (n) { n.estado = 'vista'; n.visto_por = user.username; }
       avisarCambio(); renderCentral();
     } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ── SACAR NOTAS DE LA PIZARRA (archivar) ──
+  // Solo las saca de la central: no cambia el estado y la sucursal las sigue viendo en "Mis notas".
+  async function setArchivado(ids, valor) {
+    await sbApi(`pedidos_envio?id=in.(${ids.join(',')})`, { method: 'PATCH', body: JSON.stringify({ archivado: valor }) });
+  }
+  async function sacarNotas(ids) {
+    if (!ids.length) return;
+    const sacadas = cNotas.filter(n => ids.map(String).includes(String(n.id)));
+    cNotas = cNotas.filter(n => !ids.map(String).includes(String(n.id)));
+    if (modalAbierto) cerrarModal(); else renderCentral();
+    try {
+      await setArchivado(ids, true);
+      avisarCambio();
+      const txt = ids.length === 1 ? `Nota de ${sacadas[0]?.pdv_nombre || pdvNombre(sacadas[0]?.pdv_id)} sacada` : `${ids.length} notas sacadas`;
+      toast(txt, 'success', { label: 'Deshacer', fn: async () => {
+        try { await setArchivado(ids, false); avisarCambio(); await cargarCentral(true); }
+        catch (e) { toast('Error: ' + e.message, 'error'); }
+      } });
+    } catch (e) {
+      cNotas = cNotas.concat(sacadas); renderCentral();
+      toast('No se pudo sacar: ' + e.message, 'error');
+    }
+  }
+  function sacarCerradas() {
+    const ids = cNotas.filter(n => !ABIERTOS.includes(n.estado)).map(n => n.id);
+    if (!ids.length) return;
+    if (!confirm(`Se sacan de la pizarra ${ids.length} notas resueltas o recibidas. ¿Seguir?`)) return;
+    sacarNotas(ids);
   }
 
   function ordenarCentral() {
@@ -1080,12 +1295,17 @@
     const abierta = ABIERTOS.includes(n.estado);
     const puedeEnviar = n.tipo === 'necesito' && items.length && !env.length && abierta;
     const conRef = items.some(i => i.vendio != null || i.tiene != null);
-    const refF = items.find(i => i.ref_fecha)?.ref_fecha;
-    const tabla = items.length ? `<table><tr><th title="Tildar al armar">✓</th><th>Producto</th>${conRef ? `<th>Tiene</th><th title="${refF ? 'Vendido el ' + fechaCorta(refF) : ''}">Vendió${refF ? ' ' + fechaCorta(refF) : ''}</th>` : ''}<th>Pidió</th>${puedeEnviar ? '<th>Envío</th><th></th>' : ''}${env.length ? '<th>Enviado</th><th>Recibido</th>' : ''}</tr>
+    // ref_txt (nuevo: "prom. 4 vie") o ref_fecha (notas viejas: un solo día)
+    const itRef = items.find(i => i.ref_txt || i.ref_fecha);
+    const refLbl = itRef ? (itRef.ref_txt || fechaCorta(itRef.ref_fecha)) : '';
+    const refTit = itRef?.ref_fechas?.length ? 'Promedio de ' + itRef.ref_fechas.map(fechaCorta).join(', ') : (itRef?.ref_fecha ? 'Vendido el ' + fechaCorta(itRef.ref_fecha) : '');
+    const colCant = n.tipo === 'tengo' ? 'Sobra' : n.tipo === 'necesito' ? 'Pide' : 'Cant.';
+    const informa = Array.isArray(d.informa) ? d.informa : [];
+    const tabla = items.length ? `<table><tr><th title="Tildar al armar">✓</th><th>Producto</th>${conRef ? `<th>Tiene</th><th title="${esc(refTit)}">Vendió${refLbl ? ' <span style="font-weight:400">(' + esc(refLbl) + ')</span>' : ''}</th>` : ''}<th>${colCant}</th>${puedeEnviar ? '<th>Envío</th><th></th>' : ''}${env.length ? '<th>Enviado</th><th>Recibido</th>' : ''}</tr>
       ${items.map((i, ix) => {
         const e = env.find(x => String(x.prod_id) === String(i.prod_id) && String(x.gusto_id) === String(i.gusto_id));
         const tOn = tildesDe(n).includes('i' + ix);
-        return `<tr class="tkrow${tOn ? ' hecho' : ''}"><td style="width:22px"><input type="checkbox" data-tk="${esc(n.id)}|i${ix}" ${tOn ? 'checked' : ''}></td><td><span>${esc(nomItem(i))}</span></td>${conRef ? `<td class="num">${i.tiene != null ? esc(i.tiene) : '—'}</td><td class="num">${i.vendio != null ? esc(i.vendio) : '—'}</td>` : ''}<td class="num">${esc(i.cant)}${i.unidad ? ' ' + esc(i.unidad) : ''}${i.sugerido != null && String(i.sugerido) !== String(i.cant) ? ` <span style="font-size:11px;color:var(--text-muted)" title="Sugerido del sistema">(sug. ${esc(i.sugerido)})</span>` : ''}</td>
+        return `<tr class="tkrow${tOn ? ' hecho' : ''}"><td style="width:22px"><input type="checkbox" data-tk="${esc(n.id)}|i${ix}" ${tOn ? 'checked' : ''}></td><td><span>${esc(nomItem(i))}</span></td>${conRef ? `<td class="num">${i.tiene != null ? esc(i.tiene) + (i.unidad ? ' ' + esc(i.unidad) : '') : '—'}</td><td class="num">${i.vendio != null ? esc(i.vendio) : '—'}</td>` : ''}<td class="num">${esc(i.cant)}${i.unidad ? ' ' + esc(i.unidad) : ''}${i.sugerido != null && String(i.sugerido) !== String(i.cant) ? ` <span style="font-size:11px;color:var(--text-muted)" title="Sugerido del sistema">(sug. ${esc(i.sugerido)})</span>` : ''}</td>
           ${puedeEnviar ? `<td><input class="inp" type="number" min="0" step="1" data-ix="${ix}" value="${conRef ? (parseInt(i.cant) || '') : ''}" placeholder="—" oninput="difEnvio(this,${parseInt(i.cant) || 0})"></td><td class="dcell"></td>` : ''}
           ${env.length ? `<td class="num">${e ? esc(e.cantidad) : '—'}</td><td class="num">${e && e.confirmado ? esc(e.cantidad_recibida) + (parseInt(e.cantidad_recibida) !== parseInt(e.cantidad) ? ` <span class="dif">(${parseInt(e.cantidad_recibida) - parseInt(e.cantidad)})</span>` : '') : '—'}</td>` : ''}</tr>`;
       }).join('')}</table>` : '';
@@ -1094,19 +1314,21 @@
       <h3>${esc(n.pdv_nombre || pdvNombre(n.pdv_id))} · ${t.label}</h3>
       <div class="sub">${etiquetaFecha(n.created_at)} <span class="pill st-${esc(n.estado)}">${ESTADOS[n.estado] || esc(n.estado)}</span> ${n.usuario ? '· enviada por ' + esc(n.usuario) : ''}</div>
       ${tabla}
+      ${informa.length ? `<div style="font-size:12px;color:var(--text-muted);margin:4px 0 8px">También informó stock (sin pedir): ${informa.map(x => `${esc(x.prod)}${x.gusto ? ' ' + esc(x.gusto) : ''} <b style="color:var(--text)">${esc(x.tiene)}</b>${x.unidad ? ' ' + esc(x.unidad) : ''}`).join(' · ')}</div>` : ''}
       ${d.texto ? `<div style="font-size:13px;background:var(--surface2);border-radius:8px;padding:8px 10px;margin:8px 0;line-height:1.7">${lineasTexto(d.texto).map(x => tkHtml(n, 't' + x.ix, esc(x.l))).join('')}</div>` : ''}
       <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px;font-size:13px">👤 Lo sigue:
         <select class="sel" id="m-sigue"><option value="">— nadie —</option>${[...new Set([...(n.sigue ? [n.sigue] : []), ...personas.map(p => p.nombre)])].map(nm => `<option value="${esc(nm)}" ${nm === n.sigue ? 'selected' : ''}>${esc(nm)}</option>`).join('')}</select>
         ${(() => { const a = avanceDe(n); return a.total ? `<span class="avance${a.hechos === a.total && a.hechos ? ' full' : ''}" id="m-avance" style="margin-left:auto">✓ ${a.hechos}/${a.total} armado</span>` : ''; })()}
       </div>
       ${puedeEnviar ? (conRef
-        ? '<div style="font-size:12px;color:var(--text-muted)">Envío viene cargado con lo que pidió la sucursal: cambialo si querés. Al guardar, poner En camino o Resuelta se registra el envío con esas cantidades (dejá vacío lo que no mandás) y la sucursal confirma lo recibido.</div>'
-        : '<div style="font-size:12px;color:var(--text-muted)">La columna Envío es opcional. Si la completás, se registra el envío y la sucursal confirma lo recibido.</div>') : ''}
+        ? '<div style="font-size:12px;color:var(--text-muted)">Envío viene cargado con lo que pidió la sucursal: cambialo si querés. El envío se registra recién al poner <b>En camino</b> o <b>Resuelta</b> (dejá vacío lo que no mandás) y la sucursal confirma lo recibido. "Guardar respuesta" no registra envío.</div>'
+        : '<div style="font-size:12px;color:var(--text-muted)">La columna Envío es opcional. Si la completás, se registra al poner <b>En camino</b> o <b>Resuelta</b> y la sucursal confirma lo recibido.</div>') : ''}
       <div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">
         ${linea('Vista por', n.visto_por, n.visto_at)}${linea('Respondida por', n.respondido_por, n.respondido_at)}${linea('Resuelta por', n.resuelta_por, n.resuelta_at)}${linea('Recibida por', n.recibida_por, n.recibida_at)}
       </div>
       <textarea id="m-resp" placeholder="Respuesta para la sucursal (opcional)">${esc(n.respuesta || '')}</textarea>
       <div class="acts">
+        <button class="btn" style="margin-right:auto" onclick="sacarNotas(['${esc(n.id)}'])" title="La saca de la pizarra central (la sucursal la sigue viendo)">Sacar de la pizarra</button>
         <button class="btn" onclick="cerrarModal()">Cerrar</button>
         ${abierta ? `<button class="btn" onclick="accionNota('${esc(n.id)}','responder',this)">Guardar respuesta</button>` : ''}
         ${abierta && n.tipo === 'necesito' && n.estado !== 'en_camino' ? `<button class="btn" onclick="accionNota('${esc(n.id)}','en_camino',this)">En camino</button>` : ''}
@@ -1135,9 +1357,10 @@
     if (accion === 'en_camino') patch.estado = 'en_camino';
     if (accion === 'resuelta') Object.assign(patch, { estado: 'resuelta', resuelta_por: user.username, resuelta_at: ahora });
     // Envío (opcional) → tabla pedidos, igual que "Pedido por sucursal"
+    // "Guardar respuesta" NO registra envíos: solo En camino o Resuelta
     const envios = [];
     let invalido = false;
-    document.querySelectorAll('#modal-root input[data-ix]').forEach(i => {
+    if (accion !== 'responder') document.querySelectorAll('#modal-root input[data-ix]').forEach(i => {
       if (i.value === '') return;
       const v = parseInt(i.value);
       if (isNaN(v) || v < 0) { invalido = true; return; }
@@ -1148,7 +1371,6 @@
         cantidad: v, fecha_pedido: n.fecha || fechaHoyAR(), fecha_envio: fechaHoyAR(), estado: 'enviado', username_admin: user.username, nota_id: String(n.id) });
     });
     if (invalido) { toast('Revisá las cantidades de envío', 'error'); return; }
-    if (envios.length && accion === 'responder') patch.estado = 'en_camino';
     btn.disabled = true;
     try {
       if (envios.length) await sbApi('pedidos', { method: 'POST', body: JSON.stringify(envios) });
