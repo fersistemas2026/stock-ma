@@ -323,6 +323,15 @@ body:not(.en-catalogo) .prod-accesos { display: none; }
 #modeRow.guia-pulse .mode-btn { padding-top: 14px; padding-bottom: 14px; font-size: 15px; font-weight: 700; background: var(--bg); border: 2px solid #f59e0b; color: var(--text); }
 #manoModo { justify-content: center; margin: 4px 0 8px; font-size: 16px; color: #b45309; }
 #manoModo .mano { font-size: 44px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.2)); }
+
+/* ═══════════ Promo del día ═══════════ */
+.promo-dia-banner { display:none; margin-bottom:12px; padding:10px 14px; border-radius:12px; background:linear-gradient(135deg,#16a34a,#22c55e); color:#fff; font-size:13px; line-height:1.45; box-shadow:0 2px 10px rgba(22,163,74,.25); }
+.promo-dia-banner b { font-size:14px; }
+.promo-badge { display:inline-block; background:#16a34a; color:#fff; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; margin-bottom:4px; }
+.promo-info { display:none; margin:10px 0 4px; padding:9px 12px; border-radius:10px; font-size:12.5px; line-height:1.45; }
+.promo-info.ok { display:block; background:#f0fdf4; border:1px solid #86efac; color:#166534; }
+.promo-info.aviso { display:block; background:#FFF8E1; border:1px solid #FFD54F; color:#795500; }
+.item-promo-tag { display:inline-block; margin-top:2px; font-size:11px; font-weight:700; color:#16a34a; }
 </style>
 </head>
 <body class="en-catalogo">
@@ -399,6 +408,7 @@ body:not(.en-catalogo) .prod-accesos { display: none; }
     </div>
     <div id="mainContent">
       <div id="catalogPanel">
+        <div class="promo-dia-banner" id="promoDiaBanner"></div>
         <div class="slabel" style="margin-top:0">¿Dónde retirás / pedís o enviamos?</div>
         <div class="pdv-falta-msg" id="pdvFaltaMsg">👆 Elegí tu sucursal</div>
         <div class="pdv-row" id="pdvRow"><div class="loader"><div class="spin"></div></div></div>
@@ -489,8 +499,9 @@ body:not(.en-catalogo) .prod-accesos { display: none; }
           </div>
           <div id="voucherOnlineMsg" style="font-size:12px;margin-top:6px"></div>
         </div>
+        <div class="promo-info" id="promoInfoOnline"></div>
         <div class="cart-total-row" id="rowDescuentoOnline" style="display:none">
-          <span class="cart-total-label">Descuento</span>
+          <span class="cart-total-label" id="labelDescuentoOnline">Descuento</span>
           <span class="cart-total-amt" id="confirmDescuento" style="color:#22c55e">-$0</span>
         </div>
         <div class="cart-total-row">
@@ -1301,7 +1312,7 @@ async function init() {
     sbGet(`productos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,nombre,categoria,foto_url`),
     sbGet(`gustos?empresa_id=eq.${EMPRESA_ID}&order=orden.asc&select=id,producto_id,nombre`),
     sbGet(`lista_datos?empresa_id=eq.${EMPRESA_ID}&select=prod_id,datos,online_activo,online_presentaciones`),
-    sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*`)
+    sbGet(`descuentos_automaticos?empresa_id=eq.${EMPRESA_ID}&activo=eq.true&online_activo=eq.true&select=*&order=created_at.asc`)
   ]);
 
   // Filtrar PDVs por los habilitados en tienda_config.pdvs_online
@@ -1718,6 +1729,7 @@ function selMode(el, mode) {
 }
 
 // ═══ Accesos rápidos: un botón por producto que abre el producto directo ═══
+function accLabel(p, enCarrito) { return (promoAplicaProducto(promoDelDia(), p.id) ? '🏷️ ' : '') + p.nombre + (enCarrito ? ' ✓' : ''); }
 function renderAccesosProductos(lista) {
   const cont = document.getElementById('prodAccesos');
   if (!cont) return;
@@ -1725,7 +1737,7 @@ function renderAccesosProductos(lista) {
     const enCarrito = cart[p.id] && Object.values(cart[p.id]).some(q => q > 0);
     const idJs = String(p.id).replace(/'/g, "\\'");
     return '<button class="acc-chip' + (enCarrito ? ' en-carrito' : '') + '" id="acc-' + p.id + '" onclick="abrirModal(\'' + idJs + '\')">' +
-      p.nombre + (enCarrito ? ' ✓' : '') + '</button>';
+      accLabel(p, enCarrito) + '</button>';
   }).join('');
   if (typeof medirHeader === 'function') medirHeader();
 }
@@ -1769,6 +1781,8 @@ function renderCatalogo() {
   });
   // Accesos rápidos en el header, en el mismo orden que el catálogo
   renderAccesosProductos(Object.values(cats).flat().map(it => it.prod));
+  renderPromoDiaBanner();
+  const _pDia = promoDelDia();
 
   const emojis = { 'pasta seca':'🍝','pasta rellena':'🥟','rellena':'🥟','salsa':'🍅','salsas':'🍅','especial':'🥩','otros':'🍽️' };
   const colors = { 'pasta seca':'cat-pasta','pasta rellena':'cat-rellena','rellena':'cat-rellena','salsa':'cat-salsa','salsas':'cat-salsa' };
@@ -1799,6 +1813,7 @@ function renderCatalogo() {
         return `<div class="pcard" onclick="abrirModal('${prod.id}')">
           <div class="${imgCls}">${imgHtml}</div>
           <div class="pcard-body">
+            ${promoAplicaProducto(_pDia, prod.id) ? '<span class="promo-badge">🏷️ Promo hoy</span>' : ''}
             <div class="pcard-name">${prod.nombre}</div>
             <div class="pcard-sub">${gustosOnline.length} ${gustosOnline.length===1?'opción':'opciones'}</div>
             <div class="pcard-footer">
@@ -1998,15 +2013,171 @@ function getCartTotal() {
 window._voucherOnlineData = null;
 window._voucherOnlineCodigo = '';
 
+// ═══ Promo del día (misma lógica que Ventas en el local: descuentos_automaticos) ═══
+function fechaHoyARp() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone:'America/Argentina/Buenos_Aires', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+}
+function promoDelDia() {
+  if (!promos || !promos.length) return null;
+  const hoy = fechaHoyARp();
+  const f = new Date(hoy + 'T12:00:00');
+  const dow = f.getDay(), dom = f.getDate();
+  for (const d of promos) {
+    let ap = false;
+    if (d.tipo === 'dia_semana') ap = parseInt(d.valor) === dow;
+    else if (d.tipo === 'dia_mes') ap = parseInt(d.valor) === dom;
+    else if (d.tipo === 'rango_fechas') ap = hoy >= d.valor && hoy <= (d.valor_hasta || d.valor);
+    if (!ap) continue;
+    let reglas = null;
+    if (d.tipo_aplicacion === 'reglas' && d.reglas) { try { reglas = typeof d.reglas === 'string' ? JSON.parse(d.reglas) : d.reglas; } catch(e) {} }
+    return { nombre: d.nombre || 'Promo del día', pct: parseFloat(d.pct) || 0, tipo_aplicacion: d.tipo_aplicacion || 'todo',
+             reglas: Array.isArray(reglas) ? reglas : null, tipo_promo: d.tipo_promo || 'pct',
+             cantCompra: parseInt(d.promo_cant_compra) || 0, cantRegalo: parseInt(d.promo_cant_regalo) || 0,
+             pctSegunda: parseFloat(d.promo_pct_segunda) || 0, metodo_pago: d.metodo_pago || 'ambas', contar_por: d.contar_por || 'item' };
+  }
+  return null;
+}
+function promoAplicaItem(p, pid, gid) {
+  if (!p) return false;
+  if (p.tipo_aplicacion !== 'reglas' || !p.reglas) return true;
+  const base = String(gid).split('__')[0];
+  return p.reglas.some(r => (!r.prodId || String(r.prodId) === String(pid)) && (!r.gustoId || String(r.gustoId) === base));
+}
+function promoAplicaProducto(p, pid) {
+  if (!p) return false;
+  if (p.tipo_aplicacion !== 'reglas' || !p.reglas) return true;
+  return p.reglas.some(r => !r.prodId || String(r.prodId) === String(pid));
+}
+function promoDescripcion(p) {
+  if (!p) return '';
+  if (p.tipo_promo === 'regalo') return 'Llevá ' + (p.cantCompra + p.cantRegalo) + ', pagá ' + p.cantCompra;
+  if (p.tipo_promo === 'segunda') return '2da unidad -' + p.pctSegunda + '%';
+  return '-' + p.pct + '%';
+}
+function promoAlcance(p) {
+  if (!p) return '';
+  if (p.tipo_aplicacion !== 'reglas' || !p.reglas) return 'en todos los productos';
+  const nombres = [...new Set(p.reglas.map(r => {
+    const pr = productos.find(x => String(x.id) === String(r.prodId));
+    const g = r.gustoId ? getNombreGusto(r.gustoId) : '';
+    return (pr ? pr.nombre : (r.prodNombre || '')) + (g ? ' ' + g : (r.gustoNombre ? ' ' + r.gustoNombre : ''));
+  }).filter(Boolean))];
+  return 'en ' + nombres.join(', ');
+}
+function promoPagoPermite(p) {
+  if (!p) return false;
+  if (p.metodo_pago === 'efectivo') return selectedPay === 'efectivo';
+  if (p.metodo_pago === 'tarjeta') return selectedPay === 'transfe';
+  return true;
+}
+function promoPagoTexto(p) { return p.metodo_pago === 'efectivo' ? 'pagando en efectivo' : p.metodo_pago === 'tarjeta' ? 'pagando con transferencia' : ''; }
+// Ahorro de la promo sobre el carrito actual (mismo cálculo que Ventas: pct / regalo / segunda)
+function calcPromoCarrito(p) {
+  const porItem = {}; let ahorro = 0;
+  if (!p) return { ahorro, porItem };
+  const items = [];
+  Object.entries(cart).forEach(([pid, gm]) => Object.entries(gm).forEach(([gid, q]) => { if (q > 0) items.push({ pid, gid, cant: q, precio: getPrecioGusto(gid) }); }));
+  const aplica = items.filter(it => promoAplicaItem(p, it.pid, it.gid));
+  const anotar = (it, a, badge) => { if (a <= 0) return; porItem[it.pid + '|' + it.gid] = { ahorro: a, badge }; ahorro += a; };
+  if (p.tipo_promo === 'pct') {
+    aplica.forEach(it => anotar(it, it.precio * it.cant * p.pct / 100, '-' + p.pct + '%'));
+  } else if (p.tipo_promo === 'regalo') {
+    const c = p.cantCompra, r = p.cantRegalo, tot = c + r;
+    if (c && r) {
+      if (p.contar_por === 'producto') {
+        const porProd = {};
+        aplica.forEach(it => { (porProd[it.pid] = porProd[it.pid] || []).push(it); });
+        Object.values(porProd).forEach(lista => {
+          const cantTot = lista.reduce((s, it) => s + it.cant, 0);
+          let disp = Math.floor(cantTot / tot) * r;
+          lista.forEach(it => { const b = Math.min(it.cant, disp); disp -= b; anotar(it, b * it.precio, b + ' bonif.'); });
+        });
+      } else {
+        aplica.forEach(it => {
+          const grupos = Math.floor(it.cant / tot), resto = it.cant % tot;
+          const pagadas = grupos * c + Math.min(resto, c);
+          const b = it.cant - pagadas;
+          anotar(it, b * it.precio, b + ' bonif.');
+        });
+      }
+    }
+  } else if (p.tipo_promo === 'segunda') {
+    const it = aplica.find(x => x.cant >= 2);
+    if (it) anotar(it, it.precio * p.pctSegunda / 100, '2da -' + p.pctSegunda + '%');
+  } else if (p.tipo_promo === 'monto') {
+    const tot = aplica.reduce((s, it) => s + it.precio * it.cant, 0);
+    if (tot > 0 && p.monto > 0) aplica.forEach(it => anotar(it, Math.min(p.monto, tot) * it.precio * it.cant / tot, '-$' + p.monto));
+  } else if (p.tipo_promo === 'precio') {
+    aplica.forEach(it => {
+      // Presentaciones '123__250g' / '__500g' → fracción del kilo; si no, precio por unidad (o por kg)
+      const m = String(it.gid).match(/__(\d+)g$/);
+      const frac = m ? parseInt(m[1]) / 1000 : 1;
+      const sub = Math.min(it.precio * it.cant, p.precio * frac * it.cant);
+      anotar(it, it.precio * it.cant - sub, 'precio especial $' + p.precio);
+    });
+  }
+  return { ahorro, porItem };
+}
+// Voucher de campaña "Promo en producto" → misma forma que la promo del día
+function promoDeVoucher(v) {
+  if (!v || v.tipo !== 'producto') return null;
+  let pr = v.promo;
+  if (typeof pr === 'string') { try { pr = JSON.parse(pr); } catch(e) { pr = null; } }
+  if (!pr || !pr.prod_id) return null;
+  const gustos = Array.isArray(pr.gustos) ? pr.gustos : [];
+  const reglas = gustos.length ? gustos.map(g => ({ prodId: String(pr.prod_id), gustoId: String(g.id), prodNombre: pr.prod_nombre || '', gustoNombre: g.nombre || '' }))
+                               : [{ prodId: String(pr.prod_id), gustoId: '', prodNombre: pr.prod_nombre || '', gustoNombre: '' }];
+  const p = { nombre: 'Código ' + v.codigo, tipo_aplicacion: 'reglas', reglas, tipo_promo: pr.modo, pct: 0, cantCompra: 0, cantRegalo: 0, pctSegunda: 0, contar_por: 'producto', metodo_pago: 'ambas',
+              prodNombre: pr.prod_nombre || '', gustosTxt: gustos.map(g => g.nombre).join(', ') };
+  if (pr.modo === 'pct') p.pct = parseFloat(pr.pct) || 0;
+  else if (pr.modo === 'monto') p.monto = parseFloat(pr.monto) || 0;
+  else if (pr.modo === 'precio') p.precio = parseFloat(pr.precio) || 0;
+  else if (pr.modo === 'regalo') { const l = parseInt(pr.lleva) || 0, pg = parseInt(pr.paga) || 0; if (!l || !pg || pg >= l) return null; p.tipo_promo = 'regalo'; p.cantCompra = pg; p.cantRegalo = l - pg; }
+  else if (pr.modo === 'segunda') p.pctSegunda = parseFloat(pr.pct) || 0;
+  else return null;
+  return p;
+}
+function textoVoucherProducto(p) {
+  const t = p.tipo_promo === 'pct' ? p.pct + '% off' : p.tipo_promo === 'monto' ? '$' + p.monto + ' menos'
+    : p.tipo_promo === 'precio' ? 'precio especial $' + p.precio : p.tipo_promo === 'regalo' ? 'llevá ' + (p.cantCompra + p.cantRegalo) + ', pagá ' + p.cantCompra
+    : '2da unidad -' + p.pctSegunda + '%';
+  return t + ' en ' + p.prodNombre + (p.gustosTxt ? ' (' + p.gustosTxt + ')' : '');
+}
+// Promo del día y código web NO son acumulables: se aplica el que más ahorra
 function getTotalConDescuento() {
   const base = getCartTotal();
   const v = window._voucherOnlineData;
-  if (!v) return { total: base, descuento: 0 };
-  let descuento = 0;
-  if (v.tipo === 'monto') descuento = parseFloat(v.monto_fijo) || 0;
-  else descuento = base * ((parseFloat(v.pct) || 0) / 100);
-  descuento = Math.min(descuento, base);
-  return { total: Math.max(base - descuento, 0), descuento };
+  let vAh = 0, vPorItem = {};
+  const vProd = promoDeVoucher(v);
+  if (vProd) { const cv = calcPromoCarrito(vProd); vAh = Math.min(cv.ahorro, base); vPorItem = cv.porItem; }
+  else if (v) { vAh = v.tipo === 'monto' ? (parseFloat(v.monto_fijo) || 0) : base * ((parseFloat(v.pct) || 0) / 100); vAh = Math.min(vAh, base); }
+  const p = promoDelDia();
+  let pAh = 0, porItem = {}, estado = null, potencial = 0;
+  if (p) {
+    const calc = calcPromoCarrito(p);
+    potencial = Math.min(calc.ahorro, base);
+    const telOk = telInfoAR(document.getElementById('inTel')?.value).ok;
+    if (calc.ahorro <= 0) estado = 'sin_items';
+    else if (!telOk) estado = 'falta_tel';
+    else if (!promoPagoPermite(p)) estado = 'pago';
+    else { pAh = potencial; porItem = calc.porItem; estado = 'ok'; }
+  }
+  let fuente = null, descuento = 0;
+  if (pAh > 0 || vAh > 0) { if (pAh >= vAh) { fuente = 'promo'; descuento = pAh; } else { fuente = 'voucher'; descuento = vAh; } }
+  return { total: Math.max(base - descuento, 0), descuento, fuente, promo: p, promoEstado: estado,
+           promoAhorro: pAh, promoPotencial: potencial, voucherAhorro: vAh, voucherProducto: vProd,
+           porItem: fuente === 'promo' ? porItem : fuente === 'voucher' ? vPorItem : {} };
+}
+// Banner de la promo en el catálogo
+function renderPromoDiaBanner() {
+  const el = document.getElementById('promoDiaBanner');
+  if (!el) return;
+  const p = promoDelDia();
+  if (!p) { el.style.display = 'none'; return; }
+  const pago = promoPagoTexto(p);
+  el.innerHTML = '🎉 <b>Hoy: ' + p.nombre + '</b> · ' + promoDescripcion(p) + ' ' + promoAlcance(p) + (pago ? ' (' + pago + ')' : '') +
+    '<br><span style="opacity:.9">Se aplica sola al ingresar tu celular. No acumulable con códigos de descuento.</span>';
+  el.style.display = 'block';
 }
 
 async function aplicarVoucherOnline() {
@@ -2021,7 +2192,7 @@ async function aplicarVoucherOnline() {
     const found = await r.json();
     if (!found || !found.length) { msg.textContent = '❌ Código no válido'; msg.style.color = '#ef4444'; window._voucherOnlineData = null; renderConfirm(); return; }
     const v = found[0];
-    const hoy = new Date().toISOString().slice(0,10);
+    const hoy = fechaHoyARp(); // (antes UTC: desde las 21 h un código de hoy figuraba vencido)
     if (v.usado) { msg.textContent = '❌ Este código ya fue utilizado'; msg.style.color = '#ef4444'; window._voucherOnlineData = null; renderConfirm(); return; }
     if (v.vence && v.vence < hoy) { msg.textContent = `❌ Código vencido (${v.vence})`; msg.style.color = '#ef4444'; window._voucherOnlineData = null; renderConfirm(); return; }
     // Restricción: si el voucher es "solo retiro", validar modalidad actual
@@ -2031,10 +2202,13 @@ async function aplicarVoucherOnline() {
       msg.style.color = '#ef4444';
       window._voucherOnlineData = null; renderConfirm(); return;
     }
+    const vProd = promoDeVoucher(v);
+    if (v.tipo === 'producto' && !vProd) { msg.textContent = '❌ Este código no se puede usar online. Usalo en el local.'; msg.style.color = '#ef4444'; window._voucherOnlineData = null; renderConfirm(); return; }
     window._voucherOnlineData = v;
     window._voucherOnlineCodigo = codigo;
-    const beneficio = v.tipo === 'monto' ? `$${v.monto_fijo} de descuento` : `${v.pct}% de descuento`;
-    msg.textContent = `✓ Código aplicado: ${beneficio}`;
+    const beneficio = vProd ? textoVoucherProducto(vProd) : v.tipo === 'monto' ? `$${v.monto_fijo} de descuento` : `${v.pct}% de descuento`;
+    const sinItems = vProd && calcPromoCarrito(vProd).ahorro <= 0;
+    msg.textContent = sinItems ? `✓ Código cargado: ${beneficio}. Agregá ese producto al pedido para usarlo.` : `✓ Código aplicado: ${beneficio}`;
     msg.style.color = '#22c55e';
     renderConfirm();
   } catch(e) {
@@ -2193,7 +2367,7 @@ function actualizarCartIndicators() {
     const el = document.getElementById('ci-'+p.id);
     if (el) el.style.display = en ? 'inline-block' : 'none';
     const acc = document.getElementById('acc-'+p.id);
-    if (acc) { acc.classList.toggle('en-carrito', en); acc.textContent = p.nombre + (en ? ' ✓' : ''); }
+    if (acc) { acc.classList.toggle('en-carrito', en); acc.textContent = accLabel(p, en); }
   });
 }
 
@@ -2259,17 +2433,20 @@ function volverAlCatalogo() {
 }
 
 function renderConfirm() {
+  const _desc = getTotalConDescuento();
   const entries = Object.entries(cart).filter(([,gm])=>Object.values(gm).some(q=>q>0));
   document.getElementById('confirmResumen').innerHTML = entries.map(([pid,gm]) => {
     const prod = productos.find(p=>String(p.id)===String(pid));
     return Object.entries(gm).filter(([,q])=>q>0).map(([gid,q]) => {
       const precio = getPrecioGusto(gid);
+      const pi = _desc.porItem[pid + '|' + gid];
       return `<div class="cart-item">
         <div class="cart-item-info">
           <div class="cart-item-name">${prod?.nombre} · ${getNombreGusto(gid)}</div>
           <div class="cart-item-sub">${q} × $${precio.toLocaleString('es-AR')}</div>
+          ${pi ? `<div class="item-promo-tag">🏷️ ${pi.badge} · -$${Math.round(pi.ahorro).toLocaleString('es-AR')}</div>` : ''}
         </div>
-        <div class="cart-item-price">$${(q*precio).toLocaleString('es-AR')}</div>
+        <div class="cart-item-price">${pi ? `<s style="color:var(--text3);font-weight:400;font-size:12px">$${(q*precio).toLocaleString('es-AR')}</s><br>$${Math.round(q*precio - pi.ahorro).toLocaleString('es-AR')}` : `$${(q*precio).toLocaleString('es-AR')}`}</div>
       </div>`;
     }).join('');
   }).join('');
@@ -2278,13 +2455,29 @@ function renderConfirm() {
   if (inV && !inV.value && window._welcomeVoucherCodigo && !window._voucherOnlineData) {
     inV.value = window._welcomeVoucherCodigo;
   }
-  const { total, descuento } = getTotalConDescuento();
+  const { total, descuento, fuente, promo, promoEstado, promoAhorro, promoPotencial, voucherAhorro } = _desc;
   const rowDesc = document.getElementById('rowDescuentoOnline');
+  const $f = n => '$' + Math.round(n).toLocaleString('es-AR');
+  const lbl = document.getElementById('labelDescuentoOnline');
   if (descuento > 0) {
     rowDesc.style.display = 'flex';
-    document.getElementById('confirmDescuento').textContent = '-$' + Math.round(descuento).toLocaleString('es-AR');
+    document.getElementById('confirmDescuento').textContent = '-' + $f(descuento);
+    if (lbl) lbl.textContent = fuente === 'promo' ? '🏷️ ' + promo.nombre : '🎟️ Código ' + (window._voucherOnlineCodigo || '');
   } else {
     rowDesc.style.display = 'none';
+  }
+  // Explicación de la promo / código (no acumulables)
+  const info = document.getElementById('promoInfoOnline');
+  if (info) {
+    let cls = '', html = '';
+    if (promo && promoEstado === 'falta_tel') { cls = 'aviso'; html = '🏷️ Hoy hay promo: <b>' + promo.nombre + '</b> (' + promoDescripcion(promo) + '). Ingresá tu celular para aplicarla y ahorrás <b>' + $f(promoPotencial) + '</b>.'; }
+    else if (promo && promoEstado === 'pago') { cls = 'aviso'; html = '🏷️ La promo <b>' + promo.nombre + '</b> es solo ' + promoPagoTexto(promo) + '. Si cambiás la forma de pago ahorrás <b>' + $f(promoPotencial) + '</b>.'; }
+    else if (fuente === 'promo' && voucherAhorro > 0) { cls = 'ok'; html = '✓ Aplicamos la promo <b>' + promo.nombre + '</b> (-' + $f(promoAhorro) + ') porque te conviene más que el código (-' + $f(voucherAhorro) + '). No son acumulables.'; }
+    else if (fuente === 'promo') { cls = 'ok'; html = '✓ Promo del día aplicada: <b>' + promo.nombre + '</b> (-' + $f(promoAhorro) + ').'; }
+    else if (fuente === 'voucher' && promoAhorro > 0) { cls = 'ok'; html = '✓ Aplicamos tu código (-' + $f(voucherAhorro) + ') porque te conviene más que la promo del día (-' + $f(promoAhorro) + '). No son acumulables.'; }
+    else if (promo && promoEstado === 'sin_items') { cls = 'aviso'; html = '🏷️ Hoy: <b>' + promo.nombre + '</b> (' + promoDescripcion(promo) + ') ' + promoAlcance(promo) + '.'; }
+    info.className = 'promo-info' + (cls ? ' ' + cls : '');
+    info.innerHTML = html;
   }
   document.getElementById('confirmTotal').textContent = '$' + Math.round(total).toLocaleString('es-AR');
 }
@@ -2492,6 +2685,7 @@ function selHorario(v) {
 
 function selPay(m) {
   selectedPay = m;
+  if (document.getElementById('confirmPanel')?.classList.contains('visible')) setTimeout(renderConfirm, 0);
   ['efectivo','transfe'].forEach(x => {
     document.getElementById('pay-'+x).classList.toggle('active', x===m);
     const r = document.getElementById('radio-'+x);
@@ -2505,6 +2699,7 @@ async function onTelInput() {
   const telCrudo = document.getElementById('inTel').value.trim();
   const tel = normTelAR(telCrudo);
   const banner = document.getElementById('clienteBanner');
+  if (document.getElementById('confirmPanel')?.classList.contains('visible')) renderConfirm();
   actualizarAyudaDatos();
   clienteData = null; if (banner) banner.innerHTML = '';
   if (tel.length < 8) return;
@@ -2545,8 +2740,13 @@ async function enviarPedido() {
     });
   });
 
-  const { total, descuento } = getTotalConDescuento();
-  const voucherAplicado = window._voucherOnlineData;
+  const _descP = getTotalConDescuento();
+  const { total, descuento } = _descP;
+  // Solo se consume el código si fue el que se aplicó (no acumulable con la promo)
+  const voucherAplicado = _descP.fuente === 'voucher' ? window._voucherOnlineData : null;
+  const descMotivoTxt = _descP.fuente === 'promo' ? ('Promo ' + _descP.promo.nombre) : _descP.fuente === 'voucher' ? ('Código ' + (window._voucherOnlineCodigo || '')) : '';
+  if (_descP.fuente === 'promo') items.forEach(it => { const pi = _descP.porItem[it.prod_id + '|' + it.gusto_id]; if (pi) { it.promo = _descP.promo.nombre; it.promo_ahorro = Math.round(pi.ahorro); } });
+  if (_descP.fuente === 'voucher' && _descP.voucherProducto) items.forEach(it => { const pi = _descP.porItem[it.prod_id + '|' + it.gusto_id]; if (pi) { it.promo = _descP.voucherProducto.nombre; it.promo_ahorro = Math.round(pi.ahorro); } });
   const optsEntrega = calcularOpciones(selectedMode);
   const fechaEntregaISO = selectedFechaEsp ? selectedFechaEsp.fecha : (selectedEnvio === 'pasado' ? optsEntrega.fecha2ISO : optsEntrega.fecha1ISO);
   const pedido = {
@@ -2580,7 +2780,7 @@ async function enviarPedido() {
     if (voucherAplicado) {
       fetch(`${SUPABASE_URL}/rest/v1/vouchers?id=eq.${voucherAplicado.id}`, {
         method: 'PATCH', headers: H,
-        body: JSON.stringify({ usado: true, usado_fecha: new Date().toISOString().slice(0,10), usado_pdv: (selectedPdv?.nombre||'') + ' (Online)' })
+        body: JSON.stringify({ usado: true, usado_fecha: fechaHoyARp(), usado_pdv: (selectedPdv?.nombre||'') + ' (Online)' })
       }).catch(() => {});
       try { sessionStorage.removeItem('sma_welcome_codigo'); } catch(e){}
     }
@@ -2634,6 +2834,7 @@ async function enviarPedido() {
         <span class="success-item-price">$${(it.precio*it.cantidad).toLocaleString('es-AR')}</span>
       </div>`;
     });
+    if (descuento > 0) itemsHtml += `<div class="success-item-row"><span class="success-item-name" style="color:#16a34a">🏷️ ${descMotivoTxt}</span><span class="success-item-qty"></span><span class="success-item-price" style="color:#16a34a">-$${Math.round(descuento).toLocaleString('es-AR')}</span></div>`;
     document.getElementById('successItems').innerHTML = itemsHtml;
     document.getElementById('successTotal').textContent = '$' + total.toLocaleString('es-AR');
 
@@ -2661,6 +2862,7 @@ async function enviarPedido() {
     waResumen += `💳 Pago: ${selectedPay==='transfe'?'Transferencia':'Efectivo'}\n\n`;
     waResumen += `*Detalle:*\n`;
     items.forEach(it => { waResumen += `• ${it.prod_nombre} ${it.gusto_nombre} x${it.cantidad} = $${(it.precio*it.cantidad).toLocaleString('es-AR')}\n`; });
+    if (descuento > 0) waResumen += `🏷️ ${descMotivoTxt}: -$${Math.round(descuento).toLocaleString('es-AR')}\n`;
     waResumen += `\n💰 *Total: $${total.toLocaleString('es-AR')}*\n`;
     waResumen += `\n👤 ${nombre} · ${tel}`;
     document.getElementById('successWaBtn').href = `https://wa.me/${waNum}?text=${encodeURIComponent(waResumen)}`;

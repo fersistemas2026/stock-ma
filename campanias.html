@@ -74,6 +74,16 @@
   .t-tipo { width: 120px; }
   .tabla-scroll { overflow-x: auto; }
   tr.hoy td { background: rgba(200,240,74,.06); }
+  tr.psub td { border-bottom: 1px solid var(--border); padding-top: 0; }
+  .pbox { background: var(--surface2); border: 1px dashed var(--promo); border-radius: 10px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .pbox .campo { display: flex; flex-direction: column; gap: 3px; }
+  .pbox .campo span { font-size: 10px; color: var(--text-muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+  .pbox .inp { width: auto; min-width: 70px; }
+  .pbox .gustos { display: flex; flex-wrap: wrap; gap: 5px; width: 100%; }
+  .pbox .gustos label { font-size: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 3px 9px; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+  .pbox .gustos label.on { border-color: var(--promo); color: var(--promo); }
+  .pbox .gustos input { accent-color: var(--promo); }
+  .pbox .res { width: 100%; font-size: 12px; color: var(--promo); font-weight: 700; }
 
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
   .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
@@ -122,9 +132,11 @@ const SESION_MAX_MS = 10 * 60 * 1000;
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DOW = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const TEMAS = { navidad: '🎄 Navidad (estrellas, palos, ravioles, regalos)', blackfriday: '🖤 Black Friday (negro y dorado, etiquetas de %)', generico: '🍝 Genérico (palos y ravioles)' };
-const TIPOS = { pct: '% descuento', monto: '$ descuento', receta: 'Receta / tip', sorteo: 'Sorteo' };
+const TIPOS = { pct: '% en toda la compra', monto: '$ en toda la compra', producto: 'Promo en producto', receta: 'Nota / tip', sorteo: 'Sorteo' };
+// Promo en producto: la regla viaja en promo_premios.promo y se copia al voucher (promo_abrir)
+const MODOS = { pct: '% en el producto', monto: '$ fijo en el producto', precio: 'Precio especial', regalo: 'Lleva X, paga Y', segunda: '2da unidad −%' };
 
-const S = { user: null, empresa: '1', camps: [], sel: null, tab: 'datos', premios: [], resultados: null, ganador: null };
+const S = { user: null, empresa: '1', camps: [], sel: null, tab: 'datos', premios: [], resultados: null, ganador: null, prods: [] };
 
 // ── Utilidades ──
 function $(id) { return document.getElementById(id); }
@@ -199,7 +211,105 @@ async function init() {
   if (S.user.role !== 'admin') { bloquear('Campañas es solo para administradores'); return; }
   $('user-lbl').textContent = '👤 ' + (S.user.display_name || S.user.username);
   $('btn-nueva').onclick = nueva;
+  await cargarProductos();
   await cargarCampanias();
+}
+
+async function cargarProductos() {
+  try {
+    const [pr, gs] = await Promise.all([
+      sbApi(`productos?empresa_id=eq.${S.empresa}&order=orden.asc,created_at.asc&select=*`),
+      sbApi(`gustos?select=id,producto_id,nombre,orden&order=orden.asc`)
+    ]);
+    S.prods = (pr || []).map(p => ({ id: String(p.id), nombre: p.nombre || p.name || '', unidad: p.unidad || '',
+      gustos: (gs || []).filter(g => String(g.producto_id) === String(p.id)).map(g => ({ id: String(g.id), nombre: g.nombre || g.name || '' })) }));
+  } catch (e) { S.prods = []; toast('No se pudieron leer los productos: ' + e.message, 'error'); }
+}
+
+// ── Promo en producto: helpers ──
+function promoDe(p) {
+  let pr = p && p.promo;
+  if (typeof pr === 'string') { try { pr = JSON.parse(pr); } catch (e) { pr = null; } }
+  return pr && typeof pr === 'object' ? pr : null;
+}
+function esKgProd(prod) { return prod && /kg|gr/i.test(prod.unidad || ''); }
+// Título sugerido si el admin no escribió uno
+function tituloPromo(pr) {
+  if (!pr || !pr.prod_nombre) return '';
+  const nom = pr.prod_nombre + ((pr.gustos || []).length === 1 ? ' de ' + pr.gustos[0].nombre : '');
+  if (pr.modo === 'pct') return `${nom} −${pr.pct}%`;
+  if (pr.modo === 'monto') return `${nom}: $${pr.monto} menos`;
+  if (pr.modo === 'precio') return `${nom} a $${pr.precio}`;
+  if (pr.modo === 'regalo') return `${nom} ${pr.lleva}x${pr.paga}`;
+  if (pr.modo === 'segunda') return `${nom}: 2da al ${100 - (+pr.pct || 0)}%`;
+  return nom;
+}
+function resumenPromo(pr) {
+  if (!pr || !pr.prod_id) return 'Elegí el producto';
+  const alc = (pr.gustos || []).length ? pr.gustos.map(g => g.nombre).join(', ') : 'todos los gustos';
+  const kg = esKgProd(S.prods.find(x => x.id === String(pr.prod_id)));
+  const t = { pct: `${pr.pct || '?'}% de descuento`, monto: `$${pr.monto || '?'} menos sobre lo que lleve`,
+    precio: `precio especial $${pr.precio || '?'} ${kg ? 'el kg' : 'por unidad'}`,
+    regalo: `lleva ${pr.lleva || '?'} y paga ${pr.paga || '?'}`, segunda: `la 2da ${kg ? 'kg' : 'unidad'} con ${pr.pct || '?'}% off` }[pr.modo] || '';
+  return `🏷️ ${pr.prod_nombre} (${alc}): ${t}. No acumulable.`;
+}
+function htmlPromoBox(pr) {
+  pr = pr || {};
+  const prod = S.prods.find(x => x.id === String(pr.prod_id || ''));
+  const sel = (pr.gustos || []).map(g => String(g.id));
+  const v = k => pr[k] != null ? esc(pr[k]) : '';
+  return `<div class="pbox">
+    <label class="campo"><span>Producto</span><select class="inp" data-p="prod"><option value="">— elegí —</option>${S.prods.map(x => `<option value="${esc(x.id)}" ${prod && prod.id === x.id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></label>
+    <label class="campo"><span>Promo</span><select class="inp" data-p="modo">${Object.entries(MODOS).map(([k, t]) => `<option value="${k}" ${(pr.modo || 'pct') === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label class="campo" data-m="pct segunda"><span>%</span><input class="inp" type="number" min="1" max="100" data-p="pct" value="${v('pct')}" style="width:80px"></label>
+    <label class="campo" data-m="monto"><span>$ menos</span><input class="inp" type="number" min="1" data-p="monto" value="${v('monto')}" style="width:100px"></label>
+    <label class="campo" data-m="precio"><span>Precio ${esKgProd(prod) ? 'kg' : 'unidad'}</span><input class="inp" type="number" min="1" data-p="precio" value="${v('precio')}" style="width:100px"></label>
+    <label class="campo" data-m="regalo"><span>Lleva</span><input class="inp" type="number" min="2" data-p="lleva" value="${v('lleva') || 2}" style="width:70px"></label>
+    <label class="campo" data-m="regalo"><span>Paga</span><input class="inp" type="number" min="1" data-p="paga" value="${v('paga') || 1}" style="width:70px"></label>
+    ${prod && prod.gustos.length ? `<div class="gustos" data-p="gustos"><span class="ayuda" style="margin:0;width:100%">Gustos (sin tildar = todos):</span>${prod.gustos.map(g => `<label class="${sel.includes(g.id) ? 'on' : ''}"><input type="checkbox" value="${esc(g.id)}" data-n="${esc(g.nombre)}" ${sel.includes(g.id) ? 'checked' : ''}>${esc(g.nombre)}</label>`).join('')}</div>` : ''}
+    <div class="res" data-p="res"></div>
+  </div>`;
+}
+function leerPromoBox(box) {
+  if (!box) return null;
+  const q = k => box.querySelector(`[data-p="${k}"]`);
+  const prod = S.prods.find(x => x.id === q('prod').value);
+  if (!prod) return { prod_id: '' };
+  const modo = q('modo').value;
+  const pr = { prod_id: prod.id, prod_nombre: prod.nombre, unidad: prod.unidad || '', modo,
+    gustos: [...box.querySelectorAll('[data-p="gustos"] input:checked')].map(i => ({ id: i.value, nombre: i.dataset.n })) };
+  const num = k => parseFloat(q(k).value) || 0;
+  if (modo === 'pct' || modo === 'segunda') pr.pct = num('pct');
+  if (modo === 'monto') pr.monto = num('monto');
+  if (modo === 'precio') pr.precio = num('precio');
+  if (modo === 'regalo') { pr.lleva = parseInt(q('lleva').value, 10) || 0; pr.paga = parseInt(q('paga').value, 10) || 0; }
+  return pr;
+}
+function errorPromo(pr) {
+  if (!pr || !pr.prod_id) return 'falta elegir el producto';
+  if ((pr.modo === 'pct' || pr.modo === 'segunda') && !(pr.pct > 0 && pr.pct <= 100)) return 'el % tiene que ir de 1 a 100';
+  if (pr.modo === 'monto' && !(pr.monto > 0)) return 'falta el monto';
+  if (pr.modo === 'precio' && !(pr.precio > 0)) return 'falta el precio especial';
+  if (pr.modo === 'regalo' && !(pr.lleva >= 2 && pr.paga >= 1 && pr.paga < pr.lleva)) return '"lleva" tiene que ser mayor que "paga" (ej. lleva 2, paga 1)';
+  return '';
+}
+function engancharPromoBox(td, promo) {
+  td.innerHTML = htmlPromoBox(promo);
+  const box = td.querySelector('.pbox');
+  const pintar = () => {
+    const modo = box.querySelector('[data-p="modo"]').value;
+    box.querySelectorAll('[data-m]').forEach(el => { el.style.display = el.dataset.m.split(' ').includes(modo) ? '' : 'none'; });
+    box.querySelector('[data-p="res"]').textContent = resumenPromo(leerPromoBox(box));
+    const tit = td.closest('tr').previousElementSibling.querySelector('[data-k="titulo"]');
+    if (tit) tit.placeholder = tituloPromo(leerPromoBox(box)) || 'Ej: Ravioles −30%';
+  };
+  box.querySelector('[data-p="prod"]').onchange = () => { const pr = leerPromoBox(box); pr.gustos = []; engancharPromoBox(td, pr); };
+  box.querySelectorAll('select,input').forEach(el => {
+    if (el.dataset.p === 'prod') return;
+    el.addEventListener('input', pintar);
+    el.addEventListener('change', () => { const l = el.closest('.gustos label'); if (l) l.classList.toggle('on', el.checked); pintar(); });
+  });
+  pintar();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -366,14 +476,15 @@ function renderPuertas() {
     const p = porFecha[f] || {};
     const tipo = p.tipo || 'pct';
     const val = tipo === 'monto' ? (p.monto_fijo || '') : (tipo === 'pct' ? (p.pct || '') : '');
+    const usaVal = tipo === 'pct' || tipo === 'monto';
     return `<tr data-f="${f}" class="${f === hoy ? 'hoy' : ''}">
       <td class="f">${fDow(f)}<br><b>${fCorta(f)}</b></td>
       <td><input class="inp t-emoji" data-k="emoji" value="${esc(p.emoji || '')}" placeholder="🎁"></td>
       <td><input class="inp" data-k="titulo" value="${esc(p.titulo || '')}" placeholder="Ej: 15% en tu compra"></td>
       <td><input class="inp" data-k="descripcion" value="${esc(p.descripcion || '')}" placeholder="Texto chico (opcional)"></td>
       <td><select class="inp t-tipo" data-k="tipo">${Object.entries(TIPOS).map(([k, t]) => `<option value="${k}" ${tipo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></td>
-      <td><input class="inp t-val" data-k="valor" type="number" min="0" value="${val}" placeholder="${tipo === 'monto' ? '$' : '%'}" ${tipo === 'pct' || tipo === 'monto' ? '' : 'disabled'}></td>
-    </tr>`;
+      <td><input class="inp t-val" data-k="valor" type="number" min="0" value="${val}" placeholder="${tipo === 'monto' ? '$' : '%'}" ${usaVal ? '' : 'disabled'}></td>
+    </tr><tr class="psub" data-sub="${f}" style="${tipo === 'producto' ? '' : 'display:none'}"><td></td><td colspan="5"></td></tr>`;
   }).join('');
   const cargadas = ds.filter(f => porFecha[f]).length;
   $('tab-body').innerHTML = `
@@ -383,7 +494,7 @@ function renderPuertas() {
       ${otras.length ? `<select class="inp" id="p-origen" style="width:auto">${otras.map(o => `<option value="${o.id}">${esc(o.nombre)} (${fCorta(o.desde)})</option>`).join('')}</select>
       <button class="btn" id="p-copiar">📄 Copiar puertas de esa campaña</button>` : ''}
     </div>
-    <div class="ayuda" style="margin-bottom:10px">El <b>título</b> es lo que se lee grande al abrir la puerta. Los descuentos (% o $) son sobre <b>toda la compra</b>, solo retirando en sucursal, y valen solo ese día. "Receta / tip" no genera código. Las filas sin título no se guardan.</div>
+    <div class="ayuda" style="margin-bottom:10px">El <b>título</b> es lo que se lee grande al abrir la puerta. "% / $ en toda la compra" descuentan sobre todo. <b>"Promo en producto"</b> vale solo para el producto (y gustos) que elijas: %, $ fijo, precio especial, lleva X paga Y o 2da unidad. Todos valen solo ese día, solo retirando en sucursal, y no se acumulan con otros descuentos. "Nota / tip" no genera código. Las filas sin título no se guardan (en "Promo en producto", si lo dejás vacío se usa el sugerido).</div>
     <div class="tabla-scroll"><table>
       <thead><tr><th>Día</th><th>Emoji</th><th>Título</th><th>Descripción</th><th>Tipo</th><th>Valor</th></tr></thead>
       <tbody id="p-body">${filas}</tbody></table></div>
@@ -391,21 +502,32 @@ function renderPuertas() {
       <button class="btn btn-acc" id="p-guardar">💾 Guardar puertas</button>
       <a class="btn" target="_blank" href="promo.html?c=${encodeURIComponent(c.slug)}&ver=${esc(ds.includes(hoy) ? hoy : c.desde)}">👁️ Vista previa</a>
     </div>`;
+  $('p-body').querySelectorAll('tr.psub').forEach(sub => {
+    const p = porFecha[sub.dataset.sub];
+    if (p && p.tipo === 'producto') engancharPromoBox(sub.lastElementChild, promoDe(p));
+  });
   $('p-body').querySelectorAll('select[data-k="tipo"]').forEach(s => s.onchange = () => {
-    const v = s.closest('tr').querySelector('[data-k="valor"]');
+    const tr = s.closest('tr'), v = tr.querySelector('[data-k="valor"]');
     const usa = s.value === 'pct' || s.value === 'monto';
     v.disabled = !usa; v.placeholder = s.value === 'monto' ? '$' : '%'; if (!usa) v.value = '';
+    const sub = tr.nextElementSibling;
+    sub.style.display = s.value === 'producto' ? '' : 'none';
+    if (s.value === 'producto' && !sub.querySelector('.pbox')) engancharPromoBox(sub.lastElementChild, null);
+    if (s.value !== 'producto') tr.querySelector('[data-k="titulo"]').placeholder = 'Ej: 15% en tu compra';
   });
   $('p-guardar').onclick = guardarPuertas;
   if ($('p-copiar')) $('p-copiar').onclick = copiarPuertas;
 }
 
 function leerFilas() {
-  return [...$('p-body').querySelectorAll('tr')].map(tr => {
+  return [...$('p-body').querySelectorAll('tr[data-f]')].map(tr => {
     const g = k => tr.querySelector(`[data-k="${k}"]`).value.trim();
     const tipo = g('tipo'), val = parseFloat(g('valor')) || 0;
-    return { fecha: tr.dataset.f, emoji: g('emoji') || null, titulo: g('titulo'), descripcion: g('descripcion') || null, tipo,
-             pct: tipo === 'pct' ? val : 0, monto_fijo: tipo === 'monto' ? val : 0 };
+    const promo = tipo === 'producto' ? leerPromoBox(tr.nextElementSibling.querySelector('.pbox')) : null;
+    let titulo = g('titulo');
+    if (!titulo && promo && !errorPromo(promo)) titulo = tituloPromo(promo);
+    return { fecha: tr.dataset.f, emoji: g('emoji') || null, titulo, descripcion: g('descripcion') || null, tipo,
+             pct: tipo === 'pct' ? val : 0, monto_fijo: tipo === 'monto' ? val : 0, promo };
   });
 }
 
@@ -414,6 +536,8 @@ async function guardarPuertas() {
   const llenas = filas.filter(f => f.titulo);
   const malas = llenas.filter(f => (f.tipo === 'pct' && !(f.pct > 0 && f.pct <= 100)) || (f.tipo === 'monto' && !(f.monto_fijo > 0)));
   if (malas.length) { toast(`Revisá el valor del ${fCorta(malas[0].fecha)}: falta el % o el monto`, 'error'); return; }
+  const malaProd = filas.find(f => f.tipo === 'producto' && (f.titulo || f.promo?.prod_id) && errorPromo(f.promo));
+  if (malaProd) { toast(`Promo en producto del ${fCorta(malaProd.fecha)}: ${errorPromo(malaProd.promo)}`, 'error'); return; }
   const vacias = filas.filter(f => !f.titulo).map(f => f.fecha);
   const borrar = S.premios.filter(p => vacias.includes(p.fecha));
   const btn = $('p-guardar'); btn.disabled = true;
@@ -437,13 +561,14 @@ async function copiarPuertas() {
     if (!ps.length) { toast('Esa campaña no tiene puertas cargadas', 'error'); return; }
     // Se copian en orden: 1ª puerta → 1ª puerta, etc. (no se guarda hasta tocar Guardar)
     const dsO = diasEntre(origen.desde, origen.hasta);
-    const trs = [...$('p-body').querySelectorAll('tr')];
+    const trs = [...$('p-body').querySelectorAll('tr[data-f]')];
     trs.forEach((tr, i) => {
       const p = ps.find(x => x.fecha === dsO[i]); if (!p) return;
       const set = (k, v) => { tr.querySelector(`[data-k="${k}"]`).value = v ?? ''; };
       set('emoji', p.emoji); set('titulo', p.titulo); set('descripcion', p.descripcion); set('tipo', p.tipo);
       tr.querySelector('[data-k="tipo"]').onchange();
       set('valor', p.tipo === 'monto' ? p.monto_fijo : (p.tipo === 'pct' ? p.pct : ''));
+      if (p.tipo === 'producto') engancharPromoBox(tr.nextElementSibling.lastElementChild, promoDe(p));
     });
     toast('Puertas copiadas. Revisalas y tocá Guardar.', 'success');
   } catch (e) { toast('No se pudo copiar: ' + e.message, 'error'); }

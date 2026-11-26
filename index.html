@@ -9649,7 +9649,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
   // en vez de depender de window._ventasTotalFinalDesc, que se cachea en el render y puede
   // no estar actualizado todavía al momento de cobrar.
   function calcularTotalConDescuento() {
-    if (window._ventasDescuentoAutoActivo && Array.isArray(window._ventasPromosCalc) && window._ventasPromosCalc.length === _ventasItems.length) {
+    if ((window._ventasDescuentoAutoActivo || window._ventasVoucherPromo) && Array.isArray(window._ventasPromosCalc) && window._ventasPromosCalc.length === _ventasItems.length) {
       return window._ventasPromosCalc.reduce((s, p) => s + p.subtotal, 0);
     }
     if (typeof window._ventasTotalFinalDesc === 'number') return window._ventasTotalFinalDesc;
@@ -9796,7 +9796,7 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       const precioLista = parsePrecioAR(item.precio||0);
       const totalBase = _ventasItems.reduce((s,it)=>s+parsePrecioAR(it.precio||0)*it.cant,0);
       let precioFinal = precioLista;
-      const promoItem = (window._ventasDescuentoAutoActivo && window._ventasPromosCalc && window._ventasPromosCalc[idx])
+      const promoItem = ((window._ventasDescuentoAutoActivo || window._ventasVoucherPromo) && window._ventasPromosCalc && window._ventasPromosCalc[idx])
         ? window._ventasPromosCalc[idx] : null;
       if (promoItem && item.cant > 0) {
         precioFinal = promoItem.subtotal / item.cant;
@@ -9887,6 +9887,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
         + (descT >= 0.01 ? ` · 🏷️ desc. -$ ${fmtU(descT)} (antes $ ${fmtU(brutoT)})${descMotivo ? ' · ' + descMotivo : ''}` : '');
       // Marcar voucher como usado
       if (window._ventasVoucherCodigo) {
+        // Se limpia ya (antes el $ fijo quedaba cargado y se aplicaba a la venta siguiente)
+        const _codUsado = window._ventasVoucherCodigo;
+        window._ventasDescuento = 0; window._ventasMontoFijo = 0;
+        window._ventasVoucherCodigo = ''; window._ventasVoucherData = null; window._ventasVoucherPromo = null;
         (async () => {
           try {
             const H2 = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
@@ -9894,12 +9898,10 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
             const pdvNombreUsado = _ventasProds ? '' : '';
             const pdvSelEl = document.getElementById('ventas-pdv-sel');
             const pdvUsadoNombre = pdvSelEl?.options[pdvSelEl.selectedIndex]?.text || pdvIdUsado;
-            await fetch(`${SUPABASE_URL}/rest/v1/vouchers?empresa_id=eq.${empresaActual}&codigo=eq.${window._ventasVoucherCodigo}`, {
+            await fetch(`${SUPABASE_URL}/rest/v1/vouchers?empresa_id=eq.${empresaActual}&codigo=eq.${_codUsado}`, {
               method: 'PATCH', headers: H2,
               body: JSON.stringify({ usado: true, usado_fecha: fechaHoyAR(), usado_pdv: pdvUsadoNombre })
             });
-            window._ventasDescuento = 0;
-            window._ventasVoucherCodigo = '';
           } catch(ev) { console.warn('Error marcando voucher:', ev); }
         })();
       }
@@ -10245,7 +10247,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
       return;
     }
 
-    const descData = window._ventasDescuentoAutoActivo ? window._ventasDescuentoAutoData : null;
+    // No acumulable: si hay voucher, vale solo el voucher (por producto → regla propia; a toda la compra → sin promo por ítem)
+    const descData = window._ventasVoucherCodigo ? (window._ventasVoucherPromo || null)
+      : (window._ventasDescuentoAutoActivo ? window._ventasDescuentoAutoData : null);
     const tipoPromo = descData ? (descData.tipo_promo||'pct') : null;
 
     // ── Helpers por tipo de promo ──────────────────────────────────
@@ -10275,6 +10279,20 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     }
     // Para distribuir bonificacion por producto: rastrear cuanto ya se bonificó
     const _bonifUsadaPorProd = {};
+    // $ fijo sobre un producto (voucher de campaña): se reparte entre los renglones que aplican
+    let _totalAplicaMonto = 0;
+    if (descData && descData.tipo_promo === 'monto') {
+      _ventasItems.forEach(function(it) { if (itemAplicaDesc(it)) _totalAplicaMonto += ventasParsePrecio(it.precio) * it.cant; });
+    }
+    // Kilos reales de un ítem por peso (cantDisplay "750 gr" / "1,2 kg")
+    function kgReal(item) {
+      let c = item.cant;
+      if (item.cantDisplay) {
+        const m = String(item.cantDisplay).match(/([0-9.,]+)/);
+        if (m) { c = parseFloat(m[1].replace(',','.')) || 1; if (item.unidad === 'gr') c = c / 1000; }
+      }
+      return c;
+    }
 
     function calcItemPromo(item) {
       const base = ventasParsePrecio(item.precio);
@@ -10321,6 +10339,21 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
           const badge = bonif > 0 ? descData.nombre+' (+'+bonif+' bonif.)' : descData.nombre;
           return { subtotal: sub, badge: badge, ahorro: subtotalBase - sub };
         }
+      }
+
+      if (tipoPromo === 'monto') {
+        const monto = parseFloat(descData.monto)||0;
+        if (!monto || _totalAplicaMonto <= 0) return { subtotal: subtotalBase, badge: '', ahorro: 0 };
+        const ahorro = Math.min(monto, _totalAplicaMonto) * subtotalBase / _totalAplicaMonto;
+        return { subtotal: subtotalBase - ahorro, badge: '-$'+monto+' ('+descData.nombre+')', ahorro: ahorro };
+      }
+
+      if (tipoPromo === 'precio') {
+        const precioEsp = parseFloat(descData.precio)||0;
+        if (!precioEsp) return { subtotal: subtotalBase, badge: '', ahorro: 0 };
+        const esKgP = item.unidad === 'kg' || item.unidad === 'gr';
+        const sub = Math.min(subtotalBase, esKgP ? precioEsp * kgReal(item) : precioEsp * item.cant);
+        return { subtotal: sub, badge: 'Precio especial $'+precioEsp+(esKgP ? '/kg' : '')+' ('+descData.nombre+')', ahorro: subtotalBase - sub };
       }
 
       if (tipoPromo === 'segunda') {
@@ -10469,6 +10502,9 @@ email3@ejemplo.com" style="width:100%;background:var(--surface2);border:1px soli
     window._ventasDescuentoAutoNombre = '';
     window._ventasDescuentoAutoData = null;
     window._ventasVoucherCodigo = '';
+    window._ventasMontoFijo = 0;
+    window._ventasVoucherData = null;
+    window._ventasVoucherPromo = null;
     const _pb = document.getElementById('ventas-promo-box');
     if (_pb) _pb.style.display = 'none';
     ventasRenderTabla();
@@ -12556,7 +12592,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           if (c.email && !document.getElementById('ventas-cliente-email').value) document.getElementById('ventas-cliente-email').value = c.email;
 
           // Verificar descuento automático para hoy
-          const descAuto = await calcularDescuentoClienteHoy();
+          const descAuto = window._ventasVoucherCodigo ? null : await calcularDescuentoClienteHoy();
           if (descAuto && (descAuto.pct > 0 || descAuto.tipo_promo === 'regalo' || descAuto.tipo_promo === 'segunda')) {
             window._ventasDescuentoAutoActivo = true;
             window._ventasDescuentoAutoNombre = descAuto.nombre;
@@ -12620,7 +12656,7 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
           if (msgEmail) { msgEmail.textContent = `✓ Cliente registrado: ${c.nombre||''} ${c.pdv_nombre?'('+c.pdv_nombre+')':''}`; msgEmail.style.display = 'block'; }
 
           // Aplicar descuento automático si no se aplicó ya por tel
-          if (!window._ventasDescuentoAutoActivo) {
+          if (!window._ventasDescuentoAutoActivo && !window._ventasVoucherCodigo) {
             const descAuto = await calcularDescuentoClienteHoy();
             if (descAuto && descAuto.pct > 0) {
               window._ventasDescuentoAutoActivo = true;
@@ -13099,6 +13135,36 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
   window._ventasDescuento = 0;
   window._ventasVoucherCodigo = '';
 
+  // Voucher de campaña "Promo en producto" → regla con el mismo formato que los descuentos automáticos
+  function voucherPromoADesc(v) {
+    const pr = typeof v.promo === 'string' ? (() => { try { return JSON.parse(v.promo); } catch(e) { return null; } })() : v.promo;
+    if (!pr || !pr.prod_id) return null;
+    const gustos = Array.isArray(pr.gustos) ? pr.gustos : [];
+    const reglas = gustos.length
+      ? gustos.map(g => ({ prodId: String(pr.prod_id), gustoId: String(g.id), prodNombre: pr.prod_nombre || '', gustoNombre: g.nombre || '' }))
+      : [{ prodId: String(pr.prod_id), gustoId: '', prodNombre: pr.prod_nombre || '', gustoNombre: '' }];
+    const d = { nombre: 'Voucher ' + v.codigo, tipo_aplicacion: 'reglas', reglas, pct: 0 };
+    if (pr.modo === 'pct') Object.assign(d, { tipo_promo: 'pct', pct: parseFloat(pr.pct) || 0 });
+    else if (pr.modo === 'monto') Object.assign(d, { tipo_promo: 'monto', monto: parseFloat(pr.monto) || 0 });
+    else if (pr.modo === 'precio') Object.assign(d, { tipo_promo: 'precio', precio: parseFloat(pr.precio) || 0 });
+    else if (pr.modo === 'regalo') {
+      const lleva = parseInt(pr.lleva) || 0, paga = parseInt(pr.paga) || 0;
+      if (!lleva || !paga || paga >= lleva) return null;
+      Object.assign(d, { tipo_promo: 'regalo', promo_cant_compra: paga, promo_cant_regalo: lleva - paga, contar_por: 'producto' });
+    }
+    else if (pr.modo === 'segunda') Object.assign(d, { tipo_promo: 'segunda', promo_pct_segunda: parseFloat(pr.pct) || 0 });
+    else return null;
+    d.textoAlcance = [pr.prod_nombre, gustos.map(g => g.nombre).join(', ')].filter(Boolean).join(' · ');
+    return d;
+  }
+  function textoPromoVoucher(d) {
+    return d.tipo_promo === 'pct' ? d.pct + '% off'
+      : d.tipo_promo === 'monto' ? '$' + d.monto + ' menos'
+      : d.tipo_promo === 'precio' ? 'precio especial $' + d.precio
+      : d.tipo_promo === 'regalo' ? 'lleva ' + (d.promo_cant_compra + d.promo_cant_regalo) + ' paga ' + d.promo_cant_compra
+      : d.tipo_promo === 'segunda' ? '2da unidad -' + d.promo_pct_segunda + '%' : '';
+  }
+
   async function aplicarVoucher() {
     const codigo = document.getElementById('ventas-voucher-input')?.value?.trim()?.toUpperCase();
     if (!codigo) { toast('Ingresá un código','error'); return; }
@@ -13110,17 +13176,36 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
       const v = found[0];
       if (v.usado) { toast('❌ Este voucher ya fue utilizado','error'); return; }
       if (v.vence && v.vence < hoy) { toast(`❌ Voucher vencido el ${v.vence}`,'error'); return; }
+      let promoProd = null;
+      if (v.tipo === 'producto') {
+        promoProd = voucherPromoADesc(v);
+        if (!promoProd) { toast('❌ El voucher no tiene bien cargado el producto de la promo','error'); return; }
+      }
+
+      // No acumulable: el voucher reemplaza al descuento automático del cliente
+      const habiaAuto = window._ventasDescuentoAutoActivo;
+      window._ventasDescuentoAutoActivo = false;
+      window._ventasDescuentoAutoNombre = '';
+      window._ventasDescuentoAutoData = null;
+      const _pbv = document.getElementById('ventas-promo-box');
+      if (_pbv) _pbv.style.display = 'none';
 
       window._ventasVoucherData = v;
       window._ventasVoucherCodigo = codigo;
-      if (v.tipo === 'monto') {
+      window._ventasVoucherPromo = promoProd;
+      const extra = (v.cliente_nombre ? ' para ' + v.cliente_nombre : '') + (habiaAuto ? ' (reemplaza el descuento automático)' : '');
+      if (promoProd) {
+        window._ventasDescuento = 0;
+        window._ventasMontoFijo = 0;
+        toast(`✓ Voucher aplicado: ${textoPromoVoucher(promoProd)} en ${promoProd.textoAlcance}${extra}`, 'success');
+      } else if (v.tipo === 'monto') {
         window._ventasDescuento = 0;
         window._ventasMontoFijo = parseFloat(v.monto_fijo)||0;
-        toast(`✓ Voucher aplicado: $${window._ventasMontoFijo} de descuento${v.cliente_nombre?' para '+v.cliente_nombre:''}`, 'success');
+        toast(`✓ Voucher aplicado: $${window._ventasMontoFijo} de descuento${extra}`, 'success');
       } else {
         window._ventasDescuento = v.pct||0;
         window._ventasMontoFijo = 0;
-        toast(`✓ Voucher aplicado: ${v.pct}% de descuento${v.cliente_nombre?' para '+v.cliente_nombre:''}`, 'success');
+        toast(`✓ Voucher aplicado: ${v.pct}% de descuento${extra}`, 'success');
       }
       ventasRenderTabla();
     } catch(e) { toast('Error: '+e.message,'error'); }
@@ -13131,8 +13216,11 @@ ${items.map(it=>`<div class="item"><span>${it.cantidad}x ${it.prod_nombre||''} $
     window._ventasMontoFijo = 0;
     window._ventasVoucherCodigo = '';
     window._ventasVoucherData = null;
+    window._ventasVoucherPromo = null;
     ventasRenderTabla();
     toast('Voucher removido','success');
+    // Si hay cliente cargado, vuelve a buscar su descuento automático
+    try { if (document.getElementById('ventas-cliente-tel')?.value?.trim() || document.getElementById('ventas-cliente-email')?.value?.trim()) verificarClienteExistente(); } catch(e) {}
   }
 
   // ── MENSAJES BLINK ────────────────────────────────────────────────────
