@@ -344,9 +344,17 @@ function nueva() {
 
 async function abrir(c) {
   S.sel = Object.assign({}, c); S.ganador = null; S.resultados = null;
+  // Se vacían ya las puertas: antes, mientras cargaban, seguían en pantalla las de la campaña anterior
+  S.premios = [];
   renderLista();
-  try { S.premios = await sbApi(`promo_premios?campania_id=eq.${c.id}&order=fecha.asc&select=*`) || []; }
-  catch (e) { S.premios = []; toast('No se pudieron leer las puertas: ' + e.message, 'error'); }
+  $('panel').innerHTML = '<div class="vacio">Cargando ' + esc(c.nombre) + '…</div>';
+  const id = c.id;
+  let ps = [];
+  try { ps = await sbApi(`promo_premios?campania_id=eq.${id}&order=fecha.asc&select=*`) || []; }
+  catch (e) { toast('No se pudieron leer las puertas: ' + e.message, 'error'); }
+  // Si mientras cargaba se eligió otra campaña, esta respuesta se descarta
+  if (!S.sel || S.sel.id !== id) return;
+  S.premios = ps.filter(p => String(p.campania_id) === String(id));
   renderPanel();
 }
 
@@ -559,6 +567,8 @@ async function copiarPuertas() {
   try {
     const ps = await sbApi(`promo_premios?campania_id=eq.${origen.id}&order=fecha.asc&select=*`) || [];
     if (!ps.length) { toast('Esa campaña no tiene puertas cargadas', 'error'); return; }
+    const hayCargadas = [...$('p-body').querySelectorAll('tr[data-f] [data-k="titulo"]')].some(i => i.value.trim());
+    if (hayCargadas && !confirm(`Se van a reemplazar las puertas de la tabla con las de "${origen.nombre}". ¿Seguir?`)) return;
     // Se copian en orden: 1ª puerta → 1ª puerta, etc. (no se guarda hasta tocar Guardar)
     const dsO = diasEntre(origen.desde, origen.hasta);
     const trs = [...$('p-body').querySelectorAll('tr[data-f]')];
