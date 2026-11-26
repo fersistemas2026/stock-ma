@@ -1125,6 +1125,7 @@
           <option value="">Todas las sucursales</option>${pdvs.map(p => `<option value="${esc(p.id)}" ${cFiltro.pdv === String(p.id) ? 'selected' : ''}>${esc(p.nombre || p.name)}</option>`).join('')}</select>
         <label style="font-size:13px;color:var(--text-muted);display:flex;gap:6px;align-items:center"><input type="checkbox" ${cFiltro.cerradas ? 'checked' : ''} onchange="cFiltro.cerradas=this.checked;renderCentral()"> Ver resueltas (7 días)</label>
         <button class="btn btn-sm" onclick="ordenarCentral()" title="Una columna por sucursal, en el orden en que llegaron">Ordenar por sucursal</button>
+        ${(() => { const na = cNotas.filter(n => diasAtras(n.created_at) > 0).length; return na ? `<button class="btn btn-sm" onclick="dejarSoloHoy()" title="Saca de la pizarra las notas de días anteriores">Dejar solo las de hoy (${na})</button>` : ''; })()}
         ${(() => { const nc = cNotas.filter(n => !ABIERTOS.includes(n.estado)).length; return nc ? `<button class="btn btn-sm" onclick="sacarCerradas()" title="Saca de la pizarra todas las resueltas y recibidas">Sacar resueltas (${nc})</button>` : ''; })()}
         <span style="font-size:13px;color:var(--text-muted)">${nNuevas ? `<b style="color:var(--accent)">${nNuevas} sin ver</b> · ` : ''}${notasFiltradas().length} notas</span>
         <div class="legend" style="margin-left:auto">
@@ -1276,6 +1277,30 @@
     if (!ids.length) return;
     if (!confirm(`Se sacan de la pizarra ${ids.length} notas resueltas o recibidas. ¿Seguir?`)) return;
     sacarNotas(ids);
+  }
+
+  // Limpieza: deja en la central solo las notas de hoy.
+  // Las de días anteriores que siguen abiertas (ej. el pedido de anoche sin mandar) se eligen aparte.
+  function dejarSoloHoy() {
+    const viejas = cNotas.filter(n => diasAtras(n.created_at) > 0);
+    if (!viejas.length) { toast('Ya quedan solo las de hoy'); return; }
+    const cerradas = viejas.filter(n => !ABIERTOS.includes(n.estado));
+    const abiertas = viejas.filter(n => ABIERTOS.includes(n.estado));
+    const porSuc = abiertas.reduce((m, n) => { const k = n.pdv_nombre || pdvNombre(n.pdv_id); m[k] = (m[k] || 0) + 1; return m; }, {});
+    window._limpiar = { todas: viejas.map(n => n.id), cerradas: cerradas.map(n => n.id) };
+    abrirModal(`
+      <h3>Dejar solo las notas de hoy</h3>
+      <div class="sub">Se sacan de la pizarra central. No se borra nada: la sucursal las sigue viendo y el envío queda registrado.</div>
+      <div style="font-size:13px;line-height:1.8">
+        <div>De días anteriores: <b>${viejas.length}</b></div>
+        <div>· resueltas o recibidas: <b>${cerradas.length}</b></div>
+        <div>· todavía abiertas: <b style="color:${abiertas.length ? 'var(--nec-tx)' : 'inherit'}">${abiertas.length}</b>${abiertas.length ? ` <span style="color:var(--text-muted)">(${Object.entries(porSuc).map(([s, c]) => `${esc(s)} ${c}`).join(' · ')})</span>` : ''}</div>
+      </div>
+      <div class="acts">
+        <button class="btn" onclick="cerrarModal()">Cancelar</button>
+        ${abiertas.length && cerradas.length ? `<button class="btn" onclick="sacarNotas(window._limpiar.cerradas)">Sacar ${cerradas.length} (dejar las abiertas)</button>` : ''}
+        <button class="btn btn-acc" onclick="sacarNotas(window._limpiar.todas)">Sacar ${abiertas.length ? 'todas (' + viejas.length + ')' : viejas.length}</button>
+      </div>`);
   }
 
   function ordenarCentral() {
