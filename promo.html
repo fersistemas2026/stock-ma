@@ -467,7 +467,7 @@ function render() {
   const pasos = [
     t.paso1,
     'La primera vez dejás tu <b>nombre, celular</b> y la <b>sucursal que te queda más cerca</b>.',
-    'Usá tu premio <b>ese mismo día</b>, <b>solo retirando en sucursal</b>: comprás en el local o pedís online con retiro.'
+    'Usá tu premio <b>ese mismo día</b>, <b>solo retirando en sucursal</b>: comprás en el local o pedís online para retirar ese día.'
   ];
   if (c.sorteo_texto) pasos.push(`¿${t.abriste} ${pr.minimo >= pr.total ? '<b>todas las ' + t.varias + '</b>' : '<b>al menos ' + pr.minimo + ' ' + t.varias + '</b>'}? Participás del <b>${esc(c.sorteo_texto)}</b> 🎁`);
 
@@ -476,7 +476,7 @@ function render() {
      <div class="grid${conBig ? '' : ' pocas'}" id="grid" ${conBig ? '' : `style="grid-template-columns:repeat(${ds.length},1fr)"`}>${html}</div>
      <div class="como"><h3>¿Cómo funciona?</h3>${pasos.map((t, i) => `<div class="paso"><div class="num">${i + 1}</div><div>${t}</div></div>`).join('')}</div>
      <a class="cta" href="pedidos.html">🛒 Ir a la tienda online</a>
-     <p class="legal">Un premio por celular por día, válido solo el día en que ${t.abris} y solo retirando en sucursal (compra en el local o pedido online con retiro; no válido para delivery). No acumulable con otras promociones ni descuentos: se aplica solo el premio del día. Las promos en un producto valen solo para ese producto (y gustos) indicado.${c.sorteo_texto ? ' ' + esc(c.sorteo_texto) + ': participan quienes ' + t.abran + ' ' + (pr.minimo >= pr.total ? 'todas las ' + t.varias : 'al menos ' + pr.minimo + ' ' + t.varias) + ' con el mismo celular.' : ''} Válido del ${fechaTxt(c.desde)} al ${fechaTxt(c.hasta)}.</p>
+     <p class="legal">Un premio por celular por día, válido solo el día en que ${t.abris} y solo retirando en sucursal (compra en el local o pedido online con retiro ese mismo día; no válido para delivery ni para retirar otro día). No acumulable con otras promociones ni descuentos: se aplica solo el premio del día. Las promos en un producto valen solo para ese producto (y gustos) indicado.${c.sorteo_texto ? ' ' + esc(c.sorteo_texto) + ': participan quienes ' + t.abran + ' ' + (pr.minimo >= pr.total ? 'todas las ' + t.varias : 'al menos ' + pr.minimo + ' ' + t.varias) + ' con el mismo celular.' : ''} Válido del ${fechaTxt(c.desde)} al ${fechaTxt(c.hasta)}.</p>
      ${cliente && !PREVIA ? `<div class="quien">¿No sos ${esc(cliente.nombre)}? <button id="noSoy">Cambiar</button></div>` : ''}`;
 
   const hoyEl = document.querySelector('.door.today');
@@ -598,7 +598,7 @@ function mostrarPremio(r) {
     ${conCodigo ? `<div class="donde" id="donde">
       <div><span class="i">📍</span><div><b>Válido solo retirando en sucursal.</b><br>Tu sucursal: <b>${esc(pdv || '—')}</b>${r.previa ? '' : '<button class="cambiar" id="cambiarPdv">cambiar</button>'}</div></div>
       <div><span class="i">🏪</span><div><b>En el local:</b> mostrá este código o decí tu celular${tel ? ' terminado en <b>' + tel.slice(-4) + '</b>' : ''}.</div></div>
-      ${online ? '<div><span class="i">🛒</span><div><b>Online:</b> hacé tu pedido eligiendo <b>retiro en sucursal</b> y cargá el código al pagar.</div></div>'
+      ${online ? '<div><span class="i">🛒</span><div><b>Online:</b> hacé tu pedido para <b>retirar hoy</b> en sucursal y cargá el código al pagar.</div></div>'
         : '<div><span class="i">🛒</span><div>Esta promo se usa <b>en el local</b>.</div></div>'}
     </div>` : ''}
     ${conCodigo && online ? '<a class="btn verde" href="pedidos.html" style="display:block;text-align:center;text-decoration:none">🛒 Pedir online para retirar</a>' : ''}

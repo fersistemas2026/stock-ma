@@ -2143,6 +2143,22 @@ function textoVoucherProducto(p) {
     : '2da unidad -' + p.pctSegunda + '%';
   return t + ' en ' + p.prodNombre + (p.gustosTxt ? ' (' + p.gustosTxt + ')' : '');
 }
+// Códigos que vencen hoy (los de las puertas de las campañas): solo se pueden usar retirando HOY
+function voucherSoloHoy(v) { return !!(v && v.vence && v.vence === fechaHoyARp()); }
+function fechaRetiroElegida() {
+  if (selectedFechaEsp) return selectedFechaEsp.fecha;
+  if (!selectedMode || !selectedEnvio) return null;
+  const o = calcularOpciones(selectedMode);
+  return selectedEnvio === 'pasado' ? o.fecha2ISO : o.fecha1ISO;
+}
+// true si ya eligió un día de retiro distinto de hoy con un código "solo hoy"
+function voucherFueraDeDia() {
+  const v = window._voucherOnlineData;
+  if (!voucherSoloHoy(v)) return false;
+  const f = fechaRetiroElegida();
+  return !!f && f !== fechaHoyARp();
+}
+
 // Promo del día y código web NO son acumulables: se aplica el que más ahorra
 function getTotalConDescuento() {
   const base = getCartTotal();
@@ -2151,6 +2167,8 @@ function getTotalConDescuento() {
   const vProd = promoDeVoucher(v);
   if (vProd) { const cv = calcPromoCarrito(vProd); vAh = Math.min(cv.ahorro, base); vPorItem = cv.porItem; }
   else if (v) { vAh = v.tipo === 'monto' ? (parseFloat(v.monto_fijo) || 0) : base * ((parseFloat(v.pct) || 0) / 100); vAh = Math.min(vAh, base); }
+  const vFueraDia = voucherFueraDeDia();
+  if (vFueraDia) { vAh = 0; vPorItem = {}; }
   const p = promoDelDia();
   let pAh = 0, porItem = {}, estado = null, potencial = 0;
   if (p) {
@@ -2165,7 +2183,7 @@ function getTotalConDescuento() {
   let fuente = null, descuento = 0;
   if (pAh > 0 || vAh > 0) { if (pAh >= vAh) { fuente = 'promo'; descuento = pAh; } else { fuente = 'voucher'; descuento = vAh; } }
   return { total: Math.max(base - descuento, 0), descuento, fuente, promo: p, promoEstado: estado,
-           promoAhorro: pAh, promoPotencial: potencial, voucherAhorro: vAh, voucherProducto: vProd,
+           promoAhorro: pAh, promoPotencial: potencial, voucherAhorro: vAh, voucherProducto: vProd, voucherFueraDia: vFueraDia,
            porItem: fuente === 'promo' ? porItem : fuente === 'voucher' ? vPorItem : {} };
 }
 // Banner de la promo en el catálogo
@@ -2208,7 +2226,9 @@ async function aplicarVoucherOnline() {
     window._voucherOnlineCodigo = codigo;
     const beneficio = vProd ? textoVoucherProducto(vProd) : v.tipo === 'monto' ? `$${v.monto_fijo} de descuento` : `${v.pct}% de descuento`;
     const sinItems = vProd && calcPromoCarrito(vProd).ahorro <= 0;
-    msg.textContent = sinItems ? `✓ Código cargado: ${beneficio}. Agregá ese producto al pedido para usarlo.` : `✓ Código aplicado: ${beneficio}`;
+    const soloHoyTxt = voucherSoloHoy(v) ? ' Vale solo retirando hoy.' : '';
+    msg.textContent = (sinItems ? `✓ Código cargado: ${beneficio}. Agregá ese producto al pedido para usarlo.` : `✓ Código aplicado: ${beneficio}.`) + soloHoyTxt;
+    if (voucherFueraDeDia()) { msg.textContent = `⚠️ Este código vale solo retirando hoy. Elegí retiro hoy para que se aplique.`; msg.style.color = '#f59e0b'; renderConfirm(); return; }
     msg.style.color = '#22c55e';
     renderConfirm();
   } catch(e) {
@@ -2470,7 +2490,8 @@ function renderConfirm() {
   const info = document.getElementById('promoInfoOnline');
   if (info) {
     let cls = '', html = '';
-    if (promo && promoEstado === 'falta_tel') { cls = 'aviso'; html = '🏷️ Hoy hay promo: <b>' + promo.nombre + '</b> (' + promoDescripcion(promo) + '). Ingresá tu celular para aplicarla y ahorrás <b>' + $f(promoPotencial) + '</b>.'; }
+    if (_desc.voucherFueraDia) { cls = 'aviso'; html = '🎁 Tu código <b>' + (window._voucherOnlineCodigo || '') + '</b> es de la promo de hoy: vale solo <b>retirando hoy</b>. Elegí retiro hoy para que se aplique.'; }
+    else if (promo && promoEstado === 'falta_tel') { cls = 'aviso'; html = '🏷️ Hoy hay promo: <b>' + promo.nombre + '</b> (' + promoDescripcion(promo) + '). Ingresá tu celular para aplicarla y ahorrás <b>' + $f(promoPotencial) + '</b>.'; }
     else if (promo && promoEstado === 'pago') { cls = 'aviso'; html = '🏷️ La promo <b>' + promo.nombre + '</b> es solo ' + promoPagoTexto(promo) + '. Si cambiás la forma de pago ahorrás <b>' + $f(promoPotencial) + '</b>.'; }
     else if (fuente === 'promo' && voucherAhorro > 0) { cls = 'ok'; html = '✓ Aplicamos la promo <b>' + promo.nombre + '</b> (-' + $f(promoAhorro) + ') porque te conviene más que el código (-' + $f(voucherAhorro) + '). No son acumulables.'; }
     else if (fuente === 'promo') { cls = 'ok'; html = '✓ Promo del día aplicada: <b>' + promo.nombre + '</b> (-' + $f(promoAhorro) + ').'; }
@@ -2665,6 +2686,7 @@ function selEnvio(v) {
   });
   // Al cambiar de día, el horario se vuelve a elegir (la disponibilidad cambia)
   if (v !== null) selHorario(null);
+  if (document.getElementById('confirmPanel')?.classList.contains('visible')) setTimeout(renderConfirm, 0);
   actualizarHorarios(selectedMode);
   actualizarManos();
   if (typeof actualizarAyudaDatos === 'function') actualizarAyudaDatos();
@@ -2728,6 +2750,11 @@ async function enviarPedido() {
   }
   const entries = Object.entries(cart).filter(([,gm])=>Object.values(gm).some(q=>q>0));
   if (!entries.length) { toast('El carrito está vacío'); return; }
+  if (voucherFueraDeDia()) {
+    toast('Tu código de la promo vale solo retirando hoy. Elegí retiro hoy o quitá el código.');
+    try { irAFila('rowPlazo'); } catch(e) {}
+    return;
+  }
 
   const btn = document.getElementById('btnEnviar');
   btn.disabled = true; btn.textContent = 'Enviando...';
