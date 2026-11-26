@@ -332,6 +332,8 @@ body:not(.en-catalogo) .prod-accesos { display: none; }
 .promo-info.ok { display:block; background:#f0fdf4; border:1px solid #86efac; color:#166534; }
 .promo-info.aviso { display:block; background:#FFF8E1; border:1px solid #FFD54F; color:#795500; }
 .item-promo-tag { display:inline-block; margin-top:2px; font-size:11px; font-weight:700; color:#16a34a; }
+/* Pie de desarrollador (debajo del catálogo) */
+.dev-pie{text-align:center;font-size:11px;color:var(--text3,#9aa0a6);opacity:.8;margin:18px 0 6px;letter-spacing:.03em}
 </style>
 </head>
 <body class="en-catalogo">
@@ -420,6 +422,8 @@ body:not(.en-catalogo) .prod-accesos { display: none; }
         <div class="mano-guia" id="manoModo"><span class="mano">👆</span><span>¿Lo retirás o te lo enviamos?</span></div>
         <div id="catalogContent"><div class="loader"><div class="spin"></div><br>Cargando productos...</div></div>
         <button class="cta-btn" onclick="irAlCarrito()">Ver mi pedido →</button>
+        <!-- Pie de desarrollador: actualizar la versión cada vez que se sube un cambio -->
+        <div class="dev-pie">Versión 2026.11.26</div>
       </div>
       <aside class="side-cart" id="sideCart"></aside>
       <div class="panel" id="cartPanel">
